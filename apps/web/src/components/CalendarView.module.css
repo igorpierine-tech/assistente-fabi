@@ -1,0 +1,262 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+
+.navBtn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.todayBtn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+
+.todayBtn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.monthTitle {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.viewGroup {
+  display: flex;
+  gap: 2px;
+  background: var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.viewBtn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.viewBtn:hover {
+  color: var(--text);
+}
+
+.viewActive {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.headerRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+}
+
+.headerCell {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  min-height: 100px;
+}
+
+.dayCell {
+  padding: 4px 6px;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dayCell:last-child {
+  border-right: none;
+}
+
+.dayCell:hover {
+  background: rgba(200, 169, 81, 0.04);
+}
+
+.dayCellOther {
+  background: var(--bg);
+  opacity: 0.5;
+}
+
+.dayCellToday {
+  background: rgba(200, 169, 81, 0.06);
+}
+
+.dayNumber {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 2px 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.dayNumberToday {
+  background: var(--secondary);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.dayEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.eventBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: opacity 0.15s;
+  line-height: 1.6;
+}
+
+.eventBar:hover {
+  opacity: 0.8;
+}
+
+.eventDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.eventBarTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventOverflow {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  cursor: pointer;
+}
+
+.eventOverflow:hover {
+  color: var(--primary);
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.legendDivider {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+}

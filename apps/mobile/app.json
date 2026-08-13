@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Assistente da Fabi",
+    "slug": "assistente-fabi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "assistente-fabi",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF8F3"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.raizesriquezas.assistente",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "O app precisa do microfone para transcrever comandos de voz para gerenciar sua agenda."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FBF8F3"
+      },
+      "package": "com.raizesriquezas.assistente",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "plugins": ["expo-router"]
+  }
+}

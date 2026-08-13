@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #5E4B37;
+  --primary-light: #8B7355;
+  --secondary: #C4A265;
+  --secondary-light: #E8D4A0;
+  --accent: #6B8F5E;
+  --accent-light: #A3C496;
+  --bg: #FBF8F3;
+  --bg-dark: #1A1612;
+  --surface: #FFFFFF;
+  --surface-dark: #2A2420;
+  --text: #2C2418;
+  --text-light: #F5F0E8;
+  --text-muted: #8B8078;
+  --border: #E8E0D4;
+  --border-dark: #3A3430;
+  --error: #C75050;
+  --success: #5E8B5E;
+  --warning: #C8A951;
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(94, 75, 55, 0.08);
+  --shadow-lg: 0 8px 32px rgba(94, 75, 55, 0.12);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  color: var(--primary);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-body);
+}
+
+input, textarea {
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--secondary-light);
+  color: var(--primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.85; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}

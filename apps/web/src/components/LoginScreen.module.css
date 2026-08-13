@@ -1,0 +1,123 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--bg) 0%, #F0EBE1 100%);
+  padding: 24px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 48px 40px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  max-width: 420px;
+  width: 100%;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.logoArea {
+  margin-bottom: 20px;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.tagline {
+  font-size: 0.85rem;
+  color: #C4A265;
+  font-weight: 400;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 24px;
+}
+
+.description {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.loginBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 500;
+  border: 2px solid var(--border);
+  transition: all 0.2s;
+}
+
+.loginBtn:hover {
+  background: var(--bg);
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.divider span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.demoBtn {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--text-light);
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  transition: all 0.2s;
+}
+
+.demoBtn:hover {
+  background: var(--primary-light);
+  box-shadow: var(--shadow);
+}
+
+.note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 20px;
+  line-height: 1.4;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
