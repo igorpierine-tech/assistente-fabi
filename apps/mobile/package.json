@@ -12,7 +12,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@assistente-fabi/shared": "workspace:*",
     "expo": "~52.0.0",
     "expo-av": "~15.0.0",
     "expo-router": "~4.0.0",
