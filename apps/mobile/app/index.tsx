@@ -1,6 +1,10 @@
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+
+const API_URL = "https://assistente-fabi-production.up.railway.app";
 
 const C = {
   primary: "#5E4B37",
@@ -14,6 +18,30 @@ const C = {
 };
 
 export default function LoginScreen() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleGoogleLogin() {
+    setLoading(true);
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${API_URL}/auth/google?platform=mobile`,
+        "assistente-fabi://auth/callback"
+      );
+
+      if (result.type === "success" && result.url) {
+        const url = new URL(result.url);
+        const name = url.searchParams.get("name") || "Fabiana";
+        console.log("Login OK:", name);
+        router.replace("/(tabs)/assistente");
+      }
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível fazer login. Tente novamente.");
+      console.error("Login error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <SafeAreaView style={s.container}>
       <View style={s.card}>
@@ -25,8 +53,12 @@ export default function LoginScreen() {
           Gerencie sua agenda por voz ou texto. Consulte compromissos, agende atendimentos e organize sua semana.
         </Text>
 
-        <TouchableOpacity style={s.googleBtn} onPress={() => {}}>
-          <Text style={s.googleText}>Entrar com Google</Text>
+        <TouchableOpacity style={s.googleBtn} onPress={handleGoogleLogin} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color={C.text} />
+          ) : (
+            <Text style={s.googleText}>Entrar com Google</Text>
+          )}
         </TouchableOpacity>
 
         <View style={s.divider}>

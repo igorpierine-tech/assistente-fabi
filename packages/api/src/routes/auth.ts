@@ -22,7 +22,9 @@ function validState(expected: string | undefined, received: unknown): boolean {
 
 router.get("/google", (req, res) => {
   const state = randomBytes(32).toString("base64url");
+  const platform = req.query.platform as string | undefined;
   req.session.oauthState = state;
+  req.session.oauthPlatform = platform;
   const url = getOAuth2Client().generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
@@ -34,6 +36,11 @@ router.get("/google", (req, res) => {
       "https://www.googleapis.com/auth/calendar",
     ],
   });
+
+  if (platform === "mobile") {
+    req.session.save(() => res.redirect(url));
+    return;
+  }
   res.json({ url });
 });
 
@@ -65,13 +72,25 @@ router.get("/google/callback", async (req, res) => {
     };
     delete req.session.oauthState;
 
-    const webUrl = process.env.WEB_URL || "http://localhost:3000";
+    const isMobile = req.session.oauthPlatform === "mobile";
+    delete req.session.oauthPlatform;
+
     req.session.save((error) => {
       if (error) {
         res.status(500).send("Não foi possível salvar a sessão.");
         return;
       }
-      res.redirect(`${webUrl}/auth/success?userId=session&name=${encodeURIComponent(req.session.googleUser?.name || "Fabiana")}`);
+      if (isMobile) {
+        const params = new URLSearchParams({
+          name: req.session.googleUser?.name || "Fabiana",
+          email: req.session.googleUser?.email || "",
+          userId: req.session.googleUser?.id || "google-user",
+        });
+        res.redirect(`assistente-fabi://auth/callback?${params}`);
+      } else {
+        const webUrl = process.env.WEB_URL || "http://localhost:3000";
+        res.redirect(`${webUrl}/auth/success?userId=session&name=${encodeURIComponent(req.session.googleUser?.name || "Fabiana")}`);
+      }
     });
   } catch (error) {
     console.error("Erro na autenticação Google:", error instanceof Error ? error.message : "erro desconhecido");
