@@ -1,0 +1,293 @@
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin: 0;
+}
+
+.searchBox {
+  flex: 1;
+  max-width: 300px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.searchBox:focus {
+  border-color: var(--secondary);
+}
+
+.addBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.addBtn:hover {
+  background: var(--primary-light);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--secondary);
+  box-shadow: var(--shadow);
+}
+
+.cardInfo h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--primary);
+  margin: 0 0 0.25rem;
+}
+
+.cardMeta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.cardMeta span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.editBtn,
+.deleteBtn {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.editBtn {
+  background: var(--secondary-light);
+  color: var(--primary);
+}
+
+.editBtn:hover {
+  background: var(--secondary);
+}
+
+.deleteBtn {
+  background: rgba(224, 90, 43, 0.08);
+  color: var(--error);
+}
+
+.deleteBtn:hover {
+  background: rgba(224, 90, 43, 0.15);
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.empty p:first-child {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty p:last-child {
+  font-size: 0.9rem;
+}
+
+/* Modal / Form */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modalHeader h2 {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--primary);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  padding: 0.25rem;
+}
+
+.closeBtn:hover {
+  color: var(--text);
+}
+
+.form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--secondary);
+}
+
+.field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.formActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.cancelBtn {
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+}
+
+.cancelBtn:hover {
+  background: var(--border);
+}
+
+.saveBtn {
+  padding: 0.5rem 1.25rem;
+  background: var(--primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.saveBtn:hover {
+  background: var(--primary-light);
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchBox {
+    max-width: 100%;
+  }
+
+  .card {
+    grid-template-columns: 1fr;
+  }
+
+  .cardActions {
+    justify-content: flex-end;
+  }
+}

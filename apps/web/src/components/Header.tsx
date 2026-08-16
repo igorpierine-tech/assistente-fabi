@@ -7,15 +7,15 @@ interface HeaderProps {
   userName: string;
   onLogout: () => void;
   isDemo?: boolean;
-  activeView?: "chat" | "calendario";
-  onChangeView?: (view: "chat" | "calendario") => void;
+  activeView?: "chat" | "calendario" | "clientes";
+  onChangeView?: (view: "chat" | "calendario" | "clientes") => void;
 }
 
 export function Header({ userName, onLogout, isDemo, activeView = "chat", onChangeView }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
-        <LogoIcon size={36} />
+        <LogoIcon size={48} />
         <div>
           <h1 className={styles.title}>Raízes e Riquezas</h1>
           <p className={styles.subtitle}>Assistente da Fabi</p>
@@ -45,6 +45,16 @@ export function Header({ userName, onLogout, isDemo, activeView = "chat", onChan
               <line x1="11" y1="1.5" x2="11" y2="4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
             Calendário
+          </button>
+          <button
+            className={`${styles.navTab} ${activeView === "clientes" ? styles.navTabActive : ""}`}
+            onClick={() => onChangeView("clientes")}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Clientes
           </button>
         </nav>
       )}

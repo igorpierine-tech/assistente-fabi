@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { buildSystemPrompt } from "./system-prompt";
 import { calendarTools, type ToolName } from "./tools";
 import { TIMEZONE } from "@assistente-fabi/shared";
@@ -12,91 +12,141 @@ export interface CalendarService {
     description?: string;
     appointmentType: string;
     clientName?: string;
+    clientEmail?: string;
   }): Promise<unknown>;
   updateEvent(eventId: string, params: Record<string, unknown>): Promise<unknown>;
   deleteEvent(eventId: string): Promise<unknown>;
 }
 
-interface ConversationMessage {
-  role: "user" | "assistant";
-  content: string | Anthropic.ContentBlock[];
+type ChatMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+
+const MAX_CONVERSATIONS = 200;
+const CONVERSATION_TTL_MS = 4 * 60 * 60 * 1000; // 4 horas
+const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+interface ConversationEntry {
+  messages: ChatMessage[];
+  lastAccess: number;
 }
 
-const conversations = new Map<string, ConversationMessage[]>();
+const conversations = new Map<string, ConversationEntry>();
+
+function pruneConversations(): void {
+  const now = Date.now();
+  for (const [id, entry] of conversations) {
+    if (now - entry.lastAccess > CONVERSATION_TTL_MS) {
+      conversations.delete(id);
+    }
+  }
+  if (conversations.size > MAX_CONVERSATIONS) {
+    const sorted = [...conversations.entries()].sort(
+      (a, b) => a[1].lastAccess - b[1].lastAccess
+    );
+    for (let i = 0; i < sorted.length - MAX_CONVERSATIONS; i++) {
+      conversations.delete(sorted[i][0]);
+    }
+  }
+}
 
 export class FabiAgent {
-  private client: Anthropic;
+  private client: OpenAI;
 
   constructor(apiKey: string) {
-    this.client = new Anthropic({ apiKey });
+    this.client = new OpenAI({ apiKey });
   }
 
   async chat(
     userMessage: string,
     conversationId: string,
-    calendar: CalendarService
+    calendar: CalendarService,
+    userName?: string
   ): Promise<{ message: string; conversationId: string }> {
+    pruneConversations();
+
     if (!conversations.has(conversationId)) {
-      conversations.set(conversationId, []);
+      conversations.set(conversationId, { messages: [], lastAccess: Date.now() });
     }
-    const history = conversations.get(conversationId)!;
+    const entry = conversations.get(conversationId)!;
+    entry.lastAccess = Date.now();
+    const history = entry.messages;
 
     history.push({ role: "user", content: userMessage });
 
     const now = new Date().toLocaleString("pt-BR", { timeZone: TIMEZONE });
-    const systemPrompt = buildSystemPrompt(now);
+    const systemPrompt = buildSystemPrompt(now, userName);
 
-    let response = await this.client.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const buildMessages = (): ChatMessage[] => [
+      { role: "system", content: systemPrompt },
+      ...history,
+    ];
+
+    let response = await this.client.chat.completions.create({
+      model: MODEL,
       max_tokens: 2048,
-      system: systemPrompt,
+      messages: buildMessages(),
       tools: calendarTools,
-      messages: history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
     });
 
-    while (response.stop_reason === "tool_use") {
-      const toolUseBlocks = response.content.filter(
-        (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-      );
+    let choice = response.choices[0];
+    let loopGuard = 0;
 
-      history.push({ role: "assistant", content: response.content });
+    while (
+      choice.finish_reason === "tool_calls" &&
+      choice.message.tool_calls &&
+      choice.message.tool_calls.length > 0 &&
+      loopGuard < 8
+    ) {
+      loopGuard++;
+      const assistantMsg = choice.message;
 
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+      history.push({
+        role: "assistant",
+        content: assistantMsg.content ?? null,
+        tool_calls: assistantMsg.tool_calls,
+      });
 
-      for (const toolUse of toolUseBlocks) {
-        const result = await this.executeTool(
-          toolUse.name as ToolName,
-          toolUse.input as Record<string, string>,
-          calendar
-        );
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
+      for (const toolCall of assistantMsg.tool_calls!) {
+        if (toolCall.type !== "function") continue;
+
+        let args: Record<string, string> = {};
+        try {
+          args = JSON.parse(toolCall.function.arguments || "{}");
+        } catch {
+          args = {};
+        }
+
+        let result: unknown;
+        try {
+          result = await this.executeTool(
+            toolCall.function.name as ToolName,
+            args,
+            calendar
+          );
+        } catch (error) {
+          result = {
+            error:
+              error instanceof Error ? error.message : "Erro ao executar ferramenta",
+          };
+        }
+
+        history.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
           content: JSON.stringify(result),
         });
       }
 
-      history.push({ role: "user", content: toolResults });
-
-      response = await this.client.messages.create({
-        model: "claude-sonnet-4-20250514",
+      response = await this.client.chat.completions.create({
+        model: MODEL,
         max_tokens: 2048,
-        system: systemPrompt,
+        messages: buildMessages(),
         tools: calendarTools,
-        messages: history.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
       });
+      choice = response.choices[0];
     }
 
-    const textBlock = response.content.find(
-      (block): block is Anthropic.TextBlock => block.type === "text"
-    );
-    const assistantMessage = textBlock?.text ?? "Desculpe, não consegui processar sua solicitação.";
+    const assistantMessage =
+      choice.message.content ?? "Desculpe, não consegui processar sua solicitação.";
 
     history.push({ role: "assistant", content: assistantMessage });
 
@@ -123,6 +173,7 @@ export class FabiAgent {
           description: input.description,
           appointmentType: input.appointmentType,
           clientName: input.clientName,
+          clientEmail: input.clientEmail,
         });
       case "update_event": {
         const { eventId, ...updates } = input;

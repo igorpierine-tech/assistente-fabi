@@ -23,7 +23,7 @@ const APPOINTMENT_TYPES = [
   { value: "outro", label: "Outro" },
 ];
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: Array<{ value: CalendarEvent["status"]; label: string; color: string }> = [
   { value: "previsto", label: "Previsto", color: "#FFA726" },
   { value: "confirmado", label: "Confirmado", color: "#66BB6A" },
   { value: "em_andamento", label: "Em andamento", color: "#42A5F5" },
@@ -253,10 +253,10 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
             <div className={styles.formGrid}>
               <div className={styles.prontuarioHeader}>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="3" y="1" width="14" height="18" rx="2" stroke="#C4A265" strokeWidth="1.5" />
-                  <line x1="7" y1="5" x2="13" y2="5" stroke="#C4A265" strokeWidth="1" />
-                  <line x1="7" y1="8" x2="13" y2="8" stroke="#C4A265" strokeWidth="1" />
-                  <line x1="7" y1="11" x2="11" y2="11" stroke="#C4A265" strokeWidth="1" />
+                  <rect x="3" y="1" width="14" height="18" rx="2" stroke="#b8873a" strokeWidth="1.5" />
+                  <line x1="7" y1="5" x2="13" y2="5" stroke="#b8873a" strokeWidth="1" />
+                  <line x1="7" y1="8" x2="13" y2="8" stroke="#b8873a" strokeWidth="1" />
+                  <line x1="7" y1="11" x2="11" y2="11" stroke="#b8873a" strokeWidth="1" />
                 </svg>
                 <span>Prontuário da Sessão</span>
               </div>

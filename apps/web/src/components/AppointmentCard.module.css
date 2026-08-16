@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(44, 36, 24, 0.5);
+  background: rgba(26, 46, 24, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -18,7 +18,7 @@
 .card {
   background: var(--surface);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(44, 36, 24, 0.25);
+  box-shadow: 0 20px 60px rgba(26, 46, 24, 0.20);
   width: 100%;
   max-width: 680px;
   max-height: 90vh;
@@ -137,7 +137,7 @@
 
 .tabActive {
   color: var(--primary);
-  border-bottom-color: #C4A265;
+  border-bottom-color: var(--secondary);
 }
 
 .body {
@@ -188,8 +188,8 @@
 
 .input:focus {
   outline: none;
-  border-color: #C4A265;
-  box-shadow: 0 0 0 3px rgba(196, 162, 101, 0.12);
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(184, 135, 58, 0.12);
 }
 
 .select {
@@ -205,8 +205,8 @@
 
 .select:focus {
   outline: none;
-  border-color: #C4A265;
-  box-shadow: 0 0 0 3px rgba(196, 162, 101, 0.12);
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(184, 135, 58, 0.12);
 }
 
 .textarea {
@@ -224,8 +224,8 @@
 
 .textarea:focus {
   outline: none;
-  border-color: #C4A265;
-  box-shadow: 0 0 0 3px rgba(196, 162, 101, 0.12);
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(184, 135, 58, 0.12);
 }
 
 .sectionDivider {
@@ -246,7 +246,7 @@
 .sectionDivider span {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #C4A265;
+  color: var(--secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -258,9 +258,9 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(196, 162, 101, 0.08);
+  background: rgba(184, 135, 58, 0.08);
   border-radius: 8px;
-  border-left: 3px solid #C4A265;
+  border-left: 3px solid var(--secondary);
 }
 
 .prontuarioHeader span {
@@ -336,7 +336,7 @@
 .saveBtn {
   padding: 8px 24px;
   border-radius: 8px;
-  background: #C4A265;
+  background: var(--secondary);
   color: white;
   font-size: 0.85rem;
   font-weight: 600;

@@ -149,8 +149,8 @@
 .busyTag {
   padding: 3px 10px;
   border-radius: 20px;
-  background: #FFF3E0;
-  color: #E65100;
+  background: rgba(224, 90, 43, 0.1);
+  color: var(--error);
   font-size: 0.7rem;
   font-weight: 600;
 }

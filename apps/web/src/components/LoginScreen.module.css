@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--bg) 0%, #F0EBE1 100%);
+  background: linear-gradient(135deg, var(--bg) 0%, #ede5d4 100%);
   padding: 24px;
 }
 
@@ -31,7 +31,7 @@
 
 .tagline {
   font-size: 0.85rem;
-  color: #C4A265;
+  color: var(--secondary);
   font-weight: 400;
   font-style: italic;
   margin-bottom: 4px;

@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev:web"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["turbo", "dev", "--filter=web"],
       "port": 3000
     }
   ]

@@ -9,10 +9,11 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0",
-    "@assistente-fabi/shared": "workspace:*"
+    "@assistente-fabi/shared": "workspace:*",
+    "openai": "^4.85.0"
   },
   "devDependencies": {
+    "@types/node": "20.17.6",
     "typescript": "^5.8.0"
   }
 }

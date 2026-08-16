@@ -103,7 +103,7 @@
 
 .headerRow {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -123,7 +123,7 @@
 
 .weekRow {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--border);
   min-height: 100px;
 }
@@ -136,6 +136,8 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dayCell:last-child {
@@ -143,7 +145,7 @@
 }
 
 .dayCell:hover {
-  background: rgba(200, 169, 81, 0.04);
+  background: rgba(184, 135, 58, 0.04);
 }
 
 .dayCellOther {
@@ -152,7 +154,7 @@
 }
 
 .dayCellToday {
-  background: rgba(200, 169, 81, 0.06);
+  background: rgba(184, 135, 58, 0.06);
 }
 
 .dayNumber {
@@ -259,4 +261,83 @@
   width: 1px;
   height: 14px;
   background: var(--border);
+}
+
+@media (max-width: 600px) {
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .monthTitle {
+    font-size: 1rem;
+  }
+
+  .viewGroup {
+    display: none;
+  }
+
+  .navBtn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .todayBtn {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+  }
+
+  .headerCell {
+    padding: 6px 2px;
+    font-size: 0.6rem;
+  }
+
+  .weekRow {
+    min-height: 52px;
+  }
+
+  .dayCell {
+    padding: 2px 3px;
+  }
+
+  .dayNumber {
+    font-size: 0.7rem;
+    padding: 1px 3px;
+  }
+
+  .dayNumberToday {
+    width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+  }
+
+  .eventBar {
+    font-size: 0.55rem;
+    padding: 1px 3px;
+    gap: 2px;
+  }
+
+  .eventDot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .eventOverflow {
+    font-size: 0.55rem;
+  }
+
+  .legend {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .legendLabel {
+    font-size: 0.6rem;
+  }
+
+  .legendDot {
+    width: 6px;
+    height: 6px;
+  }
 }

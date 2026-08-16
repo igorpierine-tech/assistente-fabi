@@ -13,7 +13,7 @@ export function LoginScreen({ onLogin, onDemo }: LoginScreenProps) {
     <div className={styles.container}>
       <div className={styles.card}>
         <div className={styles.logoArea}>
-          <LogoFull size={80} />
+          <LogoFull size={130} />
         </div>
         <h1 className={styles.title}>Raízes e Riquezas</h1>
         <p className={styles.tagline}>Desbloqueie suas Raízes, Cultive sua Riqueza.</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./ChatPanel.module.css";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -12,10 +12,23 @@ interface Message {
   timestamp: Date;
 }
 
+interface Conversation {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface ChatPanelProps {
   userId: string;
   isDemo?: boolean;
 }
+
+const WELCOME_MSG: Message = {
+  role: "assistant",
+  content: "Olá, Fabi! Sou sua assistente de agenda. Você pode me perguntar sobre seus compromissos, pedir para agendar, alterar ou cancelar atendimentos. Use o microfone ou digite sua mensagem.",
+  timestamp: new Date(),
+};
 
 const DEMO_RESPONSES: Record<string, string> = {
   default: "Desculpe, no modo demonstração só consigo responder a alguns comandos de exemplo. Tente perguntar sobre a agenda de hoje ou agendar uma Constelação!",
@@ -38,7 +51,7 @@ function getDemoResponse(input: string): string {
   }
 
   if (lower.includes("sim") || lower.includes("confirm") || lower.includes("pode")) {
-    return "✅ Agendado com sucesso! O compromisso já aparece na sua agenda.";
+    return "Agendado com sucesso! O compromisso já aparece na sua agenda.";
   }
 
   if (lower.includes("cancel")) {
@@ -57,25 +70,74 @@ function getDemoResponse(input: string): string {
 }
 
 export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Olá, Fabi! Sou sua assistente de agenda. Você pode me perguntar sobre seus compromissos, pedir para agendar, alterar ou cancelar atendimentos. Use o microfone ou digite sua mensagem.",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MSG]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  const fetchConversations = useCallback(async () => {
+    if (isDemo) return;
+    try {
+      const res = await fetch(`${API_URL}/chat/conversations`, { credentials: "include" });
+      if (res.ok) {
+        setConversations(await res.json());
+      }
+    } catch {
+      // silent
+    }
+  }, [isDemo]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  async function loadConversation(conv: Conversation) {
+    try {
+      const res = await fetch(`${API_URL}/chat/conversations/${conv.id}`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const loaded: Message[] = (data.messages || []).map((m: { role: string; content: string; created_at: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        timestamp: new Date(m.created_at),
+      }));
+      setMessages(loaded.length > 0 ? loaded : [WELCOME_MSG]);
+      setConversationId(conv.id);
+      setShowHistory(false);
+    } catch {
+      // silent
+    }
+  }
+
+  async function deleteConversation(id: string) {
+    try {
+      await fetch(`${API_URL}/chat/conversations/${id}`, { method: "DELETE", credentials: "include" });
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (conversationId === id) {
+        startNewChat();
+      }
+    } catch {
+      // silent
+    }
+  }
+
+  function startNewChat() {
+    setConversationId(null);
+    setMessages([WELCOME_MSG]);
+    setShowHistory(false);
+  }
 
   async function sendMessage(text: string) {
     if (!text.trim() || isLoading) return;
@@ -99,6 +161,7 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
     try {
       const res = await fetch(`${API_URL}/chat/message`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, conversationId, userId }),
       });
@@ -109,6 +172,9 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
         throw new Error(data.error || "Erro ao processar mensagem");
       }
 
+      if (!conversationId && data.conversationId) {
+        fetchConversations();
+      }
       setConversationId(data.conversationId);
       setMessages((prev) => [
         ...prev,
@@ -183,6 +249,7 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
     try {
       const res = await fetch(`${API_URL}/chat/voice`, {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 
@@ -190,6 +257,9 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
 
       if (!res.ok) throw new Error(data.error);
 
+      if (!conversationId && data.conversationId) {
+        fetchConversations();
+      }
       setConversationId(data.conversationId);
 
       if (data.transcription) {
@@ -237,8 +307,58 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
     });
   }
 
+  function formatDate(dateStr: string) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
+
   return (
     <div className={styles.container}>
+      {!isDemo && (
+        <div className={styles.chatHeader}>
+          <button className={styles.newChatBtn} onClick={startNewChat}>
+            + Nova conversa
+          </button>
+          <button
+            className={styles.historyToggle}
+            onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConversations(); }}
+          >
+            {showHistory ? "Fechar" : `Conversas (${conversations.length})`}
+          </button>
+        </div>
+      )}
+
+      {showHistory && !isDemo && (
+        <div className={styles.historyPanel}>
+          {conversations.length === 0 ? (
+            <div className={styles.emptyHistory}>Nenhuma conversa salva</div>
+          ) : (
+            conversations.map((conv) => (
+              <div
+                key={conv.id}
+                className={`${styles.convItem} ${conv.id === conversationId ? styles.convItemActive : ""}`}
+              >
+                <button
+                  className={styles.convTitle}
+                  onClick={() => loadConversation(conv)}
+                  style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit", padding: 0 }}
+                >
+                  {conv.title || "Sem título"}
+                </button>
+                <span className={styles.convDate}>{formatDate(conv.updated_at)}</span>
+                <button
+                  className={styles.convDelete}
+                  onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
+                  title="Excluir conversa"
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {isDemo && (
         <div className={styles.demoBanner}>
           Modo demonstração — experimente digitar comandos como &quot;Qual minha agenda de hoje?&quot; ou &quot;Agende Constelação com Maria na sexta às 14h&quot;

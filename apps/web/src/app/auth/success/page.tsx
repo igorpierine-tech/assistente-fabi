@@ -1,23 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 
-export default function AuthSuccess() {
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const userId = searchParams.get("userId");
-    const name = searchParams.get("name");
-
-    if (userId) {
-      localStorage.setItem("fabi_userId", userId);
-      if (name) localStorage.setItem("fabi_userName", name);
-      window.location.href = `/?userId=${userId}&name=${encodeURIComponent(name || "")}`;
-    }
-  }, [searchParams]);
-
-  return (
+const AuthSuccessContent = dynamic(() => import("./AuthSuccessContent"), {
+  ssr: false,
+  loading: () => (
     <div style={{
       display: "flex",
       justifyContent: "center",
@@ -28,7 +15,11 @@ export default function AuthSuccess() {
       fontSize: "1.25rem",
       color: "var(--primary)",
     }}>
-      Conectado com sucesso! Redirecionando...
+      Carregando...
     </div>
-  );
+  ),
+});
+
+export default function AuthSuccess() {
+  return <AuthSuccessContent />;
 }

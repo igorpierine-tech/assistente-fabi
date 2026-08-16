@@ -81,6 +81,7 @@ export interface Client {
   phone?: string;
   email?: string;
   notes?: string;
-  appointmentHistory: string[]; // appointment IDs
+  appointmentHistory: string[];
   createdAt: string;
+  updatedAt: string;
 }

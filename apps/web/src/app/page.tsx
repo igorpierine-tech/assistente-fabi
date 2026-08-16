@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
+import { useState, useEffect, useCallback } from "react";
+import { Sidebar, type View } from "@/components/Sidebar";
+import { Dashboard } from "@/components/Dashboard";
 import { ChatPanel } from "@/components/ChatPanel";
 import { DaySummary } from "@/components/DaySummary";
 import { CalendarView } from "@/components/CalendarView";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { LoginScreen } from "@/components/LoginScreen";
+import { ClientsPanel } from "@/components/ClientsPanel";
 import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -56,18 +58,62 @@ function generateDemoEvents(): CalendarEvent[] {
   ];
 }
 
+interface AppointmentRow {
+  id: string;
+  title: string;
+  type: string;
+  client_id: string | null;
+  client_name: string | null;
+  start_time: string;
+  end_time: string;
+  notes: string | null;
+  google_event_id: string | null;
+  status: string;
+}
+
+function appointmentToEvent(row: AppointmentRow): CalendarEvent {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    clientName: row.client_name || undefined,
+    startDate: row.start_time,
+    endDate: row.end_time,
+    notes: row.notes || undefined,
+    status: (row.status as CalendarEvent["status"]) || "previsto",
+  };
+}
+
 export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<"chat" | "calendario">("chat");
+  const [activeView, setActiveView] = useState<View>("inicio");
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [newEventDate, setNewEventDate] = useState("");
+
+  const fetchAppointments = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/appointments`, { credentials: "include" });
+      if (res.ok) {
+        const rows: AppointmentRow[] = await res.json();
+        setEvents(rows.map(appointmentToEvent));
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && !isDemo) {
+      fetchAppointments();
+    }
+  }, [isAuthenticated, isDemo, fetchAppointments]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -88,9 +134,10 @@ export default function Home() {
 
   async function checkAuth(id: string) {
     try {
-      const res = await fetch(`${API_URL}/auth/status/${id}`);
+      const res = await fetch(`${API_URL}/auth/status/${id}`, { credentials: "include" });
       const data = await res.json();
       setIsAuthenticated(data.authenticated);
+      if (data.authenticated) fetchAppointments();
     } catch {
       setIsAuthenticated(false);
     }
@@ -99,7 +146,7 @@ export default function Home() {
 
   async function handleLogin() {
     try {
-      const res = await fetch(`${API_URL}/auth/google`);
+      const res = await fetch(`${API_URL}/auth/google`, { credentials: "include" });
       const data = await res.json();
       window.location.href = data.url;
     } catch {
@@ -115,12 +162,16 @@ export default function Home() {
     setEvents(generateDemoEvents());
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    if (!isDemo) {
+      await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
+    }
     localStorage.removeItem("fabi_userId");
     localStorage.removeItem("fabi_userName");
     setUserId(null);
     setIsAuthenticated(false);
     setIsDemo(false);
+    setActiveView("inicio");
   }
 
   function handleEventClick(event: CalendarEvent) {
@@ -137,9 +188,7 @@ export default function Home() {
   function handleSaveEvent(event: CalendarEvent) {
     setEvents((prev) => {
       const exists = prev.find((e) => e.id === event.id);
-      if (exists) {
-        return prev.map((e) => (e.id === event.id ? event : e));
-      }
+      if (exists) return prev.map((e) => (e.id === event.id ? event : e));
       return [...prev, event];
     });
     setSelectedEvent(null);
@@ -153,18 +202,8 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        background: "var(--bg)",
-      }}>
-        <div style={{
-          fontFamily: "var(--font-heading)",
-          fontSize: "1.5rem",
-          color: "var(--primary)",
-        }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "var(--bg)" }}>
+        <div style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", color: "var(--primary)" }}>
           Carregando...
         </div>
       </div>
@@ -175,53 +214,75 @@ export default function Home() {
     return <LoginScreen onLogin={handleLogin} onDemo={handleDemo} />;
   }
 
+  function renderContent() {
+    switch (activeView) {
+      case "inicio":
+        return (
+          <Dashboard
+            userName={userName}
+            events={events}
+            clients={[]}
+            onNavigate={(v) => setActiveView(v as View)}
+          />
+        );
+      case "assistente":
+        return (
+          <div className="main-chat">
+            <div className="sidebar-summary">
+              <DaySummary userId={userId!} isDemo={isDemo} events={events} onEventClick={handleEventClick} />
+            </div>
+            <div className="chat-area">
+              <ChatPanel userId={userId!} isDemo={isDemo} />
+            </div>
+          </div>
+        );
+      case "agenda":
+        return (
+          <div className="main-calendar">
+            <CalendarView
+              events={events}
+              isDemo={isDemo}
+              onEventClick={handleEventClick}
+              onNewEvent={handleNewEvent}
+            />
+          </div>
+        );
+      case "clientes":
+        return (
+          <div className="main-calendar">
+            <ClientsPanel isDemo={isDemo} />
+          </div>
+        );
+      case "financeiro":
+        return (
+          <div style={{ padding: "40px 32px" }}>
+            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.8rem", color: "var(--primary)", marginBottom: 8 }}>Financeiro</h2>
+            <p style={{ color: "var(--text-muted)" }}>Em breve — controle de recebíveis e relatórios financeiros.</p>
+          </div>
+        );
+      case "configuracoes":
+        return (
+          <div style={{ padding: "40px 32px" }}>
+            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.8rem", color: "var(--primary)", marginBottom: 8 }}>Configurações</h2>
+            <p style={{ color: "var(--text-muted)" }}>Em breve — preferências, integrações e conta.</p>
+          </div>
+        );
+    }
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <Header
-        userName={userName}
-        onLogout={handleLogout}
-        isDemo={isDemo}
+    <div className="app-layout">
+      <Sidebar
         activeView={activeView}
         onChangeView={setActiveView}
+        userName={userName || "Fabiana"}
+        clientCount={42}
+        isDemo={isDemo}
       />
+      <main className="app-main">
+        {renderContent()}
+      </main>
 
-      {activeView === "chat" ? (
-        <main style={{
-          flex: 1,
-          display: "flex",
-          overflow: "hidden",
-          maxWidth: "1400px",
-          width: "100%",
-          margin: "0 auto",
-          padding: "0 24px",
-          gap: "24px",
-        }}>
-          <div style={{ flex: "0 0 340px", paddingTop: "24px", overflowY: "auto" }}>
-            <DaySummary userId={userId!} isDemo={isDemo} events={events} onEventClick={handleEventClick} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <ChatPanel userId={userId!} isDemo={isDemo} />
-          </div>
-        </main>
-      ) : (
-        <main style={{
-          flex: 1,
-          overflow: "hidden",
-          padding: "16px 24px",
-          maxWidth: "1600px",
-          width: "100%",
-          margin: "0 auto",
-        }}>
-          <CalendarView
-            events={events}
-            isDemo={isDemo}
-            onEventClick={handleEventClick}
-            onNewEvent={handleNewEvent}
-          />
-        </main>
-      )}
-
-      {/* Modal de prontuário */}
       {(selectedEvent || showNewEvent) && (
         <AppointmentCard
           event={selectedEvent}
