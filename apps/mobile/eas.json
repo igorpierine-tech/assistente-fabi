@@ -17,6 +17,10 @@
     "apk": {
       "android": {
         "buildType": "apk"
+      },
+      "node": "22.13.0",
+      "pnpm": {
+        "version": "11.21.0"
       }
     },
     "production": {
