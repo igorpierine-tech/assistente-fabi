@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "build:android": "eas build --platform android --profile preview",
     "build:android:apk": "eas build --platform android --profile apk",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "eas-build-pre-install": "printf 'node-linker=hoisted\nshamefully-hoist=true\n' > ../../.npmrc && cat ../../.npmrc"
   },
   "dependencies": {
     "@babel/runtime": "^7.26.0",
