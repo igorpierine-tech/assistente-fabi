@@ -20,7 +20,9 @@
       },
       "node": "22.13.0",
       "pnpm": "11.21.0",
-      "installCommand": "pnpm install --config.node-linker=hoisted --no-frozen-lockfile"
+      "env": {
+        "npm_config_node_linker": "hoisted"
+      }
     },
     "production": {
       "android": {
