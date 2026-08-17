@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 
-const API_URL = "https://assistente-fabi-production.up.railway.app";
+const API_URL = "https://raizes-riquezas.up.railway.app";
 
 const C = {
   primary: "#5E4B37",
