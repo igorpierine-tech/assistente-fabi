@@ -1,123 +1,137 @@
 .container {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 40%, #1a2e18 0%, #12160f 100%);
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, var(--bg) 0%, #ede5d4 100%);
   padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.container::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 20% 20%, rgba(184, 135, 58, 0.15), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(217, 178, 104, 0.08), transparent 45%);
+  pointer-events: none;
 }
 
 .card {
-  background: var(--surface);
-  border-radius: 20px;
-  padding: 48px 40px;
-  text-align: center;
-  box-shadow: var(--shadow-lg);
-  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  max-width: 460px;
   width: 100%;
-  animation: fadeIn 0.5s ease-out;
+  padding: 48px 36px 40px;
+  background: linear-gradient(180deg, rgba(253, 250, 243, 0.02) 0%, rgba(253, 250, 243, 0.06) 100%);
+  border: 1px solid rgba(217, 178, 104, 0.15);
+  border-radius: 24px;
+  color: var(--text-light);
+  text-align: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.6s ease-out;
 }
 
-.logoArea {
-  margin-bottom: 20px;
+.logoWrap {
+  margin: 8px 0 28px;
+  display: flex;
+  justify-content: center;
+}
+
+.logo {
+  height: auto;
+  width: 180px;
+  filter: brightness(1.05);
 }
 
 .title {
   font-family: var(--font-heading);
-  font-size: 2rem;
-  color: var(--primary);
-  margin-bottom: 4px;
-}
-
-.tagline {
-  font-size: 0.85rem;
-  color: var(--secondary);
   font-weight: 400;
+  font-size: 44px;
+  line-height: 1.02;
+  color: #f4ede0;
+  margin: 0 0 16px;
+  letter-spacing: -0.005em;
+}
+
+.title em {
+  color: #d9b268;
   font-style: italic;
-  margin-bottom: 4px;
 }
 
-.subtitle {
-  font-size: 1rem;
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-bottom: 24px;
+.desc {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #c8bfae;
+  max-width: 320px;
+  margin: 0 auto 32px;
 }
 
-.description {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-  margin-bottom: 32px;
-}
-
-.loginBtn {
+.primaryBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 14px 24px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 500;
-  border: 2px solid var(--border);
-  transition: all 0.2s;
-}
-
-.loginBtn:hover {
-  background: var(--bg);
-  border-color: var(--primary-light);
-  box-shadow: var(--shadow);
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 20px 0;
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.divider span {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.demoBtn {
-  width: 100%;
-  padding: 14px 24px;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: var(--text-light);
-  font-size: 1rem;
-  font-weight: 500;
+  padding: 16px 20px;
+  background: #d9b268;
+  color: #12160f;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 600;
   border: none;
-  transition: all 0.2s;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  font-family: var(--font-body);
 }
 
-.demoBtn:hover {
-  background: var(--primary-light);
-  box-shadow: var(--shadow);
+.primaryBtn:hover {
+  background: #e8c880;
+  transform: translateY(-1px);
 }
 
-.note {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-top: 20px;
-  line-height: 1.4;
+.primaryBtn:active {
+  transform: translateY(0);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+.secondaryBtn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px 20px;
+  background: transparent;
+  color: #d9b268;
+  border: 1px solid rgba(217, 178, 104, 0.35);
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  font-family: var(--font-body);
+}
+
+.secondaryBtn:hover {
+  background: rgba(217, 178, 104, 0.08);
+  border-color: rgba(217, 178, 104, 0.55);
+}
+
+.footer {
+  margin-top: 24px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8a7f6a;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 40px 24px 32px;
+    border-radius: 20px;
+  }
+  .title {
+    font-size: 36px;
+  }
+  .logo {
+    width: 150px;
+  }
 }

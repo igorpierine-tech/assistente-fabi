@@ -144,14 +144,10 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function handleLogin() {
-    try {
-      const res = await fetch(`${API_URL}/auth/google`, { credentials: "include" });
-      const data = await res.json();
-      window.location.href = data.url;
-    } catch {
-      alert("API não disponível. Use o modo demonstração para visualizar a interface.");
-    }
+  function handleLogin() {
+    // Top-level navigation ensures the session cookie is first-party
+    // (avoids third-party cookie blocking in Chrome incognito).
+    window.location.href = `${API_URL}/auth/google?redirect=1`;
   }
 
   function handleDemo() {

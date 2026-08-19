@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap');
 
 :root {
   --primary: #1a2e18;
@@ -24,7 +24,7 @@
   --success: #2f4a2b;
   --warning: #d9b268;
   --font-heading: 'Instrument Serif', serif;
-  --font-body: 'Inter', sans-serif;
+  --font-body: 'Geist', system-ui, sans-serif;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 2px 12px rgba(26, 46, 24, 0.06);

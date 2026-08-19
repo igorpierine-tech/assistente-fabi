@@ -37,7 +37,9 @@ router.get("/google", (req, res) => {
     ],
   });
 
-  if (platform === "mobile") {
+  // Top-level navigation from web (?redirect=1) or the mobile flow needs a redirect
+  // so the browser lands on Google and the session cookie is guaranteed first-party.
+  if (platform === "mobile" || req.query.redirect === "1") {
     req.session.save(() => res.redirect(url));
     return;
   }
