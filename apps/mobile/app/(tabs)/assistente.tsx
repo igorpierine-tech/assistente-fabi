@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
+import { authenticatedFetch, hasSession } from "../../services/auth";
 
 const C = {
   primary: "#5E4B37", primaryLight: "#8B7355", secondary: "#C4A265", secondaryLight: "#E8D4A0",
@@ -72,7 +73,11 @@ export default function AssistenteScreen() {
   const [selectedEvent, setSelectedEvent] = useState<DayEvent | null>(null);
   const [prontuarioTab, setProntuarioTab] = useState<"dados" | "prontuario" | "historico">("dados");
   const [eventStatus, setEventStatus] = useState("previsto");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => { hasSession().then(setIsAuthenticated); }, []);
 
   async function sendMessage(text: string) {
     if (!text.trim() || isLoading) return;
@@ -80,9 +85,27 @@ export default function AssistenteScreen() {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 600 + Math.random() * 600));
-    setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", content: getDemoResponse(text), timestamp: new Date() }]);
-    setIsLoading(false);
+    if (!isAuthenticated) {
+      await new Promise((r) => setTimeout(r, 600 + Math.random() * 600));
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", content: getDemoResponse(text), timestamp: new Date() }]);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const response = await authenticatedFetch("/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, conversationId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Não foi possível processar a mensagem.");
+      if (data.conversationId) setConversationId(data.conversationId);
+      setMessages((prev) => [...prev, { id: `${Date.now()}-assistant`, role: "assistant", content: data.message, timestamp: new Date() }]);
+    } catch (e) {
+      setMessages((prev) => [...prev, { id: `${Date.now()}-error`, role: "assistant", content: e instanceof Error ? e.message : "Tive um problema ao processar sua mensagem. Tente novamente.", timestamp: new Date() }]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function toggleRecording() {
@@ -166,9 +189,9 @@ export default function AssistenteScreen() {
         </ScrollView>
       ) : (
         <>
-          <View style={s.demoBanner}>
-            <Text style={s.demoText}>Modo demonstração — experimente perguntar sobre a agenda</Text>
-          </View>
+          {!isAuthenticated && <View style={s.demoBanner}>
+            <Text style={s.demoText}>Modo demonstração — entre com Google para usar seus dados reais</Text>
+          </View>}
 
           <FlatList
             ref={flatListRef}

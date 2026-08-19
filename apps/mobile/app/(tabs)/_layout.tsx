@@ -1,7 +1,9 @@
 import { Tabs } from "expo-router";
-import { View, Image, StyleSheet } from "react-native";
+import { View, Image, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
+import { router } from "expo-router";
+import { clearSession } from "../../services/auth";
 
-function TabIcon({ name, focused }: { name: "chat" | "calendar"; focused: boolean }) {
+function TabIcon({ name, focused }: { name: "chat" | "calendar" | "booking"; focused: boolean }) {
   const color = focused ? "#5E4B37" : "#8B8078";
   if (name === "chat") {
     return (
@@ -9,6 +11,15 @@ function TabIcon({ name, focused }: { name: "chat" | "calendar"; focused: boolea
         <View style={{ width: 20, height: 20, justifyContent: "center", alignItems: "center" }}>
           <View style={{ width: 16, height: 12, borderRadius: 3, borderWidth: 1.5, borderColor: color }} />
           <View style={{ width: 0, height: 0, borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 5, borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: color, alignSelf: "flex-start", marginLeft: 3, marginTop: -1 }} />
+        </View>
+      </View>
+    );
+  }
+  if (name === "booking") {
+    return (
+      <View style={[ts.icon, focused && ts.iconActive]}>
+        <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: color, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color, fontSize: 13, lineHeight: 15, fontWeight: "700" }}>✓</Text>
         </View>
       </View>
     );
@@ -23,6 +34,13 @@ function TabIcon({ name, focused }: { name: "chat" | "calendar"; focused: boolea
 }
 
 export default function TabsLayout() {
+  function logout() {
+    Alert.alert("Sair", "Deseja encerrar sua sessão?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", style: "destructive", onPress: async () => { await clearSession(); router.replace("/"); } },
+    ]);
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -30,6 +48,11 @@ export default function TabsLayout() {
         headerTitleStyle: { fontFamily: "serif", fontSize: 18, fontWeight: "600", color: "#5E4B37" },
         headerLeft: () => (
           <Image source={require("../../assets/icon.png")} style={{ width: 28, height: 28, marginLeft: 16 }} resizeMode="contain" />
+        ),
+        headerRight: () => (
+          <TouchableOpacity onPress={logout} accessibilityRole="button" accessibilityLabel="Sair da conta" style={{ marginRight: 16, padding: 6 }}>
+            <Text style={{ color: "#5E4B37", fontSize: 12, fontWeight: "600" }}>Sair</Text>
+          </TouchableOpacity>
         ),
         tabBarStyle: { backgroundColor: "#FFFFFF", borderTopColor: "#E8E0D4", height: 60, paddingBottom: 8 },
         tabBarActiveTintColor: "#5E4B37",
@@ -51,6 +74,14 @@ export default function TabsLayout() {
           title: "Calendário",
           headerTitle: "Raízes e Riquezas",
           tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="agendamentos"
+        options={{
+          title: "Pedidos",
+          headerTitle: "Agendamentos",
+          tabBarIcon: ({ focused }) => <TabIcon name="booking" focused={focused} />,
         }}
       />
     </Tabs>

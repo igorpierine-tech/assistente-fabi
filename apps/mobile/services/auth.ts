@@ -29,6 +29,10 @@ export async function authenticatedFetch(path: string, init: RequestInit = {}): 
   return fetch(`${API_URL}${path}`, { ...init, headers });
 }
 
+export async function hasSession(): Promise<boolean> {
+  return Boolean(await SecureStore.getItemAsync(SESSION_KEY));
+}
+
 export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(SESSION_KEY);
 }
