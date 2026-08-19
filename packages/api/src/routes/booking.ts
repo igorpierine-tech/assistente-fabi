@@ -1,6 +1,7 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import { DateTime } from "luxon";
 import { GoogleCalendarService } from "../services/google-calendar";
+import { SyncedCalendarService } from "../services/synced-calendar";
 import { requireGoogleCalendar, requireUser } from "../middleware/auth";
 import {
   ensureSettings,
@@ -189,6 +190,7 @@ router.post("/requests/:id/confirm", requireGoogleCalendar, async (req, res) => 
         req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
       }
     );
+    const calendar = new SyncedCalendarService(gcal, userId(req));
 
     const title = `${request.session_type_name} — ${request.client_name}`;
     const description = [
@@ -199,7 +201,7 @@ router.post("/requests/:id/confirm", requireGoogleCalendar, async (req, res) => 
       .filter(Boolean)
       .join("\n");
 
-    const created = await gcal.createEvent({
+    const created = (await calendar.createEvent({
       title,
       startTime: request.requested_start,
       endTime: request.requested_end,
@@ -207,7 +209,7 @@ router.post("/requests/:id/confirm", requireGoogleCalendar, async (req, res) => 
       appointmentType: "outro",
       clientName: request.client_name,
       clientEmail: request.client_email,
-    });
+    })) as { id?: string };
 
     markBookingRequest(request.id, "confirmed", {
       googleEventId: created.id ?? null,
