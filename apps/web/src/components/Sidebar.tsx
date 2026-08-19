@@ -12,6 +12,8 @@ interface SidebarProps {
   isDemo?: boolean;
 }
 
+const BRAND_NAME = "Raízes e Riquezas";
+
 const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "inicio", label: "Início", icon: "home" },
   { id: "agenda", label: "Agenda", icon: "calendar" },
@@ -81,7 +83,7 @@ export function Sidebar({ activeView, onChangeView, userName, clientCount, isDem
           <span className={styles.avatarLetter}>R</span>
         </div>
         <div className={styles.brandInfo}>
-          <div className={styles.brandName}>Raízes</div>
+          <div className={styles.brandName}>{BRAND_NAME}</div>
           <div className={styles.brandSub}>{userName} · {isDemo ? "demo" : "admin"}</div>
         </div>
       </div>
@@ -104,14 +106,6 @@ export function Sidebar({ activeView, onChangeView, userName, clientCount, isDem
         ))}
       </nav>
 
-      <div className={styles.planCard}>
-        <div className={styles.planLabel}>PLANO</div>
-        <div className={styles.planName}>Raízes Pro · até 100 clientes</div>
-        <div className={styles.planBar}>
-          <div className={styles.planProgress} style={{ width: `${Math.min(clientCount, 100)}%` }} />
-        </div>
-        <div className={styles.planCount}>{clientCount} de 100</div>
-      </div>
     </aside>
   );
 }

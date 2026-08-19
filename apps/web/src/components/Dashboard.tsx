@@ -149,9 +149,6 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
             className={styles.searchBox}
             placeholder="Buscar cliente, evento..."
           />
-          <button className={styles.newBtn} onClick={() => onNavigate("clientes")}>
-            + Novo
-          </button>
         </div>
       </div>
 
