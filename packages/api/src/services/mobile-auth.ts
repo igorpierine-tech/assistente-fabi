@@ -14,6 +14,9 @@ function hashCode(code: string): string {
 }
 
 export function createMobileLogin(sessionId: string, user: PendingLogin["user"]): string {
+  for (const [key, login] of pendingLogins) {
+    if (login.expiresAt <= Date.now()) pendingLogins.delete(key);
+  }
   const code = randomBytes(32).toString("base64url");
   pendingLogins.set(hashCode(code), { sessionId, user, expiresAt: Date.now() + LOGIN_TTL_MS });
   return code;

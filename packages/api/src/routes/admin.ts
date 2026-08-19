@@ -20,8 +20,6 @@ function getAdminToken(): string | null {
 function pickToken(req: import("express").Request): string | undefined {
   const header = req.get("x-admin-token");
   if (header) return header;
-  const query = req.query.token;
-  if (typeof query === "string") return query;
   const body = (req.body as { token?: unknown } | undefined)?.token;
   if (typeof body === "string") return body;
   return undefined;

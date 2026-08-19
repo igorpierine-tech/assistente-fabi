@@ -2,13 +2,21 @@
 
 import styles from "./Sidebar.module.css";
 
-export type View = "inicio" | "agenda" | "assistente" | "clientes" | "financeiro" | "configuracoes";
+export type View =
+  | "inicio"
+  | "agenda"
+  | "assistente"
+  | "clientes"
+  | "agendamentos"
+  | "financeiro"
+  | "configuracoes";
 
 interface SidebarProps {
   activeView: View;
   onChangeView: (view: View) => void;
   userName: string;
   clientCount: number;
+  pendingBookingCount?: number;
   isDemo?: boolean;
   onLogout?: () => void;
 }
@@ -20,6 +28,7 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "agenda", label: "Agenda", icon: "calendar" },
   { id: "assistente", label: "Assistente IA", icon: "sparkle" },
   { id: "clientes", label: "Clientes", icon: "people" },
+  { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
 ];
@@ -71,12 +80,26 @@ function NavIcon({ name }: { name: string }) {
           <path d="M10 1.5l1.3 2.3 2.6.4-1.9 1.8.5 2.6L10 7.4 7.5 8.6l.5-2.6L6.1 4.2l2.6-.4L10 1.5zM10 18.5l-1.3-2.3-2.6-.4 1.9-1.8-.5-2.6L10 12.6l2.5-1.2-.5 2.6 1.9 1.8-2.6.4L10 18.5zM1.5 10l2.3-1.3.4-2.6 1.8 1.9 2.6-.5L7.4 10l1.2 2.5-2.6-.5-1.8 1.9-.4-2.6L1.5 10zM18.5 10l-2.3 1.3-.4 2.6-1.8-1.9-2.6.5L12.6 10l-1.2-2.5 2.6.5 1.8-1.9.4 2.6L18.5 10z" />
         </svg>
       );
+    case "handshake":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 11l4-4 4 3 3-3 5 4M2 11l3 3 4-3M14 11l3 3 3-3" />
+        </svg>
+      );
     default:
       return null;
   }
 }
 
-export function Sidebar({ activeView, onChangeView, userName, clientCount, isDemo, onLogout }: SidebarProps) {
+export function Sidebar({
+  activeView,
+  onChangeView,
+  userName,
+  clientCount,
+  pendingBookingCount = 0,
+  isDemo,
+  onLogout,
+}: SidebarProps) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
@@ -102,6 +125,9 @@ export function Sidebar({ activeView, onChangeView, userName, clientCount, isDem
             {item.label}
             {item.id === "clientes" && clientCount > 0 && (
               <span className={styles.navBadge}>{clientCount}</span>
+            )}
+            {item.id === "agendamentos" && pendingBookingCount > 0 && (
+              <span className={styles.navBadge}>{pendingBookingCount}</span>
             )}
           </button>
         ))}

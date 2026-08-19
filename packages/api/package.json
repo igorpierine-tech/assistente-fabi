@@ -5,9 +5,10 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npx esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:uuid",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:uuid",
     "start": "node dist/server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx --test src/services/validation.test.ts src/services/mobile-auth.test.ts"
   },
   "dependencies": {
     "@assistente-fabi/ai": "workspace:*",

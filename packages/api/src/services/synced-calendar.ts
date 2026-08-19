@@ -9,7 +9,7 @@ import {
 } from "./database";
 
 export class SyncedCalendarService implements CalendarService {
-  constructor(private calendar: GoogleCalendarService) {}
+  constructor(private calendar: GoogleCalendarService, private userId: string) {}
 
   async listToday() {
     return this.calendar.listToday();
@@ -32,7 +32,7 @@ export class SyncedCalendarService implements CalendarService {
     let clientEmail = params.clientEmail;
 
     if (params.clientName) {
-      const client = getClientByName(params.clientName);
+      const client = getClientByName(this.userId, params.clientName);
       if (client) {
         clientId = client.id;
         if (!clientEmail && client.email) {
@@ -47,7 +47,7 @@ export class SyncedCalendarService implements CalendarService {
     });
     const googleEventId = (result as any).id;
 
-    createAppointment({
+    createAppointment(this.userId, {
       title: params.title,
       type: params.appointmentType,
       clientId,
@@ -65,14 +65,14 @@ export class SyncedCalendarService implements CalendarService {
   async updateEvent(eventId: string, params: Record<string, unknown>) {
     const result = await this.calendar.updateEvent(eventId, params);
 
-    const existing = getAppointmentByGoogleId(eventId);
+    const existing = getAppointmentByGoogleId(this.userId, eventId);
     if (existing) {
       const updates: Record<string, string> = {};
       if (params.title) updates.title = params.title as string;
       if (params.startTime) updates.startTime = params.startTime as string;
       if (params.endTime) updates.endTime = params.endTime as string;
       if (params.description) updates.notes = params.description as string;
-      updateAppointment(existing.id, updates);
+      updateAppointment(this.userId, existing.id, updates);
     }
 
     return result;
@@ -81,9 +81,9 @@ export class SyncedCalendarService implements CalendarService {
   async deleteEvent(eventId: string) {
     const result = await this.calendar.deleteEvent(eventId);
 
-    const existing = getAppointmentByGoogleId(eventId);
+    const existing = getAppointmentByGoogleId(this.userId, eventId);
     if (existing) {
-      deleteAppointment(existing.id);
+      deleteAppointment(this.userId, existing.id);
     }
 
     return result;

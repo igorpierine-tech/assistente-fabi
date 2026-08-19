@@ -7,9 +7,16 @@ import { chatRouter } from "./routes/chat";
 import { clientsRouter } from "./routes/clients";
 import { appointmentsRouter } from "./routes/appointments";
 import { adminRouter } from "./routes/admin";
+import { bookingRouter } from "./routes/booking";
+import { publicBookingRouter } from "./routes/public-booking";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
 import { getDb } from "./services/database";
 import { isValidSignedSession } from "./services/mobile-auth";
+import { rateLimit, requireTrustedOrigin, securityHeaders } from "./middleware/security";
+import { ValidationError } from "./services/validation";
+import { privacyRouter } from "./routes/privacy";
+import { auditRequests } from "./middleware/audit";
+import { sessionFilePath } from "./config/persistence";
 import "./session-types";
 
 const app = express();
@@ -30,19 +37,28 @@ const extraOrigins = (process.env.EXTRA_WEB_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 
-app.use(cors({
-  origin: [
+const allowedOrigins = new Set([
     process.env.WEB_URL || "http://localhost:3000",
     "http://localhost:3000",
     "exp://localhost:8081",
     "http://localhost:8081",
-    "http://10.0.2.2:3001",
     ...extraOrigins,
-  ],
+] as string[]);
+
+app.disable("x-powered-by");
+app.use(securityHeaders);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) callback(null, true);
+    else callback(new Error("Origem CORS não autorizada"));
+  },
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  maxAge: 86400,
 }));
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "1mb", strict: true }));
+app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 app.use((req, _res, next) => {
   const authorization = req.get("authorization");
   if (!req.headers.cookie && authorization?.startsWith("Bearer ")) {
@@ -56,7 +72,7 @@ app.use((req, _res, next) => {
 app.use(session({
   name: "fabi.sid",
   store: new EncryptedSessionStore(
-    process.env.SESSION_FILE || "./data/sessions.enc.json",
+    sessionFilePath(),
     sessionSecret
   ),
   secret: sessionSecret,
@@ -69,6 +85,9 @@ app.use(session({
     maxAge: 30 * 24 * 60 * 60 * 1000,
   },
 }));
+app.use(requireTrustedOrigin(allowedOrigins));
+app.use(rateLimit({ prefix: "api", windowMs: 15 * 60_000, max: 300 }));
+app.use(auditRequests);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "Assistente da Fabi API" });
@@ -78,7 +97,36 @@ app.use("/auth", authRouter);
 app.use("/chat", chatRouter);
 app.use("/clients", clientsRouter);
 app.use("/appointments", appointmentsRouter);
+app.use("/privacy", privacyRouter);
 app.use("/admin", adminRouter);
+app.use("/booking", bookingRouter);
+app.use("/public/booking", publicBookingRouter);
+
+app.use((_req, res) => {
+  res.status(404).json({ error: "Rota não encontrada" });
+});
+
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (error instanceof ValidationError) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+  if (error instanceof SyntaxError) {
+    res.status(400).json({ error: "JSON inválido" });
+    return;
+  }
+  const httpError = error as { status?: number; message?: string };
+  if (httpError.status === 413) {
+    res.status(413).json({ error: "Conteúdo excede o limite permitido" });
+    return;
+  }
+  if (httpError.message === "Origem CORS não autorizada") {
+    res.status(403).json({ error: "Origem não autorizada" });
+    return;
+  }
+  console.error("Erro não tratado:", error instanceof Error ? error.message : "erro desconhecido");
+  res.status(500).json({ error: "Erro interno do servidor" });
+});
 
 getDb();
 

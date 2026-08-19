@@ -1,13 +1,16 @@
 import Database from "better-sqlite3";
-import path from "path";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { v4 as uuidv4 } from "uuid";
+import { databasePath } from "../config/persistence";
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, "../../data/assistente-fabi.db");
+const DB_PATH = databasePath();
 
 let db: Database.Database;
 
 export function getDb(): Database.Database {
   if (!db) {
+    mkdirSync(dirname(DB_PATH), { recursive: true });
     db = new Database(DB_PATH);
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
@@ -20,6 +23,7 @@ function initTables(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS clients (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       name TEXT NOT NULL,
       phone TEXT,
       email TEXT,
@@ -30,6 +34,7 @@ function initTables(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS appointments (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       title TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'outro',
       client_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
@@ -68,13 +73,102 @@ function initTables(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+
+    CREATE TABLE IF NOT EXISTS booking_settings (
+      user_id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Agende sua sessão',
+      intro TEXT,
+      timezone TEXT NOT NULL DEFAULT 'America/Cuiaba',
+      work_hours TEXT NOT NULL DEFAULT '{"1":[["09:00","18:00"]],"2":[["09:00","18:00"]],"3":[["09:00","18:00"]],"4":[["09:00","18:00"]],"5":[["09:00","18:00"]],"6":[],"0":[]}',
+      buffer_minutes INTEGER NOT NULL DEFAULT 15,
+      max_advance_days INTEGER NOT NULL DEFAULT 60,
+      min_notice_hours INTEGER NOT NULL DEFAULT 6,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_session_types (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      duration_minutes INTEGER NOT NULL,
+      color TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(user_id, slug)
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_type_id TEXT REFERENCES booking_session_types(id) ON DELETE SET NULL,
+      session_type_name TEXT NOT NULL,
+      client_name TEXT NOT NULL,
+      client_email TEXT NOT NULL,
+      client_phone TEXT,
+      client_notes TEXT,
+      requested_start TEXT NOT NULL,
+      requested_end TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      google_event_id TEXT,
+      manage_token TEXT UNIQUE NOT NULL,
+      responded_at TEXT,
+      responded_reason TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_booking_requests_user_status ON booking_requests(user_id, status, requested_start);
+    CREATE INDEX IF NOT EXISTS idx_booking_types_user ON booking_session_types(user_id, active, sort_order);
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT,
+      action TEXT NOT NULL,
+      resource TEXT NOT NULL,
+      status_code INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS privacy_consents (
+      user_id TEXT NOT NULL,
+      version TEXT NOT NULL,
+      accepted_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revoked_at TEXT,
+      PRIMARY KEY (user_id, version)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_user_created ON audit_logs(user_id, created_at);
   `);
+
+  // Existing databases predate multi-tenancy. Legacy rows are deliberately
+  // quarantined instead of being assigned to the first user who logs in.
+  const ensureOwnerColumn = (table: "clients" | "appointments") => {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((column) => column.name === "user_id")) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN user_id TEXT NOT NULL DEFAULT '__legacy_unowned__'`);
+    }
+  };
+  ensureOwnerColumn("clients");
+  ensureOwnerColumn("appointments");
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_clients_user_name ON clients(user_id, name);
+    CREATE INDEX IF NOT EXISTS idx_appointments_user_start ON appointments(user_id, start_time);
+    CREATE INDEX IF NOT EXISTS idx_appointments_user_google ON appointments(user_id, google_event_id);
+  `);
+  const configuredRetention = Number(process.env.AUDIT_RETENTION_DAYS || 365);
+  const retentionDays = Number.isInteger(configuredRetention)
+    ? Math.min(Math.max(configuredRetention, 30), 3650)
+    : 365;
+  db.prepare(`DELETE FROM audit_logs WHERE created_at < datetime('now', ?)`).run(`-${retentionDays} days`);
 }
 
 // --- Clients ---
 
 export interface ClientRow {
   id: string;
+  user_id: string;
   name: string;
   phone: string | null;
   email: string | null;
@@ -83,33 +177,33 @@ export interface ClientRow {
   updated_at: string;
 }
 
-export function listClients(search?: string): ClientRow[] {
+export function listClients(userId: string, search?: string): ClientRow[] {
   const d = getDb();
   if (search) {
     return d.prepare(
-      `SELECT * FROM clients WHERE name LIKE ? OR phone LIKE ? OR email LIKE ? ORDER BY name`
-    ).all(`%${search}%`, `%${search}%`, `%${search}%`) as ClientRow[];
+      `SELECT * FROM clients WHERE user_id = ? AND (name LIKE ? OR phone LIKE ? OR email LIKE ?) ORDER BY name`
+    ).all(userId, `%${search}%`, `%${search}%`, `%${search}%`) as ClientRow[];
   }
-  return d.prepare(`SELECT * FROM clients ORDER BY name`).all() as ClientRow[];
+  return d.prepare(`SELECT * FROM clients WHERE user_id = ? ORDER BY name`).all(userId) as ClientRow[];
 }
 
-export function getClient(id: string): ClientRow | undefined {
-  return getDb().prepare(`SELECT * FROM clients WHERE id = ?`).get(id) as ClientRow | undefined;
+export function getClient(userId: string, id: string): ClientRow | undefined {
+  return getDb().prepare(`SELECT * FROM clients WHERE user_id = ? AND id = ?`).get(userId, id) as ClientRow | undefined;
 }
 
-export function getClientByName(name: string): ClientRow | undefined {
-  return getDb().prepare(`SELECT * FROM clients WHERE LOWER(name) = LOWER(?)`).get(name) as ClientRow | undefined;
+export function getClientByName(userId: string, name: string): ClientRow | undefined {
+  return getDb().prepare(`SELECT * FROM clients WHERE user_id = ? AND LOWER(name) = LOWER(?)`).get(userId, name) as ClientRow | undefined;
 }
 
-export function createClient(data: { name: string; phone?: string; email?: string; notes?: string }): ClientRow {
+export function createClient(userId: string, data: { name: string; phone?: string; email?: string; notes?: string }): ClientRow {
   const id = uuidv4();
   getDb().prepare(
-    `INSERT INTO clients (id, name, phone, email, notes) VALUES (?, ?, ?, ?, ?)`
-  ).run(id, data.name, data.phone || null, data.email || null, data.notes || null);
-  return getClient(id)!;
+    `INSERT INTO clients (id, user_id, name, phone, email, notes) VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(id, userId, data.name, data.phone || null, data.email || null, data.notes || null);
+  return getClient(userId, id)!;
 }
 
-export function updateClient(id: string, data: Partial<{ name: string; phone: string; email: string; notes: string }>): ClientRow | undefined {
+export function updateClient(userId: string, id: string, data: Partial<{ name: string; phone: string; email: string; notes: string }>): ClientRow | undefined {
   const fields: string[] = [];
   const values: unknown[] = [];
   for (const [key, val] of Object.entries(data)) {
@@ -118,15 +212,15 @@ export function updateClient(id: string, data: Partial<{ name: string; phone: st
       values.push(val);
     }
   }
-  if (fields.length === 0) return getClient(id);
+  if (fields.length === 0) return getClient(userId, id);
   fields.push(`updated_at = datetime('now')`);
-  values.push(id);
-  getDb().prepare(`UPDATE clients SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-  return getClient(id);
+  values.push(userId, id);
+  getDb().prepare(`UPDATE clients SET ${fields.join(", ")} WHERE user_id = ? AND id = ?`).run(...values);
+  return getClient(userId, id);
 }
 
-export function deleteClient(id: string): boolean {
-  const result = getDb().prepare(`DELETE FROM clients WHERE id = ?`).run(id);
+export function deleteClient(userId: string, id: string): boolean {
+  const result = getDb().prepare(`DELETE FROM clients WHERE user_id = ? AND id = ?`).run(userId, id);
   return result.changes > 0;
 }
 
@@ -134,6 +228,7 @@ export function deleteClient(id: string): boolean {
 
 export interface AppointmentRow {
   id: string;
+  user_id: string;
   title: string;
   type: string;
   client_id: string | null;
@@ -148,9 +243,9 @@ export interface AppointmentRow {
   updated_at: string;
 }
 
-export function listAppointments(filters?: { startDate?: string; endDate?: string; clientId?: string; status?: string }): AppointmentRow[] {
-  const conditions: string[] = [];
-  const params: unknown[] = [];
+export function listAppointments(userId: string, filters?: { startDate?: string; endDate?: string; clientId?: string; status?: string }): AppointmentRow[] {
+  const conditions: string[] = [`user_id = ?`];
+  const params: unknown[] = [userId];
 
   if (filters?.startDate) {
     conditions.push(`start_time >= ?`);
@@ -173,15 +268,15 @@ export function listAppointments(filters?: { startDate?: string; endDate?: strin
   return getDb().prepare(`SELECT * FROM appointments ${where} ORDER BY start_time`).all(...params) as AppointmentRow[];
 }
 
-export function getAppointment(id: string): AppointmentRow | undefined {
-  return getDb().prepare(`SELECT * FROM appointments WHERE id = ?`).get(id) as AppointmentRow | undefined;
+export function getAppointment(userId: string, id: string): AppointmentRow | undefined {
+  return getDb().prepare(`SELECT * FROM appointments WHERE user_id = ? AND id = ?`).get(userId, id) as AppointmentRow | undefined;
 }
 
-export function getAppointmentByGoogleId(googleEventId: string): AppointmentRow | undefined {
-  return getDb().prepare(`SELECT * FROM appointments WHERE google_event_id = ?`).get(googleEventId) as AppointmentRow | undefined;
+export function getAppointmentByGoogleId(userId: string, googleEventId: string): AppointmentRow | undefined {
+  return getDb().prepare(`SELECT * FROM appointments WHERE user_id = ? AND google_event_id = ?`).get(userId, googleEventId) as AppointmentRow | undefined;
 }
 
-export function createAppointment(data: {
+export function createAppointment(userId: string, data: {
   title: string;
   type?: string;
   clientId?: string;
@@ -194,10 +289,11 @@ export function createAppointment(data: {
 }): AppointmentRow {
   const id = uuidv4();
   getDb().prepare(
-    `INSERT INTO appointments (id, title, type, client_id, client_name, start_time, end_time, notes, google_event_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO appointments (id, user_id, title, type, client_id, client_name, start_time, end_time, notes, google_event_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
+    userId,
     data.title,
     data.type || "outro",
     data.clientId || null,
@@ -208,10 +304,10 @@ export function createAppointment(data: {
     data.googleEventId || null,
     data.status || "previsto"
   );
-  return getAppointment(id)!;
+  return getAppointment(userId, id)!;
 }
 
-export function updateAppointment(id: string, data: Partial<{
+export function updateAppointment(userId: string, id: string, data: Partial<{
   title: string;
   type: string;
   clientId: string;
@@ -239,22 +335,22 @@ export function updateAppointment(id: string, data: Partial<{
       values.push(val);
     }
   }
-  if (fields.length === 0) return getAppointment(id);
+  if (fields.length === 0) return getAppointment(userId, id);
   fields.push(`updated_at = datetime('now')`);
-  values.push(id);
-  getDb().prepare(`UPDATE appointments SET ${fields.join(", ")} WHERE id = ?`).run(...values);
-  return getAppointment(id);
+  values.push(userId, id);
+  getDb().prepare(`UPDATE appointments SET ${fields.join(", ")} WHERE user_id = ? AND id = ?`).run(...values);
+  return getAppointment(userId, id);
 }
 
-export function deleteAppointment(id: string): boolean {
-  const result = getDb().prepare(`DELETE FROM appointments WHERE id = ?`).run(id);
+export function deleteAppointment(userId: string, id: string): boolean {
+  const result = getDb().prepare(`DELETE FROM appointments WHERE user_id = ? AND id = ?`).run(userId, id);
   return result.changes > 0;
 }
 
-export function getClientAppointments(clientId: string): AppointmentRow[] {
+export function getClientAppointments(userId: string, clientId: string): AppointmentRow[] {
   return getDb().prepare(
-    `SELECT * FROM appointments WHERE client_id = ? ORDER BY start_time DESC`
-  ).all(clientId) as AppointmentRow[];
+    `SELECT * FROM appointments WHERE user_id = ? AND client_id = ? ORDER BY start_time DESC`
+  ).all(userId, clientId) as AppointmentRow[];
 }
 
 // --- Conversations ---
@@ -283,8 +379,8 @@ export function listConversations(userId: string, limit = 50): ConversationRow[]
   ).all(userId, limit) as ConversationRow[];
 }
 
-export function getConversation(id: string): ConversationRow | undefined {
-  return getDb().prepare(`SELECT * FROM conversations WHERE id = ?`).get(id) as ConversationRow | undefined;
+export function getConversation(userId: string, id: string): ConversationRow | undefined {
+  return getDb().prepare(`SELECT * FROM conversations WHERE user_id = ? AND id = ?`).get(userId, id) as ConversationRow | undefined;
 }
 
 export function createConversation(data: {
@@ -297,37 +393,42 @@ export function createConversation(data: {
   getDb().prepare(
     `INSERT INTO conversations (id, user_id, user_name, user_email, title) VALUES (?, ?, ?, ?, ?)`
   ).run(data.id, data.userId, data.userName || null, data.userEmail || null, data.title || null);
-  return getConversation(data.id)!;
+  return getConversation(data.userId, data.id)!;
 }
 
-export function updateConversationTitle(id: string, title: string): void {
+export function updateConversationTitle(userId: string, id: string, title: string): void {
   getDb().prepare(
-    `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(title, id);
+    `UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE user_id = ? AND id = ?`
+  ).run(title, userId, id);
 }
 
-export function touchConversation(id: string): void {
+export function touchConversation(userId: string, id: string): void {
   getDb().prepare(
-    `UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`
-  ).run(id);
+    `UPDATE conversations SET updated_at = datetime('now') WHERE user_id = ? AND id = ?`
+  ).run(userId, id);
 }
 
-export function deleteConversation(id: string): boolean {
-  const result = getDb().prepare(`DELETE FROM conversations WHERE id = ?`).run(id);
+export function deleteConversation(userId: string, id: string): boolean {
+  const result = getDb().prepare(`DELETE FROM conversations WHERE user_id = ? AND id = ?`).run(userId, id);
   return result.changes > 0;
 }
 
-export function getMessages(conversationId: string): MessageRow[] {
+export function getMessages(userId: string, conversationId: string): MessageRow[] {
   return getDb().prepare(
-    `SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC`
-  ).all(conversationId) as MessageRow[];
+    `SELECT messages.* FROM messages
+     INNER JOIN conversations ON conversations.id = messages.conversation_id
+     WHERE conversations.user_id = ? AND messages.conversation_id = ?
+     ORDER BY messages.created_at ASC`
+  ).all(userId, conversationId) as MessageRow[];
 }
 
-export function addMessage(conversationId: string, role: string, content: string): MessageRow {
+export function addMessage(userId: string, conversationId: string, role: string, content: string): MessageRow {
   const result = getDb().prepare(
-    `INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)`
-  ).run(conversationId, role, content);
-  touchConversation(conversationId);
+    `INSERT INTO messages (conversation_id, role, content)
+     SELECT id, ?, ? FROM conversations WHERE user_id = ? AND id = ?`
+  ).run(role, content, userId, conversationId);
+  if (result.changes !== 1) throw new Error("Conversa não encontrada");
+  touchConversation(userId, conversationId);
   return getDb().prepare(`SELECT * FROM messages WHERE id = ?`).get(result.lastInsertRowid) as MessageRow;
 }
 
@@ -335,4 +436,62 @@ export function generateTitle(firstMessage: string): string {
   const clean = firstMessage.replace(/\n/g, " ").trim();
   if (clean.length <= 60) return clean;
   return clean.substring(0, 57) + "...";
+}
+
+// --- Audit and privacy ---
+
+export function writeAuditLog(userId: string | null, action: string, resource: string, statusCode: number): void {
+  getDb().prepare(
+    `INSERT INTO audit_logs (user_id, action, resource, status_code) VALUES (?, ?, ?, ?)`
+  ).run(userId, action, resource, statusCode);
+}
+
+export function recordPrivacyConsent(userId: string, version: string): void {
+  getDb().prepare(`
+    INSERT INTO privacy_consents (user_id, version, accepted_at, revoked_at)
+    VALUES (?, ?, datetime('now'), NULL)
+    ON CONFLICT(user_id, version) DO UPDATE SET accepted_at = datetime('now'), revoked_at = NULL
+  `).run(userId, version);
+}
+
+export function getPrivacyConsent(userId: string, version: string): { accepted_at: string; revoked_at: string | null } | undefined {
+  return getDb().prepare(
+    `SELECT accepted_at, revoked_at FROM privacy_consents WHERE user_id = ? AND version = ?`
+  ).get(userId, version) as { accepted_at: string; revoked_at: string | null } | undefined;
+}
+
+export function exportUserData(userId: string) {
+  const database = getDb();
+  const clients = database.prepare(`SELECT * FROM clients WHERE user_id = ?`).all(userId);
+  const appointments = database.prepare(`SELECT * FROM appointments WHERE user_id = ?`).all(userId);
+  const conversations = database.prepare(`SELECT * FROM conversations WHERE user_id = ?`).all(userId) as ConversationRow[];
+  const messages = database.prepare(`
+    SELECT messages.* FROM messages
+    INNER JOIN conversations ON conversations.id = messages.conversation_id
+    WHERE conversations.user_id = ? ORDER BY messages.created_at
+  `).all(userId);
+  const consents = database.prepare(`SELECT version, accepted_at, revoked_at FROM privacy_consents WHERE user_id = ?`).all(userId);
+  const bookingSettings = database.prepare(`SELECT * FROM booking_settings WHERE user_id = ?`).get(userId) || null;
+  const bookingSessionTypes = database.prepare(`SELECT * FROM booking_session_types WHERE user_id = ?`).all(userId);
+  const bookingRequests = database.prepare(`SELECT * FROM booking_requests WHERE user_id = ?`).all(userId);
+  const audit = database.prepare(`
+    SELECT action, resource, status_code, created_at FROM audit_logs
+    WHERE user_id = ? ORDER BY created_at DESC LIMIT 1000
+  `).all(userId);
+  return { clients, appointments, conversations, messages, bookingSettings, bookingSessionTypes, bookingRequests, consents, audit };
+}
+
+export function deleteUserData(userId: string): void {
+  const database = getDb();
+  database.transaction(() => {
+    database.prepare(`DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id = ?)`).run(userId);
+    database.prepare(`DELETE FROM conversations WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM appointments WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM clients WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM booking_requests WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM booking_session_types WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM booking_settings WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM privacy_consents WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM audit_logs WHERE user_id = ?`).run(userId);
+  })();
 }

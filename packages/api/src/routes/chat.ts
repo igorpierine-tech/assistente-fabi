@@ -16,25 +16,22 @@ import {
 } from "../services/database";
 import multer from "multer";
 import "../session-types";
+import { requireGoogleCalendar, requireUser } from "../middleware/auth";
+import { rateLimit } from "../middleware/security";
+import { optionalId, requiredString, ValidationError } from "../services/validation";
 
 const router: ExpressRouter = Router();
+router.use(requireUser);
+router.param("id", (req, _res, next, value) => {
+  optionalId(value, "ID da conversa");
+  next();
+});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const MAX_MESSAGE_LENGTH = 2000;
 const ALLOWED_AUDIO_TYPES = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/ogg", "audio/x-m4a"]);
 
-const rateLimitMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 20;
-
-function isRateLimited(sessionId: string): boolean {
-  const now = Date.now();
-  const timestamps = rateLimitMap.get(sessionId) || [];
-  const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  recent.push(now);
-  rateLimitMap.set(sessionId, recent);
-  return recent.length > RATE_LIMIT_MAX;
-}
+const aiLimiter = rateLimit({ prefix: "ai", windowMs: 60_000, max: 20 });
 
 let agent: FabiAgent | null = null;
 let transcription: TranscriptionService | null = null;
@@ -58,26 +55,33 @@ function getTranscription(): TranscriptionService {
 }
 
 function getUserFromSession(req: Request) {
-  const user = req.session.googleUser;
+  const user = req.session.googleUser!;
   return {
-    id: user?.id || req.sessionID,
-    name: user?.name || "Usuário",
-    email: user?.email,
+    id: user.id,
+    name: user.name,
+    email: user.email,
   };
 }
 
-function ensureConversation(convId: string, user: { id: string; name?: string; email?: string }, firstMessage?: string) {
-  let conv = getConversation(convId);
-  if (!conv) {
-    conv = createConversation({
-      id: convId,
-      userId: user.id,
-      userName: user.name,
-      userEmail: user.email,
-      title: firstMessage ? generateTitle(firstMessage) : undefined,
-    });
+function resolveConversation(
+  requestedId: unknown,
+  user: { id: string; name?: string; email?: string },
+  firstMessage: string
+) {
+  if (requestedId !== undefined && typeof requestedId !== "string") return null;
+  if (typeof requestedId === "string") {
+    const conversation = getConversation(user.id, requestedId);
+    return conversation ? { id: conversation.id, isNew: false } : null;
   }
-  return conv;
+  const id = uuidv4();
+  createConversation({
+    id,
+    userId: user.id,
+    userName: user.name,
+    userEmail: user.email,
+    title: generateTitle(firstMessage),
+  });
+  return { id, isNew: true };
 }
 
 function isTodayAgendaQuestion(message: string): boolean {
@@ -104,68 +108,55 @@ function calendarForSession(req: Request): SyncedCalendarService {
   const gcal = new GoogleCalendarService(req.session.googleTokens!, (tokens) => {
     req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
   });
-  return new SyncedCalendarService(gcal);
+  return new SyncedCalendarService(gcal, req.session.googleUser!.id);
 }
 
 // --- Chat endpoints ---
 
-router.post("/message", async (req, res) => {
+router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
   try {
-    const { message, conversationId } = req.body;
-
-    if (!message || typeof message !== "string") {
-      res.status(400).json({ error: "Mensagem é obrigatória" });
-      return;
-    }
-
-    if (message.length > MAX_MESSAGE_LENGTH) {
-      res.status(400).json({ error: `Mensagem excede o limite de ${MAX_MESSAGE_LENGTH} caracteres` });
-      return;
-    }
-
-    if (isRateLimited(req.sessionID)) {
-      res.status(429).json({ error: "Muitas requisições. Aguarde um momento." });
-      return;
-    }
-
-    if (!req.session.googleTokens) {
-      res.status(401).json({ error: "Não autenticado com Google Calendar. Faça login primeiro." });
-      return;
-    }
+    const message = requiredString(req.body?.message, "Mensagem", MAX_MESSAGE_LENGTH);
+    const conversationId = optionalId(req.body?.conversationId, "ID da conversa");
 
     const user = getUserFromSession(req);
-    const convId = conversationId || uuidv4();
-    const isNew = !getConversation(convId);
-
-    ensureConversation(convId, user, message);
-    addMessage(convId, "user", message);
+    const conversation = resolveConversation(conversationId, user, message);
+    if (!conversation) {
+      res.status(404).json({ error: "Conversa não encontrada" });
+      return;
+    }
+    const { id: convId, isNew } = conversation;
+    addMessage(user.id, convId, "user", message);
 
     const calendar = calendarForSession(req);
 
     if (isTodayAgendaQuestion(message)) {
       const events = await calendar.listToday();
       const reply = formatToday(events);
-      addMessage(convId, "assistant", reply);
+      addMessage(user.id, convId, "assistant", reply);
       res.json({ message: reply, conversationId: convId, events, user: { name: user.name } });
       return;
     }
 
     const result = await getAgent().chat(message, convId, calendar, user.name);
 
-    addMessage(convId, "assistant", result.message);
+    addMessage(user.id, convId, "assistant", result.message);
 
     if (isNew && result.message) {
-      updateConversationTitle(convId, generateTitle(message));
+      updateConversationTitle(user.id, convId, generateTitle(message));
     }
 
     res.json({ ...result, user: { name: user.name } });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
     console.error("Erro no chat:", error);
     res.status(500).json({ error: "Erro ao processar mensagem" });
   }
 });
 
-router.post("/voice", upload.single("audio"), async (req, res) => {
+router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), async (req, res) => {
   try {
     const file = req.file;
     if (!file) {
@@ -178,33 +169,25 @@ router.post("/voice", upload.single("audio"), async (req, res) => {
       return;
     }
 
-    if (isRateLimited(req.sessionID)) {
-      res.status(429).json({ error: "Muitas requisições. Aguarde um momento." });
-      return;
-    }
-
-    const { conversationId } = req.body;
-
-    if (!req.session.googleTokens) {
-      res.status(401).json({ error: "Não autenticado com Google Calendar. Faça login primeiro." });
-      return;
-    }
+    const conversationId = optionalId(req.body?.conversationId, "ID da conversa");
 
     const text = await getTranscription().transcribe(file.buffer, file.mimetype);
     const user = getUserFromSession(req);
-    const convId = conversationId || uuidv4();
-    const isNew = !getConversation(convId);
-
-    ensureConversation(convId, user, text);
-    addMessage(convId, "user", text);
+    const conversation = resolveConversation(conversationId, user, text);
+    if (!conversation) {
+      res.status(404).json({ error: "Conversa não encontrada" });
+      return;
+    }
+    const { id: convId, isNew } = conversation;
+    addMessage(user.id, convId, "user", text);
 
     const calendar = calendarForSession(req);
     const result = await getAgent().chat(text, convId, calendar, user.name);
 
-    addMessage(convId, "assistant", result.message);
+    addMessage(user.id, convId, "assistant", result.message);
 
     if (isNew) {
-      updateConversationTitle(convId, generateTitle(text));
+      updateConversationTitle(user.id, convId, generateTitle(text));
     }
 
     res.json({
@@ -213,6 +196,10 @@ router.post("/voice", upload.single("audio"), async (req, res) => {
       user: { name: user.name },
     });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
     console.error("Erro no voice:", error);
     res.status(500).json({ error: "Erro ao processar áudio" });
   }
@@ -221,43 +208,32 @@ router.post("/voice", upload.single("audio"), async (req, res) => {
 // --- Conversation history endpoints ---
 
 router.get("/conversations", (req, res) => {
-  if (!req.session.googleUser) {
-    res.status(401).json({ error: "Não autenticado" });
-    return;
-  }
   const user = getUserFromSession(req);
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+  const requestedLimit = Number(req.query.limit ?? 50);
+  const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 200) : 50;
   const conversations = listConversations(user.id, limit);
   res.json(conversations);
 });
 
 router.get("/conversations/:id", (req, res) => {
-  const conv = getConversation(req.params.id);
+  const user = getUserFromSession(req);
+  const conv = getConversation(user.id, req.params.id);
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
     return;
   }
-  const user = getUserFromSession(req);
-  if (conv.user_id !== user.id) {
-    res.status(403).json({ error: "Acesso negado" });
-    return;
-  }
-  const messages = getMessages(req.params.id);
+  const messages = getMessages(user.id, req.params.id);
   res.json({ ...conv, messages });
 });
 
 router.delete("/conversations/:id", (req, res) => {
-  const conv = getConversation(req.params.id);
+  const user = getUserFromSession(req);
+  const conv = getConversation(user.id, req.params.id);
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
     return;
   }
-  const user = getUserFromSession(req);
-  if (conv.user_id !== user.id) {
-    res.status(403).json({ error: "Acesso negado" });
-    return;
-  }
-  deleteConversation(req.params.id);
+  deleteConversation(user.id, req.params.id);
   res.status(204).end();
 });
 

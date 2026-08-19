@@ -9,15 +9,21 @@ import {
 } from "../services/database";
 import { GoogleCalendarService } from "../services/google-calendar";
 import "../session-types";
+import { requireUser } from "../middleware/auth";
+import { optionalId, optionalString, requiredIsoDate, requiredString, ValidationError } from "../services/validation";
 
 const router: ExpressRouter = Router();
-
-function requireAuth(req: any, res: any, next: any) {
-  if (!req.session.googleTokens && !req.session.googleUser) {
-    res.status(401).json({ error: "Não autenticado" });
-    return;
-  }
+router.use(requireUser);
+router.param("id", (req, _res, next, value) => {
+  optionalId(value, "ID do agendamento");
   next();
+});
+const VALID_STATUSES = new Set(["previsto", "confirmado", "em_andamento", "concluido", "cancelado"]);
+
+function optionalStatus(value: unknown): string | undefined {
+  const status = optionalString(value, "Status", 32);
+  if (status && !VALID_STATUSES.has(status)) throw new ValidationError("Status inválido");
+  return status;
 }
 
 function calendarForSession(req: Request): GoogleCalendarService | null {
@@ -27,16 +33,19 @@ function calendarForSession(req: Request): GoogleCalendarService | null {
   });
 }
 
-router.get("/", requireAuth, (req, res) => {
-  const { startDate, endDate, clientId, status } = req.query as Record<string, string>;
-  const appointments = listAppointments({
+router.get("/", (req, res) => {
+  const startDate = req.query.startDate === undefined ? undefined : requiredIsoDate(req.query.startDate, "Data inicial");
+  const endDate = req.query.endDate === undefined ? undefined : requiredIsoDate(req.query.endDate, "Data final");
+  const clientId = optionalId(req.query.clientId, "ID do cliente");
+  const status = optionalStatus(req.query.status);
+  const appointments = listAppointments(req.session.googleUser!.id, {
     startDate, endDate, clientId, status,
   });
   res.json(appointments);
 });
 
-router.get("/:id", requireAuth, (req, res) => {
-  const appointment = getAppointment(req.params.id);
+router.get("/:id", (req, res) => {
+  const appointment = getAppointment(req.session.googleUser!.id, req.params.id);
   if (!appointment) {
     res.status(404).json({ error: "Agendamento não encontrado" });
     return;
@@ -44,18 +53,22 @@ router.get("/:id", requireAuth, (req, res) => {
   res.json(appointment);
 });
 
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const { title, type, clientName, startTime, endTime, notes, status } = req.body;
+    const title = requiredString(req.body?.title, "Título", 200);
+    const type = optionalString(req.body?.type, "Tipo", 64);
+    const clientName = optionalString(req.body?.clientName, "Cliente", 160);
+    const startTime = requiredIsoDate(req.body?.startTime, "Início");
+    const endTime = requiredIsoDate(req.body?.endTime, "Fim");
+    const notes = optionalString(req.body?.notes, "Observações", 10_000);
+    const status = optionalStatus(req.body?.status);
+    const userId = req.session.googleUser!.id;
 
-    if (!title || !startTime || !endTime) {
-      res.status(400).json({ error: "Título, horário de início e fim são obrigatórios" });
-      return;
-    }
+    if (Date.parse(endTime) <= Date.parse(startTime)) throw new ValidationError("Fim deve ser posterior ao início");
 
     let clientId: string | undefined;
     if (clientName) {
-      const client = getClientByName(clientName);
+      const client = getClientByName(userId, clientName);
       if (client) clientId = client.id;
     }
 
@@ -73,30 +86,44 @@ router.post("/", requireAuth, async (req, res) => {
       googleEventId = (gcEvent as any).id;
     }
 
-    const appointment = createAppointment({
+    const appointment = createAppointment(userId, {
       title, type, clientId, clientName, startTime, endTime, notes, googleEventId, status,
     });
 
     res.status(201).json(appointment);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
     console.error("Erro ao criar agendamento:", error);
     res.status(500).json({ error: "Erro ao criar agendamento" });
   }
 });
 
-router.put("/:id", requireAuth, async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
-    const existing = getAppointment(req.params.id);
+    const userId = req.session.googleUser!.id;
+    const existing = getAppointment(userId, req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Agendamento não encontrado" });
       return;
     }
 
-    const { title, type, clientName, startTime, endTime, notes, status } = req.body;
+    const title = optionalString(req.body?.title, "Título", 200);
+    const type = optionalString(req.body?.type, "Tipo", 64);
+    const clientName = optionalString(req.body?.clientName, "Cliente", 160);
+    const startTime = req.body?.startTime === undefined ? undefined : requiredIsoDate(req.body.startTime, "Início");
+    const endTime = req.body?.endTime === undefined ? undefined : requiredIsoDate(req.body.endTime, "Fim");
+    const notes = optionalString(req.body?.notes, "Observações", 10_000);
+    const status = optionalStatus(req.body?.status);
+    if (Date.parse(endTime || existing.end_time) <= Date.parse(startTime || existing.start_time)) {
+      throw new ValidationError("Fim deve ser posterior ao início");
+    }
 
     let clientId: string | undefined;
     if (clientName) {
-      const client = getClientByName(clientName);
+      const client = getClientByName(userId, clientName);
       if (client) clientId = client.id;
     }
 
@@ -112,20 +139,25 @@ router.put("/:id", requireAuth, async (req, res) => {
       }
     }
 
-    const updated = updateAppointment(req.params.id, {
+    const updated = updateAppointment(userId, req.params.id, {
       title, type, clientId, clientName, startTime, endTime, notes, status,
     });
 
     res.json(updated);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
     console.error("Erro ao atualizar agendamento:", error);
     res.status(500).json({ error: "Erro ao atualizar agendamento" });
   }
 });
 
-router.delete("/:id", requireAuth, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
-    const existing = getAppointment(req.params.id);
+    const userId = req.session.googleUser!.id;
+    const existing = getAppointment(userId, req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Agendamento não encontrado" });
       return;
@@ -140,7 +172,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
       }
     }
 
-    deleteAppointment(req.params.id);
+    deleteAppointment(userId, req.params.id);
     res.status(204).end();
   } catch (error) {
     console.error("Erro ao excluir agendamento:", error);

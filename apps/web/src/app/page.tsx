@@ -9,6 +9,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { LoginScreen } from "@/components/LoginScreen";
 import { ClientsPanel } from "@/components/ClientsPanel";
+import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -91,6 +92,7 @@ export default function Home() {
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<View>("inicio");
+  const [pendingBookingCount, setPendingBookingCount] = useState(0);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -114,6 +116,32 @@ export default function Home() {
       fetchAppointments();
     }
   }, [isAuthenticated, isDemo, fetchAppointments]);
+
+  useEffect(() => {
+    if (!isAuthenticated || isDemo) {
+      setPendingBookingCount(0);
+      return;
+    }
+    let cancelled = false;
+    async function loadCount() {
+      try {
+        const res = await fetch(`${API_URL}/booking/requests/pending-count`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data: { count?: number } = await res.json();
+        if (!cancelled) setPendingBookingCount(data.count ?? 0);
+      } catch {
+        // silent
+      }
+    }
+    loadCount();
+    const interval = setInterval(loadCount, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, isDemo, activeView]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -160,6 +188,7 @@ export default function Home() {
     setUserId(null);
     setIsAuthenticated(false);
     setIsDemo(false);
+    setPendingBookingCount(0);
     setActiveView("inicio");
   }
 
@@ -242,6 +271,12 @@ export default function Home() {
             <ClientsPanel isDemo={isDemo} />
           </div>
         );
+      case "agendamentos":
+        return (
+          <div className="main-calendar">
+            <BookingRequestsPanel />
+          </div>
+        );
       case "financeiro":
         return (
           <div style={{ padding: "40px 32px" }}>
@@ -266,6 +301,7 @@ export default function Home() {
         onChangeView={setActiveView}
         userName={userName || "Fabiana"}
         clientCount={42}
+        pendingBookingCount={pendingBookingCount}
         isDemo={isDemo}
         onLogout={handleLogout}
       />

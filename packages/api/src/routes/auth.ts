@@ -2,9 +2,11 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { Router, type Router as ExpressRouter } from "express";
 import { google } from "googleapis";
 import { consumeMobileLogin, createMobileLogin, signSessionId } from "../services/mobile-auth";
+import { rateLimit } from "../middleware/security";
 import "../session-types";
 
 const router: ExpressRouter = Router();
+const authLimiter = rateLimit({ prefix: "auth", windowMs: 10 * 60_000, max: 20 });
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
@@ -21,9 +23,9 @@ function validState(expected: string | undefined, received: unknown): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-router.get("/google", (req, res) => {
+router.get("/google", authLimiter, (req, res) => {
   const state = randomBytes(32).toString("base64url");
-  const platform = req.query.platform as string | undefined;
+  const platform = req.query.platform === "mobile" ? "mobile" : "web";
   req.session.oauthState = state;
   req.session.oauthPlatform = platform;
   const url = getOAuth2Client().generateAuthUrl({
@@ -47,7 +49,7 @@ router.get("/google", (req, res) => {
   res.json({ url });
 });
 
-router.get("/google/callback", async (req, res) => {
+router.get("/google/callback", authLimiter, async (req, res) => {
   if (!validState(req.session.oauthState, req.query.state)) {
     res.status(400).send("Estado OAuth inválido. Reinicie o login.");
     return;
@@ -67,29 +69,34 @@ router.get("/google/callback", async (req, res) => {
     }
     oauth2Client.setCredentials({ ...req.session.googleTokens, ...tokens });
     const userInfo = await google.oauth2({ version: "v2", auth: oauth2Client }).userinfo.get();
-    req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
-    req.session.googleUser = {
+    const googleTokens = { ...req.session.googleTokens, ...tokens };
+    const googleUser = {
       id: userInfo.data.id || "google-user",
       name: userInfo.data.name || "Fabiana",
       email: userInfo.data.email || undefined,
     };
-    delete req.session.oauthState;
-
     const isMobile = req.session.oauthPlatform === "mobile";
-    delete req.session.oauthPlatform;
 
-    req.session.save((error) => {
-      if (error) {
-        res.status(500).send("Não foi possível salvar a sessão.");
+    req.session.regenerate((regenerateError) => {
+      if (regenerateError) {
+        res.status(500).send("Não foi possível proteger a sessão.");
         return;
       }
-      if (isMobile) {
-        const code = createMobileLogin(req.sessionID, req.session.googleUser!);
-        res.redirect(`assistente-fabi://auth/callback?code=${encodeURIComponent(code)}`);
-      } else {
-        const webUrl = process.env.WEB_URL || "http://localhost:3000";
-        res.redirect(`${webUrl}/?authenticated=1`);
-      }
+      req.session.googleTokens = googleTokens;
+      req.session.googleUser = googleUser;
+      req.session.save((saveError) => {
+        if (saveError) {
+          res.status(500).send("Não foi possível salvar a sessão.");
+          return;
+        }
+        if (isMobile) {
+          const code = createMobileLogin(req.sessionID, googleUser);
+          res.redirect(`assistente-fabi://auth/callback?code=${encodeURIComponent(code)}`);
+        } else {
+          const webUrl = process.env.WEB_URL || "http://localhost:3000";
+          res.redirect(`${webUrl}/?authenticated=1`);
+        }
+      });
     });
   } catch (error) {
     console.error("Erro na autenticação Google:", error instanceof Error ? error.message : "erro desconhecido");
@@ -97,7 +104,7 @@ router.get("/google/callback", async (req, res) => {
   }
 });
 
-router.post("/mobile/exchange", (req, res) => {
+router.post("/mobile/exchange", authLimiter, (req, res) => {
   const code = req.body?.code;
   if (typeof code !== "string" || code.length < 32 || code.length > 256) {
     res.status(400).json({ error: "Código de login inválido" });
