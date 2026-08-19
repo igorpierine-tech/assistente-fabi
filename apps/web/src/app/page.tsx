@@ -14,51 +14,6 @@ import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-function generateDemoEvents(): CalendarEvent[] {
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = today.getMonth();
-
-  function makeEvent(
-    id: string, title: string, type: string, dayOffset: number,
-    startH: number, startM: number, durMin: number,
-    status: CalendarEvent["status"], clientName?: string
-  ): CalendarEvent {
-    const start = new Date(y, m, today.getDate() + dayOffset, startH, startM);
-    const end = new Date(start.getTime() + durMin * 60000);
-    return {
-      id, title, type, status, clientName,
-      clientPhone: clientName ? "(65) 99" + Math.floor(Math.random() * 900 + 100) + "-" + Math.floor(Math.random() * 9000 + 1000) : undefined,
-      clientEmail: clientName ? clientName.toLowerCase().replace(/\s/g, ".") + "@email.com" : undefined,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-    };
-  }
-
-  return [
-    makeEvent("e1", "Constelação — Maria Valentina", "constelacao", 0, 9, 0, 90, "confirmado", "Maria Valentina"),
-    makeEvent("e2", "Consultoria Financeira — Ana Paula", "consultoria_financeira", 0, 11, 0, 60, "confirmado", "Ana Paula"),
-    makeEvent("e3", "Planejamento — Masterday Agosto", "planejamento", 0, 14, 0, 60, "previsto"),
-    makeEvent("e4", "Constelação — Juliana Costa", "constelacao", 0, 15, 30, 90, "previsto", "Juliana Costa"),
-    makeEvent("e5", "Reunião — Raízes e Riquezas", "reuniao", 0, 17, 30, 30, "previsto"),
-    makeEvent("e6", "Constelação — Fernanda Lima", "constelacao", 1, 9, 0, 90, "previsto", "Fernanda Lima"),
-    makeEvent("e7", "Consultoria Financeira — Roberto Silva", "consultoria_financeira", 1, 14, 0, 60, "previsto", "Roberto Silva"),
-    makeEvent("e8", "Constelação — Patrícia Alves", "constelacao", 2, 10, 0, 90, "previsto", "Patrícia Alves"),
-    makeEvent("e9", "Planejamento Financeiro", "planejamento", 3, 8, 0, 120, "previsto"),
-    makeEvent("e10", "Constelação — Marcos Souza", "constelacao", 3, 14, 0, 90, "previsto", "Marcos Souza"),
-    makeEvent("e11", "Evento — Masterday", "evento_curso", 5, 9, 0, 480, "confirmado"),
-    makeEvent("e12", "Constelação — Luciana Ramos", "constelacao", -1, 9, 0, 90, "concluido", "Luciana Ramos"),
-    makeEvent("e13", "Consultoria Financeira — Carla Dias", "consultoria_financeira", -1, 14, 0, 60, "concluido", "Carla Dias"),
-    makeEvent("e14", "Constelação — Pedro Henrique", "constelacao", -3, 15, 0, 90, "concluido", "Pedro Henrique"),
-    makeEvent("e15", "Reunião — Equipe RR", "reuniao", -5, 10, 0, 60, "concluido"),
-    makeEvent("e16", "Bloqueio — Deslocamento Cuiabá", "bloqueio_pessoal", 4, 7, 0, 120, "previsto"),
-    makeEvent("e17", "Constelação — Amanda Ferreira", "constelacao", 7, 9, 0, 90, "previsto", "Amanda Ferreira"),
-    makeEvent("e18", "Consultoria Financeira — João Victor", "consultoria_financeira", 7, 14, 0, 60, "previsto", "João Victor"),
-    makeEvent("e19", "Constelação — Beatriz Oliveira", "constelacao", 10, 10, 0, 90, "previsto", "Beatriz Oliveira"),
-    makeEvent("e20", "Planejamento — Setembro", "planejamento", 14, 8, 0, 120, "previsto"),
-  ];
-}
-
 interface AppointmentRow {
   id: string;
   title: string;
@@ -161,7 +116,6 @@ export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<View>("inicio");
   const [pendingBookingCount, setPendingBookingCount] = useState(0);
@@ -204,17 +158,14 @@ export default function Home() {
   }, [clientRows, appointmentRows]);
 
   useEffect(() => {
-    if (isAuthenticated && !isDemo) {
+    if (isAuthenticated) {
       fetchAppointments();
       fetchClients();
-    } else if (isDemo) {
-      setClientRows([]);
-      setAppointmentRows([]);
     }
-  }, [isAuthenticated, isDemo, fetchAppointments, fetchClients]);
+  }, [isAuthenticated, fetchAppointments, fetchClients]);
 
   useEffect(() => {
-    if (!isAuthenticated || isDemo) {
+    if (!isAuthenticated) {
       setPendingBookingCount(0);
       return;
     }
@@ -237,7 +188,7 @@ export default function Home() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [isAuthenticated, isDemo, activeView]);
+  }, [isAuthenticated, activeView]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -270,21 +221,10 @@ export default function Home() {
     window.location.href = `${API_URL}/auth/google?redirect=1`;
   }
 
-  function handleDemo() {
-    setUserId("demo");
-    setUserName("Fabiana");
-    setIsDemo(true);
-    setIsAuthenticated(true);
-    setEvents(generateDemoEvents());
-  }
-
   async function handleLogout() {
-    if (!isDemo) {
-      await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
-    }
+    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
     setUserId(null);
     setIsAuthenticated(false);
-    setIsDemo(false);
     setPendingBookingCount(0);
     setActiveView("inicio");
     setClientRows([]);
@@ -328,7 +268,7 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} onDemo={handleDemo} />;
+    return <LoginScreen onLogin={handleLogin} />;
   }
 
   function renderContent() {
@@ -346,10 +286,10 @@ export default function Home() {
         return (
           <div className="main-chat">
             <div className="sidebar-summary">
-              <DaySummary userId={userId!} isDemo={isDemo} events={events} onEventClick={handleEventClick} />
+              <DaySummary userId={userId!} events={events} onEventClick={handleEventClick} />
             </div>
             <div className="chat-area">
-              <ChatPanel userId={userId!} isDemo={isDemo} />
+              <ChatPanel userId={userId!} />
             </div>
           </div>
         );
@@ -358,7 +298,6 @@ export default function Home() {
           <div className="main-calendar">
             <CalendarView
               events={events}
-              isDemo={isDemo}
               onEventClick={handleEventClick}
               onNewEvent={handleNewEvent}
             />
@@ -367,7 +306,7 @@ export default function Home() {
       case "clientes":
         return (
           <div className="main-calendar">
-            <ClientsPanel isDemo={isDemo} />
+            <ClientsPanel />
           </div>
         );
       case "agendamentos":
@@ -401,7 +340,6 @@ export default function Home() {
         userName={userName || "Fabiana"}
         clientCount={clients.length}
         pendingBookingCount={pendingBookingCount}
-        isDemo={isDemo}
         onLogout={handleLogout}
       />
       <main className="app-main">

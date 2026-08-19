@@ -8,7 +8,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface DaySummaryProps {
   userId: string;
-  isDemo?: boolean;
   events?: CalendarEvent[];
   onEventClick?: (event: CalendarEvent) => void;
 }
@@ -21,33 +20,6 @@ interface Event {
   end: string;
 }
 
-interface EarlyWin {
-  wins: string[];
-}
-
-function getDemoEvents(dateStr: string): Event[] {
-  const base = [
-    { id: "1", title: "Constelação — Maria Valentina", type: "constelacao", startH: 9, startM: 0, durMin: 90 },
-    { id: "2", title: "Consultoria Financeira — Ana Paula", type: "consultoria", startH: 11, startM: 0, durMin: 60 },
-    { id: "3", title: "Planejamento — Masterday Agosto", type: "planejamento", startH: 14, startM: 0, durMin: 60 },
-    { id: "4", title: "Constelação — Juliana Costa", type: "constelacao", startH: 15, startM: 30, durMin: 90 },
-    { id: "5", title: "Reunião — Raízes e Riquezas", type: "reuniao", startH: 17, startM: 30, durMin: 30 },
-  ];
-
-  return base.map((e) => {
-    const start = new Date(`${dateStr}T00:00:00-04:00`);
-    start.setHours(e.startH, e.startM, 0);
-    const end = new Date(start.getTime() + e.durMin * 60000);
-    return {
-      id: e.id,
-      title: e.title,
-      type: e.type,
-      start: start.toISOString(),
-      end: end.toISOString(),
-    };
-  });
-}
-
 const TYPE_COLORS: Record<string, string> = {
   constelacao: "#8B5E3C",
   consultoria: "#C8A951",
@@ -55,45 +27,7 @@ const TYPE_COLORS: Record<string, string> = {
   reuniao: "#5E7E8B",
 };
 
-const DEMO_EARLY_WINS: Record<string, EarlyWin> = {
-  "1": {
-    wins: [
-      "2a sessão — padrão de exclusão familiar identificado",
-      "Preparar campo: mãe e avó materna",
-      "Relatou melhora no relacionamento com a mãe",
-    ],
-  },
-  "2": {
-    wins: [
-      "Revisão do planejamento financeiro trimestral",
-      "Atingiu 80% da meta de reserva de emergência",
-      "Avaliar realocação pós-Selic",
-    ],
-  },
-  "3": {
-    wins: [
-      "Definir pauta e dinâmicas do Masterday",
-      "12 participantes confirmados (máx. 15)",
-      "Revisar material de apoio e checklist",
-    ],
-  },
-  "4": {
-    wins: [
-      "1a sessão — acolhimento e genograma",
-      "Queixa: dificuldade de prosperar financeiramente",
-      "Preparar dinâmica de pertencimento",
-    ],
-  },
-  "5": {
-    wins: [
-      "Alinhamento de metas do mês",
-      "Revisar agenda de setembro e Masterdays",
-      "Feedback das consultorias em grupo",
-    ],
-  },
-};
-
-export function DaySummary({ userId, isDemo, events: calendarEvents, onEventClick }: DaySummaryProps) {
+export function DaySummary({ userId, events: calendarEvents, onEventClick }: DaySummaryProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -102,17 +36,10 @@ export function DaySummary({ userId, isDemo, events: calendarEvents, onEventClic
 
   useEffect(() => {
     loadEvents();
-  }, [selectedDate, isDemo]);
+  }, [selectedDate]);
 
   async function loadEvents() {
     setLoading(true);
-
-    if (isDemo) {
-      await new Promise((r) => setTimeout(r, 600));
-      setEvents(getDemoEvents(selectedDate));
-      setLoading(false);
-      return;
-    }
 
     try {
       const res = await fetch(`${API_URL}/chat/message`, {
@@ -190,7 +117,6 @@ export function DaySummary({ userId, isDemo, events: calendarEvents, onEventClic
           </div>
         ) : (
           events.map((event) => {
-            const win = isDemo ? DEMO_EARLY_WINS[event.id] : undefined;
             const calEvent = calendarEvents?.find(
               (ce) => ce.title === event.title && ce.startDate === event.start
             );
@@ -210,13 +136,6 @@ export function DaySummary({ userId, isDemo, events: calendarEvents, onEventClic
                   <p className={styles.eventDuration}>
                     {formatTime(event.start)} — {formatTime(event.end)}
                   </p>
-                  {win && (
-                    <ul className={styles.earlyWinItems}>
-                      {win.wins.map((w, i) => (
-                        <li key={i}>{w}</li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               </div>
             );

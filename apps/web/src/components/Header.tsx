@@ -6,12 +6,11 @@ import styles from "./Header.module.css";
 interface HeaderProps {
   userName: string;
   onLogout: () => void;
-  isDemo?: boolean;
   activeView?: "chat" | "calendario" | "clientes";
   onChangeView?: (view: "chat" | "calendario" | "clientes") => void;
 }
 
-export function Header({ userName, onLogout, isDemo, activeView = "chat", onChangeView }: HeaderProps) {
+export function Header({ userName, onLogout, activeView = "chat", onChangeView }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
@@ -20,7 +19,6 @@ export function Header({ userName, onLogout, isDemo, activeView = "chat", onChan
           <h1 className={styles.title}>Raízes e Riquezas</h1>
           <p className={styles.subtitle}>Assistente da Fabi</p>
         </div>
-        {isDemo && <span className={styles.demoBadge}>Demo</span>}
       </div>
 
       {onChangeView && (

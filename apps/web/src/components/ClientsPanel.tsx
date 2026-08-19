@@ -24,17 +24,7 @@ interface ClientForm {
 
 const emptyForm: ClientForm = { name: "", phone: "", email: "", notes: "" };
 
-interface ClientsPanelProps {
-  isDemo?: boolean;
-}
-
-const DEMO_CLIENTS: Client[] = [
-  { id: "d1", name: "Maria Valentina", phone: "(65) 99123-4567", email: "maria@email.com", notes: "Constelação familiar", created_at: "", updated_at: "" },
-  { id: "d2", name: "Ana Paula", phone: "(65) 99234-5678", email: "ana.paula@email.com", notes: "Consultoria financeira", created_at: "", updated_at: "" },
-  { id: "d3", name: "Juliana Costa", phone: "(65) 99345-6789", email: "juliana@email.com", notes: null, created_at: "", updated_at: "" },
-];
-
-export function ClientsPanel({ isDemo }: ClientsPanelProps) {
+export function ClientsPanel() {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -43,10 +33,6 @@ export function ClientsPanel({ isDemo }: ClientsPanelProps) {
   const [saving, setSaving] = useState(false);
 
   const fetchClients = useCallback(async () => {
-    if (isDemo) {
-      setClients(DEMO_CLIENTS);
-      return;
-    }
     try {
       const q = search ? `?search=${encodeURIComponent(search)}` : "";
       const res = await fetch(`${API_URL}/clients${q}`, { credentials: "include" });
@@ -56,7 +42,7 @@ export function ClientsPanel({ isDemo }: ClientsPanelProps) {
     } catch {
       // silent
     }
-  }, [isDemo, search]);
+  }, [search]);
 
   useEffect(() => {
     fetchClients();
@@ -82,26 +68,6 @@ export function ClientsPanel({ isDemo }: ClientsPanelProps) {
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
-
-    if (isDemo) {
-      if (editingClient) {
-        setClients((prev) =>
-          prev.map((c) =>
-            c.id === editingClient.id
-              ? { ...c, name: form.name, phone: form.phone || null, email: form.email || null, notes: form.notes || null }
-              : c
-          )
-        );
-      } else {
-        setClients((prev) => [
-          ...prev,
-          { id: `d${Date.now()}`, name: form.name, phone: form.phone || null, email: form.email || null, notes: form.notes || null, created_at: "", updated_at: "" },
-        ]);
-      }
-      setShowModal(false);
-      setSaving(false);
-      return;
-    }
 
     try {
       const url = editingClient ? `${API_URL}/clients/${editingClient.id}` : `${API_URL}/clients`;
@@ -130,11 +96,6 @@ export function ClientsPanel({ isDemo }: ClientsPanelProps) {
   async function handleDelete(client: Client) {
     if (!confirm(`Excluir o cliente "${client.name}"?`)) return;
 
-    if (isDemo) {
-      setClients((prev) => prev.filter((c) => c.id !== client.id));
-      return;
-    }
-
     try {
       await fetch(`${API_URL}/clients/${client.id}`, {
         method: "DELETE",
@@ -146,13 +107,7 @@ export function ClientsPanel({ isDemo }: ClientsPanelProps) {
     }
   }
 
-  const filtered = search && isDemo
-    ? clients.filter((c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.email?.toLowerCase().includes(search.toLowerCase()) ||
-        c.phone?.includes(search)
-      )
-    : clients;
+  const filtered = clients;
 
   return (
     <div className={styles.container}>

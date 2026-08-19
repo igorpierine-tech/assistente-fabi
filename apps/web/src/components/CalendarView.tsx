@@ -18,7 +18,6 @@ export interface CalendarEvent {
 
 interface CalendarViewProps {
   events: CalendarEvent[];
-  isDemo?: boolean;
   onEventClick: (event: CalendarEvent) => void;
   onNewEvent: (date: string) => void;
 }
@@ -71,7 +70,7 @@ function eventSpansDays(event: CalendarEvent): boolean {
   return event.startDate.slice(0, 10) !== event.endDate.slice(0, 10);
 }
 
-export function CalendarView({ events, isDemo, onEventClick, onNewEvent }: CalendarViewProps) {
+export function CalendarView({ events, onEventClick, onNewEvent }: CalendarViewProps) {
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());

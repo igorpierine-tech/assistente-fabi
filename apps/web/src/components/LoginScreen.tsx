@@ -5,10 +5,9 @@ import styles from "./LoginScreen.module.css";
 
 interface LoginScreenProps {
   onLogin: () => void;
-  onDemo: () => void;
 }
 
-export function LoginScreen({ onLogin, onDemo }: LoginScreenProps) {
+export function LoginScreen({ onLogin }: LoginScreenProps) {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
@@ -56,13 +55,8 @@ export function LoginScreen({ onLogin, onDemo }: LoginScreenProps) {
           Entrar com Google
         </button>
 
-        <button className={styles.secondaryBtn} onClick={onDemo} type="button">
-          Explorar modo demonstração
-        </button>
-
         <p className={styles.footer}>
-          Conecte sua conta Google para acessar seu Calendar, ou explore a
-          interface no modo demonstração.
+          Conecte sua conta Google para acessar seu Calendar.
         </p>
       </div>
     </div>

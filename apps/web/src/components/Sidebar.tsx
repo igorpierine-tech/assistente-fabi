@@ -17,7 +17,6 @@ interface SidebarProps {
   userName: string;
   clientCount: number;
   pendingBookingCount?: number;
-  isDemo?: boolean;
   onLogout?: () => void;
 }
 
@@ -97,7 +96,6 @@ export function Sidebar({
   userName,
   clientCount,
   pendingBookingCount = 0,
-  isDemo,
   onLogout,
 }: SidebarProps) {
   return (
@@ -108,7 +106,7 @@ export function Sidebar({
         </div>
         <div className={styles.brandInfo}>
           <div className={styles.brandName}>{BRAND_NAME}</div>
-          <div className={styles.brandSub}>{userName} · {isDemo ? "demo" : "admin"}</div>
+          <div className={styles.brandSub}>{userName} · admin</div>
         </div>
       </div>
 
@@ -139,7 +137,7 @@ export function Sidebar({
             <path d="M13 4h3a1 1 0 011 1v10a1 1 0 01-1 1h-3" />
             <path d="M9 14l-4-4 4-4M5 10h10" />
           </svg>
-          {isDemo ? "Sair do modo demo" : "Sair"}
+          Sair
         </button>
       )}
     </aside>

@@ -21,7 +21,6 @@ interface Conversation {
 
 interface ChatPanelProps {
   userId: string;
-  isDemo?: boolean;
 }
 
 const WELCOME_MSG: Message = {
@@ -30,46 +29,7 @@ const WELCOME_MSG: Message = {
   timestamp: new Date(),
 };
 
-const DEMO_RESPONSES: Record<string, string> = {
-  default: "Desculpe, no modo demonstração só consigo responder a alguns comandos de exemplo. Tente perguntar sobre a agenda de hoje ou agendar uma Constelação!",
-};
-
-function getDemoResponse(input: string): string {
-  const lower = input.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-
-  if (lower.includes("agenda") && (lower.includes("hoje") || lower.includes("dia"))) {
-    return `**Hoje, ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}**\n\n- 09:00 — Constelação — Maria Valentina\n- 11:00 — Consultoria Financeira — Ana Paula\n- 14:00 — Planejamento — Masterday Agosto\n- 15:30 — Constelação — Juliana Costa\n- 17:30 — Reunião — Raízes e Riquezas\n\nVocê tem 5 compromissos hoje. Dia bem cheio, Fabi!`;
-  }
-
-  if (lower.includes("bom dia") || lower.includes("ola") || lower.includes("oi")) {
-    return `Bom dia, Fabi! Hoje você tem 5 compromissos. O primeiro é às 09:00 (Constelação com Maria Valentina) e o último às 17:30 (Reunião Raízes e Riquezas). Dia cheio! Quer ver os detalhes?`;
-  }
-
-  if (lower.includes("agend") && (lower.includes("constelac") || lower.includes("maria") || lower.includes("juliana"))) {
-    const nome = lower.includes("juliana") ? "Juliana" : lower.includes("maria") ? "Maria" : "cliente";
-    return `Vou agendar:\n\n📅 Constelação — ${nome.charAt(0).toUpperCase() + nome.slice(1)}\n🗓 Sexta-feira, 15 de agosto de 2026\n🕐 14:00 às 15:30\n🔔 Lembretes: 24h e 1h antes\n\nConfirmar?`;
-  }
-
-  if (lower.includes("sim") || lower.includes("confirm") || lower.includes("pode")) {
-    return "Agendado com sucesso! O compromisso já aparece na sua agenda.";
-  }
-
-  if (lower.includes("cancel")) {
-    return "Qual compromisso você gostaria de cancelar? Me diga o nome do cliente ou o horário.";
-  }
-
-  if (lower.includes("horario") && lower.includes("livre") || lower.includes("disponiv")) {
-    return "Na sexta-feira à tarde, você tem os seguintes horários livres:\n\n- 13:00 às 14:00\n- 16:00 às 18:00\n\nQuer que eu agende algo em algum desses horários?";
-  }
-
-  if (lower.includes("quantas constelac") || lower.includes("constelac") && lower.includes("agosto")) {
-    return "Em agosto de 2026 você tem **12 Constelações** agendadas até o momento.";
-  }
-
-  return DEMO_RESPONSES.default;
-}
-
-export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
+export function ChatPanel({ userId }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MSG]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +44,6 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
   const chunksRef = useRef<Blob[]>([]);
 
   const fetchConversations = useCallback(async () => {
-    if (isDemo) return;
     try {
       const res = await fetch(`${API_URL}/chat/conversations`, { credentials: "include" });
       if (res.ok) {
@@ -93,7 +52,7 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
     } catch {
       // silent
     }
-  }, [isDemo]);
+  }, []);
 
   useEffect(() => {
     fetchConversations();
@@ -147,17 +106,6 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
     setInput("");
     setIsLoading(true);
 
-    if (isDemo) {
-      await new Promise((r) => setTimeout(r, 800 + Math.random() * 700));
-      const response = getDemoResponse(text);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: response, timestamp: new Date() },
-      ]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch(`${API_URL}/chat/message`, {
         method: "POST",
@@ -195,15 +143,6 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
   }
 
   async function startRecording() {
-    if (isDemo) {
-      setIsRecording(true);
-      setTimeout(() => {
-        setIsRecording(false);
-        sendMessage("Qual a minha agenda para hoje?");
-      }, 2000);
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
@@ -228,10 +167,6 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
   }
 
   function stopRecording() {
-    if (isDemo) {
-      setIsRecording(false);
-      return;
-    }
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
@@ -314,21 +249,19 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
 
   return (
     <div className={styles.container}>
-      {!isDemo && (
-        <div className={styles.chatHeader}>
-          <button className={styles.newChatBtn} onClick={startNewChat}>
-            + Nova conversa
-          </button>
-          <button
-            className={styles.historyToggle}
-            onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConversations(); }}
-          >
-            {showHistory ? "Fechar" : `Conversas (${conversations.length})`}
-          </button>
-        </div>
-      )}
+      <div className={styles.chatHeader}>
+        <button className={styles.newChatBtn} onClick={startNewChat}>
+          + Nova conversa
+        </button>
+        <button
+          className={styles.historyToggle}
+          onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConversations(); }}
+        >
+          {showHistory ? "Fechar" : `Conversas (${conversations.length})`}
+        </button>
+      </div>
 
-      {showHistory && !isDemo && (
+      {showHistory && (
         <div className={styles.historyPanel}>
           {conversations.length === 0 ? (
             <div className={styles.emptyHistory}>Nenhuma conversa salva</div>
@@ -359,11 +292,6 @@ export function ChatPanel({ userId, isDemo }: ChatPanelProps) {
         </div>
       )}
 
-      {isDemo && (
-        <div className={styles.demoBanner}>
-          Modo demonstração — experimente digitar comandos como &quot;Qual minha agenda de hoje?&quot; ou &quot;Agende Constelação com Maria na sexta às 14h&quot;
-        </div>
-      )}
       <div className={styles.messages}>
         {messages.map((msg, i) => (
           <div key={i} className={`${styles.message} ${styles[msg.role]} animate-fade-in`}>
