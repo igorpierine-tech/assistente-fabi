@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { authenticatedFetch, hasSession } from "../../services/auth";
 
 const C = {
   primary: "#5E4B37", secondary: "#C4A265", bg: "#FBF8F3", surface: "#FFFFFF",
@@ -20,30 +21,18 @@ const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 interface CalEvent {
-  id: string; title: string; type: string; day: number; startH: number; startM: number; durMin: number;
+  id: string; title: string; type: string; date: Date; startH: number; startM: number; durMin: number;
 }
 
 function generateDemoEvents(): CalEvent[] {
   const today = new Date();
   const d = today.getDate();
   return [
-    { id: "1", title: "Constelação — Maria Valentina", type: "constelacao", day: d, startH: 9, startM: 0, durMin: 90 },
-    { id: "2", title: "Consultoria — Ana Paula", type: "consultoria", day: d, startH: 11, startM: 0, durMin: 60 },
-    { id: "3", title: "Planejamento — Masterday", type: "planejamento", day: d, startH: 14, startM: 0, durMin: 60 },
-    { id: "4", title: "Constelação — Juliana Costa", type: "constelacao", day: d, startH: 15, startM: 30, durMin: 90 },
-    { id: "5", title: "Reunião — R&R", type: "reuniao", day: d, startH: 17, startM: 30, durMin: 30 },
-    { id: "6", title: "Constelação — Fernanda", type: "constelacao", day: d + 1, startH: 9, startM: 0, durMin: 90 },
-    { id: "7", title: "Consultoria — Roberto", type: "consultoria", day: d + 1, startH: 14, startM: 0, durMin: 60 },
-    { id: "8", title: "Constelação — Patrícia", type: "constelacao", day: d + 2, startH: 10, startM: 0, durMin: 90 },
-    { id: "9", title: "Planejamento Financeiro", type: "planejamento", day: d + 3, startH: 8, startM: 0, durMin: 120 },
-    { id: "10", title: "Constelação — Marcos", type: "constelacao", day: d + 3, startH: 14, startM: 0, durMin: 90 },
-    { id: "11", title: "Masterday", type: "evento", day: d + 5, startH: 9, startM: 0, durMin: 480 },
-    { id: "12", title: "Constelação — Luciana", type: "constelacao", day: d - 1, startH: 9, startM: 0, durMin: 90 },
-    { id: "13", title: "Consultoria — Carla", type: "consultoria", day: d - 1, startH: 14, startM: 0, durMin: 60 },
-    { id: "14", title: "Constelação — Pedro", type: "constelacao", day: d - 3, startH: 15, startM: 0, durMin: 90 },
-    { id: "15", title: "Constelação — Amanda", type: "constelacao", day: d + 7, startH: 9, startM: 0, durMin: 90 },
-    { id: "16", title: "Constelação — Beatriz", type: "constelacao", day: d + 10, startH: 10, startM: 0, durMin: 90 },
-  ];
+    ["1", "Constelação — Maria Valentina", "constelacao", 0, 9, 0, 90], ["2", "Consultoria — Ana Paula", "consultoria", 0, 11, 0, 60],
+    ["3", "Planejamento — Masterday", "planejamento", 0, 14, 0, 60], ["4", "Constelação — Juliana Costa", "constelacao", 0, 15, 30, 90],
+    ["5", "Reunião — R&R", "reuniao", 0, 17, 30, 30], ["6", "Constelação — Fernanda", "constelacao", 1, 9, 0, 90],
+    ["7", "Consultoria — Roberto", "consultoria", 1, 14, 0, 60], ["8", "Constelação — Patrícia", "constelacao", 2, 10, 0, 90],
+  ].map(([id, title, type, offset, startH, startM, durMin]) => ({ id: String(id), title: String(title), type: String(type), date: new Date(today.getFullYear(), today.getMonth(), d + Number(offset)), startH: Number(startH), startM: Number(startM), durMin: Number(durMin) }));
 }
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
@@ -51,7 +40,23 @@ function pad(n: number) { return n.toString().padStart(2, "0"); }
 export default function CalendarioScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
-  const events = useMemo(generateDemoEvents, []);
+  const demoEvents = useMemo(generateDemoEvents, []);
+  const [events, setEvents] = useState<CalEvent[]>(demoEvents);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      if (!(await hasSession())) { if (active) setEvents(demoEvents); return; }
+      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      const response = await authenticatedFetch(`/appointments?startDate=${encodeURIComponent(start.toISOString())}&endDate=${encodeURIComponent(end.toISOString())}`);
+      if (!response.ok) return;
+      const rows: Array<{ id: string; title: string; type: string; start_time: string; end_time: string }> = await response.json();
+      if (active) setEvents(rows.map((row) => { const startAt = new Date(row.start_time); const endAt = new Date(row.end_time); return { id: row.id, title: row.title, type: row.type || "evento", date: startAt, startH: startAt.getHours(), startM: startAt.getMinutes(), durMin: Math.max(1, Math.round((endAt.getTime() - startAt.getTime()) / 60000)) }; }));
+    }
+    load().catch(() => undefined);
+    return () => { active = false; };
+  }, [currentDate, demoEvents]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -65,7 +70,8 @@ export default function CalendarioScreen() {
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
   while (days.length % 7 !== 0) days.push(null);
 
-  const dayEvents = selectedDay ? events.filter((e) => e.day === selectedDay) : [];
+  const monthEvents = events.filter((e) => e.date.getFullYear() === year && e.date.getMonth() === month);
+  const dayEvents = selectedDay ? monthEvents.filter((e) => e.date.getDate() === selectedDay) : [];
 
   function prev() { setCurrentDate(new Date(year, month - 1, 1)); setSelectedDay(null); }
   function next() { setCurrentDate(new Date(year, month + 1, 1)); setSelectedDay(null); }
@@ -95,7 +101,7 @@ export default function CalendarioScreen() {
       {/* Calendar grid */}
       <View style={s.grid}>
         {days.map((day, i) => {
-          const hasEvents = day ? events.some((e) => e.day === day) : false;
+          const hasEvents = day ? monthEvents.some((e) => e.date.getDate() === day) : false;
           const isToday = isCurrentMonth && day === today.getDate();
           const isSelected = day === selectedDay;
           return (
