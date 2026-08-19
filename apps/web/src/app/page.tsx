@@ -117,27 +117,22 @@ export default function Home() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get("userId") || localStorage.getItem("fabi_userId");
-    const name = params.get("name") || localStorage.getItem("fabi_userName") || "";
-
-    if (id) {
-      localStorage.setItem("fabi_userId", id);
-      if (name) localStorage.setItem("fabi_userName", name);
-      setUserId(id);
-      setUserName(name);
+    if (params.has("authenticated")) {
       window.history.replaceState({}, "", "/");
-      checkAuth(id);
-    } else {
-      setLoading(false);
     }
+    checkAuth();
   }, []);
 
-  async function checkAuth(id: string) {
+  async function checkAuth() {
     try {
-      const res = await fetch(`${API_URL}/auth/status/${id}`, { credentials: "include" });
+      const res = await fetch(`${API_URL}/auth/status`, { credentials: "include" });
       const data = await res.json();
       setIsAuthenticated(data.authenticated);
-      if (data.authenticated) fetchAppointments();
+      if (data.authenticated && data.user?.id) {
+        setUserId(data.user.id);
+        setUserName(data.user.name || "");
+        fetchAppointments();
+      }
     } catch {
       setIsAuthenticated(false);
     }
@@ -162,8 +157,6 @@ export default function Home() {
     if (!isDemo) {
       await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
     }
-    localStorage.removeItem("fabi_userId");
-    localStorage.removeItem("fabi_userName");
     setUserId(null);
     setIsAuthenticated(false);
     setIsDemo(false);
@@ -274,6 +267,7 @@ export default function Home() {
         userName={userName || "Fabiana"}
         clientCount={42}
         isDemo={isDemo}
+        onLogout={handleLogout}
       />
       <main className="app-main">
         {renderContent()}

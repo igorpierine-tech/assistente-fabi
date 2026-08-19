@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { Router, type Router as ExpressRouter } from "express";
 import { google } from "googleapis";
+import { consumeMobileLogin, createMobileLogin, signSessionId } from "../services/mobile-auth";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -83,15 +84,11 @@ router.get("/google/callback", async (req, res) => {
         return;
       }
       if (isMobile) {
-        const params = new URLSearchParams({
-          name: req.session.googleUser?.name || "Fabiana",
-          email: req.session.googleUser?.email || "",
-          userId: req.session.googleUser?.id || "google-user",
-        });
-        res.redirect(`assistente-fabi://auth/callback?${params}`);
+        const code = createMobileLogin(req.sessionID, req.session.googleUser!);
+        res.redirect(`assistente-fabi://auth/callback?code=${encodeURIComponent(code)}`);
       } else {
         const webUrl = process.env.WEB_URL || "http://localhost:3000";
-        res.redirect(`${webUrl}/auth/success?userId=session&name=${encodeURIComponent(req.session.googleUser?.name || "Fabiana")}`);
+        res.redirect(`${webUrl}/?authenticated=1`);
       }
     });
   } catch (error) {
@@ -100,47 +97,24 @@ router.get("/google/callback", async (req, res) => {
   }
 });
 
-router.post("/token", async (req, res) => {
-  const { accessToken } = req.body;
-  if (!accessToken || typeof accessToken !== "string") {
-    res.status(400).json({ error: "accessToken é obrigatório" });
+router.post("/mobile/exchange", (req, res) => {
+  const code = req.body?.code;
+  if (typeof code !== "string" || code.length < 32 || code.length > 256) {
+    res.status(400).json({ error: "Código de login inválido" });
     return;
   }
-
-  try {
-    const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!userRes.ok) {
-      res.status(401).json({ error: "Token inválido" });
-      return;
-    }
-    const userInfo = await userRes.json();
-
-    req.session.googleTokens = { access_token: accessToken };
-    req.session.googleUser = {
-      id: userInfo.sub || "google-user",
-      name: userInfo.name || "Usuário",
-      email: userInfo.email || undefined,
-    };
-
-    req.session.save((err) => {
-      if (err) {
-        res.status(500).json({ error: "Falha ao salvar sessão" });
-        return;
-      }
-      res.json({
-        authenticated: true,
-        user: req.session.googleUser,
-        sessionId: req.sessionID,
-      });
-    });
-  } catch {
-    res.status(500).json({ error: "Erro ao validar token" });
+  const login = consumeMobileLogin(code);
+  if (!login) {
+    res.status(401).json({ error: "Código expirado ou já utilizado" });
+    return;
   }
+  res.json({
+    token: signSessionId(login.sessionId, process.env.SESSION_SECRET!),
+    user: login.user,
+  });
 });
 
-router.get("/status/:userId?", (req, res) => {
+router.get("/status", (req, res) => {
   res.json({ authenticated: Boolean(req.session.googleTokens), user: req.session.googleUser ?? null });
 });
 

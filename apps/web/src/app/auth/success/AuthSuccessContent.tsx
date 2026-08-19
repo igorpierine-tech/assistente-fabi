@@ -1,21 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 
 export default function AuthSuccessContent() {
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const userId = searchParams.get("userId");
-    const name = searchParams.get("name");
-
-    if (userId) {
-      localStorage.setItem("fabi_userId", userId);
-      if (name) localStorage.setItem("fabi_userName", name);
-      window.location.href = `/?userId=${userId}&name=${encodeURIComponent(name || "")}`;
-    }
-  }, [searchParams]);
+    window.location.replace("/?authenticated=1");
+  }, []);
 
   return (
     <div style={{

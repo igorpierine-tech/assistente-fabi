@@ -6,8 +6,10 @@ import { authRouter } from "./routes/auth";
 import { chatRouter } from "./routes/chat";
 import { clientsRouter } from "./routes/clients";
 import { appointmentsRouter } from "./routes/appointments";
+import { adminRouter } from "./routes/admin";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
 import { getDb } from "./services/database";
+import { isValidSignedSession } from "./services/mobile-auth";
 import "./session-types";
 
 const app = express();
@@ -41,6 +43,16 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: "10mb" }));
+app.use((req, _res, next) => {
+  const authorization = req.get("authorization");
+  if (!req.headers.cookie && authorization?.startsWith("Bearer ")) {
+    const token = authorization.slice("Bearer ".length).trim();
+    if (isValidSignedSession(token, sessionSecret)) {
+      req.headers.cookie = `fabi.sid=${encodeURIComponent(`s:${token}`)}`;
+    }
+  }
+  next();
+});
 app.use(session({
   name: "fabi.sid",
   store: new EncryptedSessionStore(
@@ -66,6 +78,7 @@ app.use("/auth", authRouter);
 app.use("/chat", chatRouter);
 app.use("/clients", clientsRouter);
 app.use("/appointments", appointmentsRouter);
+app.use("/admin", adminRouter);
 
 getDb();
 

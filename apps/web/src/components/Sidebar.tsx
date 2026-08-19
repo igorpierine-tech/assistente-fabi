@@ -10,6 +10,7 @@ interface SidebarProps {
   userName: string;
   clientCount: number;
   isDemo?: boolean;
+  onLogout?: () => void;
 }
 
 const BRAND_NAME = "Raízes e Riquezas";
@@ -75,7 +76,7 @@ function NavIcon({ name }: { name: string }) {
   }
 }
 
-export function Sidebar({ activeView, onChangeView, userName, clientCount, isDemo }: SidebarProps) {
+export function Sidebar({ activeView, onChangeView, userName, clientCount, isDemo, onLogout }: SidebarProps) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
@@ -106,6 +107,15 @@ export function Sidebar({ activeView, onChangeView, userName, clientCount, isDem
         ))}
       </nav>
 
+      {onLogout && (
+        <button className={styles.logoutBtn} onClick={onLogout} type="button">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M13 4h3a1 1 0 011 1v10a1 1 0 01-1 1h-3" />
+            <path d="M9 14l-4-4 4-4M5 10h10" />
+          </svg>
+          {isDemo ? "Sair do modo demo" : "Sair"}
+        </button>
+      )}
     </aside>
   );
 }
