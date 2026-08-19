@@ -72,6 +72,78 @@ interface AppointmentRow {
   status: string;
 }
 
+interface ClientRow {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DashboardClient {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  origin?: string;
+  sessions?: number;
+  lastDate?: string;
+  isNew?: boolean;
+}
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  return d
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+    .replace(".", "");
+}
+
+function buildDashboardClients(
+  rows: ClientRow[],
+  appointments: AppointmentRow[]
+): DashboardClient[] {
+  const now = Date.now();
+  const NEW_MS = 30 * 24 * 60 * 60 * 1000;
+
+  const statsByClient = new Map<
+    string,
+    { count: number; lastDate: string | null }
+  >();
+  for (const appt of appointments) {
+    const key = appt.client_id || (appt.client_name || "").toLowerCase();
+    if (!key) continue;
+    const prev = statsByClient.get(key) || { count: 0, lastDate: null };
+    prev.count += 1;
+    if (!prev.lastDate || appt.start_time > prev.lastDate) {
+      prev.lastDate = appt.start_time;
+    }
+    statsByClient.set(key, prev);
+  }
+
+  return rows.map((row) => {
+    const key = row.id;
+    const nameKey = row.name.toLowerCase();
+    const stats =
+      statsByClient.get(key) || statsByClient.get(nameKey) || { count: 0, lastDate: null };
+    const createdAt = row.created_at ? Date.parse(row.created_at) : NaN;
+    const isNew =
+      Number.isFinite(createdAt) && now - createdAt < NEW_MS && stats.count === 0;
+    return {
+      id: row.id,
+      name: row.name,
+      phone: row.phone,
+      email: row.email,
+      notes: row.notes,
+      sessions: stats.count,
+      lastDate: stats.lastDate ? formatShortDate(stats.lastDate) : "—",
+      isNew,
+    };
+  });
+}
+
 function appointmentToEvent(row: AppointmentRow): CalendarEvent {
   return {
     id: row.id,
@@ -98,6 +170,9 @@ export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [newEventDate, setNewEventDate] = useState("");
+  const [clients, setClients] = useState<DashboardClient[]>([]);
+  const [appointmentRows, setAppointmentRows] = useState<AppointmentRow[]>([]);
+  const [clientRows, setClientRows] = useState<ClientRow[]>([]);
 
   const fetchAppointments = useCallback(async () => {
     try {
@@ -105,6 +180,19 @@ export default function Home() {
       if (res.ok) {
         const rows: AppointmentRow[] = await res.json();
         setEvents(rows.map(appointmentToEvent));
+        setAppointmentRows(rows);
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  const fetchClients = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/clients`, { credentials: "include" });
+      if (res.ok) {
+        const rows: ClientRow[] = await res.json();
+        setClientRows(rows);
       }
     } catch {
       // silently fail
@@ -112,10 +200,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    setClients(buildDashboardClients(clientRows, appointmentRows));
+  }, [clientRows, appointmentRows]);
+
+  useEffect(() => {
     if (isAuthenticated && !isDemo) {
       fetchAppointments();
+      fetchClients();
+    } else if (isDemo) {
+      setClientRows([]);
+      setAppointmentRows([]);
     }
-  }, [isAuthenticated, isDemo, fetchAppointments]);
+  }, [isAuthenticated, isDemo, fetchAppointments, fetchClients]);
 
   useEffect(() => {
     if (!isAuthenticated || isDemo) {
@@ -160,6 +256,7 @@ export default function Home() {
         setUserId(data.user.id);
         setUserName(data.user.name || "");
         fetchAppointments();
+        fetchClients();
       }
     } catch {
       setIsAuthenticated(false);
@@ -190,6 +287,8 @@ export default function Home() {
     setIsDemo(false);
     setPendingBookingCount(0);
     setActiveView("inicio");
+    setClientRows([]);
+    setAppointmentRows([]);
   }
 
   function handleEventClick(event: CalendarEvent) {
@@ -239,7 +338,7 @@ export default function Home() {
           <Dashboard
             userName={userName}
             events={events}
-            clients={[]}
+            clients={clients}
             onNavigate={(v) => setActiveView(v as View)}
           />
         );
@@ -300,7 +399,7 @@ export default function Home() {
         activeView={activeView}
         onChangeView={setActiveView}
         userName={userName || "Fabiana"}
-        clientCount={42}
+        clientCount={clients.length}
         pendingBookingCount={pendingBookingCount}
         isDemo={isDemo}
         onLogout={handleLogout}

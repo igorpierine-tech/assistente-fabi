@@ -49,14 +49,6 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-const DEMO_CLIENTS: Client[] = [
-  { id: "1", name: "Marina Silveira", phone: "(65) 99111-2233", email: "marina@email.com", notes: "Constelação", origin: "Instagram", sessions: 6, lastDate: "02 ago", isNew: false },
-  { id: "2", name: "Ricardo Almeida", phone: "(65) 99222-3344", email: "ricardo@email.com", notes: "Consultoria", origin: "WhatsApp", sessions: 3, lastDate: "08 ago", isNew: false },
-  { id: "3", name: "Luiza Prado", phone: "(65) 99333-4455", email: "luiza@email.com", notes: null, origin: "Indicação · Marina", sessions: 0, lastDate: "—", isNew: true },
-  { id: "4", name: "Camila Nunes", phone: "(65) 99444-5566", email: "camila@email.com", notes: "Constelação", origin: "Site", sessions: 12, lastDate: "28 jul", isNew: false },
-  { id: "5", name: "João Ferraz", phone: "(65) 99555-6677", email: "joao@email.com", notes: "Consultoria", origin: "WhatsApp", sessions: 2, lastDate: "30 jul", isNew: false },
-];
-
 const BORDER_COLORS: Record<string, string> = {
   constelacao: "#b8873a",
   consultoria_financeira: "#d9b268",
@@ -95,13 +87,16 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
     });
   }, [events]);
 
-  const displayClients = clients.length > 0 ? clients : DEMO_CLIENTS;
-
   const filteredClients = useMemo(() => {
-    if (filter === "novos") return displayClients.filter((c) => c.isNew);
-    if (filter === "ativos") return displayClients.filter((c) => (c.sessions || 0) > 0);
-    return displayClients;
-  }, [displayClients, filter]);
+    if (filter === "novos") return clients.filter((c) => c.isNew);
+    if (filter === "ativos") return clients.filter((c) => (c.sessions || 0) > 0);
+    return clients;
+  }, [clients, filter]);
+
+  const newClientsThisMonth = useMemo(
+    () => clients.filter((c) => c.isNew).length,
+    [clients]
+  );
 
   const freeSlot = useMemo(() => {
     if (todayEvents.length === 0) return null;
@@ -118,7 +113,7 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
     return null;
   }, [todayEvents]);
 
-  const newClient = displayClients.find((c) => c.isNew);
+  const newClient = clients.find((c) => c.isNew);
 
   function getSubtitle(e: CalendarEvent) {
     const typeMap: Record<string, string> = {
@@ -162,17 +157,17 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
         <div className={styles.statCard}>
           <div className={styles.statLabel}>SEMANA</div>
           <div className={styles.statValue}>{weekEvents.length}</div>
-          <div className={styles.statSub}>sessões · +3 vs semana passada</div>
+          <div className={styles.statSub}>sessões</div>
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>NOVOS CLIENTES</div>
-          <div className={styles.statValue}>{displayClients.filter((c) => c.isNew).length || 7}</div>
+          <div className={styles.statValue}>{newClientsThisMonth}</div>
           <div className={styles.statSub}>este mês</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>A RECEBER</div>
-          <div className={`${styles.statValue} ${styles.statValueGold}`}>R$ 3,2k</div>
-          <div className={styles.statSub}>próximos 7 dias</div>
+          <div className={styles.statLabel}>TOTAL DE CLIENTES</div>
+          <div className={styles.statValue}>{clients.length}</div>
+          <div className={styles.statSub}>cadastrados</div>
         </div>
       </div>
 
@@ -203,23 +198,34 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
             <span />
           </div>
 
-          {filteredClients.slice(0, 5).map((client) => (
-            <div key={client.id} className={styles.tableRow} onClick={() => onNavigate("clientes")}>
-              <div className={styles.clientCell}>
-                <div className={styles.clientAvatar}>
-                  <span className={styles.clientInitials}>{getInitials(client.name)}</span>
-                </div>
-                <span className={styles.clientName}>
-                  {client.name}
-                  {client.isNew && <span className={styles.newBadge}>NOVA</span>}
-                </span>
-              </div>
-              <span className={styles.cellText}>{client.origin || "—"}</span>
-              <span className={`${styles.cellText} ${styles.cellCenter}`}>{client.sessions ?? 0}</span>
-              <span className={styles.cellText}>{client.lastDate || "—"}</span>
-              <span className={styles.chevron}>›</span>
+          {filteredClients.length === 0 ? (
+            <div
+              className={styles.cellText}
+              style={{ padding: "24px 0", textAlign: "center" }}
+            >
+              {clients.length === 0
+                ? "Nenhum cliente cadastrado ainda."
+                : "Nenhum cliente neste filtro."}
             </div>
-          ))}
+          ) : (
+            filteredClients.slice(0, 5).map((client) => (
+              <div key={client.id} className={styles.tableRow} onClick={() => onNavigate("clientes")}>
+                <div className={styles.clientCell}>
+                  <div className={styles.clientAvatar}>
+                    <span className={styles.clientInitials}>{getInitials(client.name)}</span>
+                  </div>
+                  <span className={styles.clientName}>
+                    {client.name}
+                    {client.isNew && <span className={styles.newBadge}>NOVA</span>}
+                  </span>
+                </div>
+                <span className={styles.cellText}>{client.origin || "—"}</span>
+                <span className={`${styles.cellText} ${styles.cellCenter}`}>{client.sessions ?? 0}</span>
+                <span className={styles.cellText}>{client.lastDate || "—"}</span>
+                <span className={styles.chevron}>›</span>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Right column */}
