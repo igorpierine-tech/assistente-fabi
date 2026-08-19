@@ -62,7 +62,7 @@ function endTime(h: number, m: number, dur: number) {
 }
 
 export default function AssistenteScreen() {
-  const [tab, setTab] = useState<"dia" | "chat">("dia");
+  const [tab, setTab] = useState<"dia" | "chat">("chat");
   const [messages, setMessages] = useState<Message[]>([
     { id: "welcome", role: "assistant", content: "Olá, Fabi! Sou sua assistente de agenda. Toque no microfone para falar ou digite sua mensagem.", timestamp: new Date() },
   ]);
@@ -140,7 +140,8 @@ export default function AssistenteScreen() {
   const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <SafeAreaView style={s.container} edges={["bottom"]}>
+    <SafeAreaView style={[s.container, tab === "chat" && s.containerDark]} edges={["top", "bottom"]}>
+      {tab === "chat" && <View style={s.aiHeader}><View style={s.online} /><View style={{ flex: 1 }}><Text style={s.aiHeaderTitle}>Assistente Raízes</Text><Text style={s.aiHeaderSub}>Sempre disponível · lê sua agenda</Text></View><Text style={s.aiHeaderMore}>•••</Text></View>}
       {/* Sub-tabs */}
       <View style={s.subTabs}>
         <TouchableOpacity style={[s.subTab, tab === "dia" && s.subTabActive]} onPress={() => setTab("dia")}>
@@ -347,6 +348,12 @@ export default function AssistenteScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
+  containerDark: { backgroundColor: "#12160F" },
+  aiHeader: { flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(217,178,104,.12)" },
+  online: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#7DB26E" },
+  aiHeaderTitle: { color: "#F4EDE0", fontSize: 16, fontWeight: "700" },
+  aiHeaderSub: { color: "#8A7F6A", fontSize: 11, marginTop: 2 },
+  aiHeaderMore: { color: "#D9B268", letterSpacing: 2 },
   subTabs: { flexDirection: "row", backgroundColor: C.surface, paddingHorizontal: 16, paddingVertical: 6, gap: 4, borderBottomWidth: 1, borderBottomColor: C.border },
   subTab: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
   subTabActive: { backgroundColor: C.bg },
@@ -374,8 +381,8 @@ const s = StyleSheet.create({
   busyTag: { marginLeft: "auto", backgroundColor: "#FFF3E0", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
   busyText: { fontSize: 11, fontWeight: "600", color: "#E65100" },
 
-  demoBanner: { backgroundColor: "#FFF8E1", paddingVertical: 8, paddingHorizontal: 16 },
-  demoText: { fontSize: 12, color: "#F57F17", textAlign: "center" },
+  demoBanner: { backgroundColor: "rgba(217,178,104,.1)", paddingVertical: 8, paddingHorizontal: 16 },
+  demoText: { fontSize: 12, color: "#D9B268", textAlign: "center" },
 
   messagesList: { padding: 16, gap: 8 },
   msgRow: { flexDirection: "row", marginBottom: 6 },
@@ -384,8 +391,8 @@ const s = StyleSheet.create({
   avatar: { width: 28, height: 28, marginRight: 8, marginTop: 4 },
   bubble: { maxWidth: "78%", padding: 12, borderRadius: 16 },
   bubbleUser: { backgroundColor: C.primary, borderBottomRightRadius: 4 },
-  bubbleAssistant: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderBottomLeftRadius: 4 },
-  msgText: { fontSize: 14, lineHeight: 21, color: C.text },
+  bubbleAssistant: { backgroundColor: "rgba(217,178,104,.1)", borderWidth: 1, borderColor: "rgba(217,178,104,.18)", borderBottomLeftRadius: 4 },
+  msgText: { fontSize: 14, lineHeight: 21, color: "#F4EDE0" },
   msgTextUser: { color: C.textLight },
   msgTime: { fontSize: 10, color: C.textMuted, textAlign: "right", marginTop: 4 },
   msgTimeUser: { color: "rgba(245,240,232,0.5)" },
@@ -393,12 +400,12 @@ const s = StyleSheet.create({
   loadingBar: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 6 },
   loadingText: { fontSize: 12, color: C.textMuted },
 
-  inputArea: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, margin: 12, backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border },
-  micBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" },
+  inputArea: { flexDirection: "row", alignItems: "center", gap: 8, padding: 8, margin: 12, backgroundColor: "rgba(217,178,104,.1)", borderRadius: 24, borderWidth: 1, borderColor: "rgba(217,178,104,.2)" },
+  micBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(217,178,104,.14)", justifyContent: "center", alignItems: "center" },
   micBtnRec: { backgroundColor: C.error },
   micIcon: { fontSize: 20 },
-  input: { flex: 1, fontSize: 14, color: C.text, paddingVertical: 6 },
-  sendBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.secondary, justifyContent: "center", alignItems: "center" },
+  input: { flex: 1, fontSize: 14, color: "#F4EDE0", paddingVertical: 6 },
+  sendBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#B8873A", justifyContent: "center", alignItems: "center" },
   sendBtnOff: { opacity: 0.3 },
   sendIcon: { fontSize: 16, color: "#fff" },
 

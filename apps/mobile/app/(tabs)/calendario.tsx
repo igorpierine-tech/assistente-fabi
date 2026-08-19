@@ -4,8 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { authenticatedFetch, hasSession } from "../../services/auth";
 
 const C = {
-  primary: "#5E4B37", secondary: "#C4A265", bg: "#FBF8F3", surface: "#FFFFFF",
-  text: "#2C2418", textLight: "#F5F0E8", textMuted: "#8B8078", border: "#E8E0D4",
+  primary: "#1A2E18", secondary: "#B8873A", bg: "#FDFAF3", surface: "#FFFFFF",
+  text: "#12160F", textLight: "#F4EDE0", textMuted: "#6B6152", border: "rgba(26,46,24,.09)",
 };
 
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {

@@ -1,10 +1,9 @@
 import { Tabs } from "expo-router";
-import { View, Image, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
-import { router } from "expo-router";
-import { clearSession } from "../../services/auth";
+import { View, StyleSheet, Text } from "react-native";
 
-function TabIcon({ name, focused }: { name: "chat" | "calendar" | "booking"; focused: boolean }) {
-  const color = focused ? "#5E4B37" : "#8B8078";
+function TabIcon({ name, focused }: { name: "home" | "chat" | "calendar" | "booking" | "clients"; focused: boolean }) {
+  const color = focused ? "#1A2E18" : "#8A7F6A";
+  if (name === "home" || name === "clients") return <View style={[ts.icon, focused && ts.iconActive]}><Text style={{ color, fontSize: 20 }}>{name === "home" ? "⌂" : "♙"}</Text></View>;
   if (name === "chat") {
     return (
       <View style={[ts.icon, focused && ts.iconActive]}>
@@ -34,37 +33,22 @@ function TabIcon({ name, focused }: { name: "chat" | "calendar" | "booking"; foc
 }
 
 export default function TabsLayout() {
-  function logout() {
-    Alert.alert("Sair", "Deseja encerrar sua sessão?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: async () => { await clearSession(); router.replace("/"); } },
-    ]);
-  }
-
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: "#FFFFFF", elevation: 2, shadowOpacity: 0.06 },
-        headerTitleStyle: { fontFamily: "serif", fontSize: 18, fontWeight: "600", color: "#5E4B37" },
-        headerLeft: () => (
-          <Image source={require("../../assets/icon.png")} style={{ width: 28, height: 28, marginLeft: 16 }} resizeMode="contain" />
-        ),
-        headerRight: () => (
-          <TouchableOpacity onPress={logout} accessibilityRole="button" accessibilityLabel="Sair da conta" style={{ marginRight: 16, padding: 6 }}>
-            <Text style={{ color: "#5E4B37", fontSize: 12, fontWeight: "600" }}>Sair</Text>
-          </TouchableOpacity>
-        ),
-        tabBarStyle: { backgroundColor: "#FFFFFF", borderTopColor: "#E8E0D4", height: 60, paddingBottom: 8 },
-        tabBarActiveTintColor: "#5E4B37",
-        tabBarInactiveTintColor: "#8B8078",
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "500" },
+        headerShown: false,
+        tabBarStyle: { backgroundColor: "#F4EDE0", borderTopColor: "rgba(26,46,24,.08)", height: 68, paddingBottom: 9, paddingTop: 5 },
+        tabBarActiveTintColor: "#1A2E18",
+        tabBarInactiveTintColor: "#8A7F6A",
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
+      <Tabs.Screen name="inicio" options={{ title: "Início", tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} /> }} />
       <Tabs.Screen
         name="assistente"
         options={{
           title: "Assistente",
-          headerTitle: "Raízes e Riquezas",
+          tabBarLabel: "IA",
           tabBarIcon: ({ focused }) => <TabIcon name="chat" focused={focused} />,
         }}
       />
@@ -72,15 +56,15 @@ export default function TabsLayout() {
         name="calendario"
         options={{
           title: "Calendário",
-          headerTitle: "Raízes e Riquezas",
+          tabBarLabel: "Agenda",
           tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
         }}
       />
+      <Tabs.Screen name="clientes" options={{ title: "Clientes", tabBarIcon: ({ focused }) => <TabIcon name="clients" focused={focused} /> }} />
       <Tabs.Screen
         name="agendamentos"
         options={{
           title: "Pedidos",
-          headerTitle: "Agendamentos",
           tabBarIcon: ({ focused }) => <TabIcon name="booking" focused={focused} />,
         }}
       />

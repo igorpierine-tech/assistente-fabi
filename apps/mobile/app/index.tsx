@@ -33,7 +33,7 @@ export default function LoginScreen() {
         const code = url.searchParams.get("code");
         if (!code) throw new Error("Código de login ausente");
         await exchangeLoginCode(code);
-        router.replace("/(tabs)/assistente");
+        router.replace("/(tabs)/inicio");
       }
     } catch (error) {
       Alert.alert("Erro", "Não foi possível fazer login. Tente novamente.");
@@ -46,7 +46,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.card}>
-        <Image source={require("../assets/logo-full.png")} style={s.logo} resizeMode="contain" />
+        <Image source={require("../assets/logo-raizes-mobile.png")} style={s.logo} resizeMode="contain" />
         <Text style={s.title}>Raízes e Riquezas</Text>
         <Text style={s.tagline}>Desbloqueie suas Raízes, Cultive sua Riqueza.</Text>
         <Text style={s.subtitle}>Agenda, clientes e assistente inteligente</Text>
@@ -68,7 +68,7 @@ export default function LoginScreen() {
           <View style={s.line} />
         </View>
 
-        <TouchableOpacity style={s.demoBtn} onPress={() => router.replace("/(tabs)/assistente")}>
+        <TouchableOpacity style={s.demoBtn} onPress={() => router.replace("/(tabs)/inicio")}>
           <Text style={s.demoText}>Explorar modo demonstração</Text>
         </TouchableOpacity>
       </View>
@@ -79,7 +79,7 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg, padding: 24 },
   card: { backgroundColor: C.surface, borderRadius: 20, padding: 36, width: "100%", maxWidth: 400, alignItems: "center", elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16 },
-  logo: { width: 100, height: 140, marginBottom: 12 },
+  logo: { width: 245, height: 190, marginBottom: 4 },
   title: { fontFamily: "serif", fontSize: 24, fontWeight: "600", color: C.primary, marginBottom: 4 },
   tagline: { fontSize: 13, color: C.secondary, fontStyle: "italic", marginBottom: 4 },
   subtitle: { fontSize: 16, color: C.textMuted, fontWeight: "500", marginBottom: 16 },
