@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Assistente da Fabi — Raízes e Riquezas",
-  description: "Assistente pessoal de agenda da Fabiana",
+  title: "Raízes e Riquezas",
+  description: "Agenda, clientes e assistente inteligente da Raízes e Riquezas",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

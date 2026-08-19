@@ -38,7 +38,7 @@ export const APPOINTMENT_LABELS: Record<AppointmentType, string> = {
 
 export const BRAND = {
   name: "Raízes e Riquezas",
-  tagline: "Assistente da Fabi",
+  tagline: "Agenda, clientes e assistente inteligente",
   colors: {
     primary: "#5E4B37",       // Marrom raiz — cor principal
     primaryLight: "#8B7355",  // Marrom claro

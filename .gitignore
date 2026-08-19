@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 .next/
 dist/
 .turbo/
@@ -8,6 +9,7 @@ dist/
 data/
 *.tsbuildinfo
 .expo/
+.expo-build/
 android/
 ios/
 package-lock.json

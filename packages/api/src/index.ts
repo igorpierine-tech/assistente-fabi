@@ -90,7 +90,7 @@ app.use(rateLimit({ prefix: "api", windowMs: 15 * 60_000, max: 300 }));
 app.use(auditRequests);
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "Assistente da Fabi API" });
+  res.json({ status: "ok", service: "Raízes e Riquezas API" });
 });
 
 app.use("/auth", authRouter);
@@ -131,5 +131,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 getDb();
 
 app.listen(port, () => {
-  console.log(`Assistente da Fabi API rodando na porta ${port}`);
+  console.log(`Raízes e Riquezas API rodando na porta ${port}`);
 });

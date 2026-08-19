@@ -1,4 +1,4 @@
-# Guia de Configuração — Assistente da Fabi
+# Guia de Configuração — Raízes e Riquezas
 
 ## Pré-requisitos
 
@@ -145,6 +145,52 @@ npm run dev:mobile
 ```
 
 O site abrirá em `http://localhost:3000` e a API em `http://localhost:3001`.
+
+### Ambientes do aplicativo Expo
+
+O aplicativo lê a API exclusivamente de `EXPO_PUBLIC_API_URL`. Essa variável é
+pública e não deve conter tokens, senhas ou chaves privadas.
+
+- Desenvolvimento local: copie `apps/mobile/.env.example` para
+  `apps/mobile/.env.local` e ajuste a URL para o emulador ou para o IP local do
+  computador.
+- Builds EAS `development`, `preview` e `production`: a URL é definida em
+  `apps/mobile/eas.json`.
+- Homologação: altere somente o valor do perfil `preview` para a URL HTTPS do
+  ambiente de homologação.
+
+Em builds que não sejam de desenvolvimento, o app recusa URLs sem HTTPS. Depois
+de alterar uma variável `EXPO_PUBLIC_*`, gere um novo bundle/build, pois o valor é
+incorporado ao aplicativo.
+
+### Persistência em produção
+
+A API não inicia em produção sem `PERSISTENCE_DIR`. No Railway, crie um volume,
+monte-o em `/data` e configure:
+
+```env
+PERSISTENCE_DIR=/data
+AUDIT_RETENTION_DAYS=365
+PRIVACY_POLICY_VERSION=2026-08-18
+```
+
+O banco SQLite e o arquivo criptografado de sessões serão gravados nesse volume.
+Configure snapshots/backups do volume no provedor e teste periodicamente a
+restauração em um ambiente separado. Nunca monte dois processos da API escrevendo
+simultaneamente no mesmo arquivo SQLite; para escalar horizontalmente, migre a
+persistência para um banco gerenciado.
+
+### LGPD e auditoria
+
+- `POST /privacy/consent`: registra aceite explícito da versão vigente.
+- `GET /privacy/status`: informa a situação do consentimento.
+- `GET /privacy/export`: exporta os dados da conta autenticada em JSON.
+- `DELETE /privacy/account`: exige `{"confirmation":"EXCLUIR"}`, remove os dados
+  da conta e tenta revogar a autorização Google.
+
+A auditoria registra somente usuário, ação, tipo de rota, status e data; corpos de
+requisição, prontuários e mensagens não são copiados. O prazo padrão é 365 dias,
+ajustável por `AUDIT_RETENTION_DAYS` entre 30 e 3650 dias.
 
 ---
 

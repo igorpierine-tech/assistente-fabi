@@ -28,7 +28,7 @@ function pickToken(req: import("express").Request): string | undefined {
 // GET /admin — small HTML page for the admin to trigger reset from a browser
 router.get("/", (_req, res) => {
   res.type("html").send(`<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>Admin — Assistente da Fabi</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Admin — Raízes e Riquezas</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   body{font-family:system-ui,-apple-system,sans-serif;background:#12160f;color:#f4ede0;

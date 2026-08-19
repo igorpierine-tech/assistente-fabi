@@ -1,32 +1,32 @@
 {
   "cli": {
-    "version": ">= 12.0.0",
-    "appVersionSource": "local"
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://raizes-riquezas.up.railway.app"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
-    },
-    "apk": {
-      "android": {
-        "buildType": "apk"
       },
-      "node": "22.13.0",
-      "pnpm": "11.21.0",
       "env": {
-        "npm_config_node_linker": "hoisted"
+        "EXPO_PUBLIC_API_URL": "https://raizes-riquezas.up.railway.app"
       }
     },
     "production": {
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://raizes-riquezas.up.railway.app"
       }
     }
   },

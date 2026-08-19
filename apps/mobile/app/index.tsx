@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicat
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-
-const API_URL = "https://raizes-riquezas.up.railway.app";
+import { API_URL } from "../config/env";
+import { exchangeLoginCode } from "../services/auth";
 
 const C = {
   primary: "#5E4B37",
@@ -30,8 +30,9 @@ export default function LoginScreen() {
 
       if (result.type === "success" && result.url) {
         const url = new URL(result.url);
-        const name = url.searchParams.get("name") || "Fabiana";
-        console.log("Login OK:", name);
+        const code = url.searchParams.get("code");
+        if (!code) throw new Error("Código de login ausente");
+        await exchangeLoginCode(code);
         router.replace("/(tabs)/assistente");
       }
     } catch (error) {
@@ -48,7 +49,7 @@ export default function LoginScreen() {
         <Image source={require("../assets/logo-full.png")} style={s.logo} resizeMode="contain" />
         <Text style={s.title}>Raízes e Riquezas</Text>
         <Text style={s.tagline}>Desbloqueie suas Raízes, Cultive sua Riqueza.</Text>
-        <Text style={s.subtitle}>Assistente da Fabi</Text>
+        <Text style={s.subtitle}>Agenda, clientes e assistente inteligente</Text>
         <Text style={s.desc}>
           Gerencie sua agenda por voz ou texto. Consulte compromissos, agende atendimentos e organize sua semana.
         </Text>

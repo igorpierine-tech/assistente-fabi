@@ -5,6 +5,8 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "test": "pnpm --filter @assistente-fabi/api test",
+    "check": "pnpm test && pnpm lint && pnpm build",
     "start": "pnpm --filter @assistente-fabi/api start",
     "dev:web": "turbo dev --filter=web",
     "dev:api": "turbo dev --filter=api",
@@ -15,7 +17,7 @@
     "typescript": "^5.8.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0 <24.0.0"
   },
   "packageManager": "pnpm@11.21.0"
 }
