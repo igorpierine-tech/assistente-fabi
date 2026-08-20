@@ -8,9 +8,28 @@ import {
   getClientByName,
 } from "../services/database";
 import { GoogleCalendarService } from "../services/google-calendar";
+import { createReceivableFromAppointment } from "../services/receivables-db";
+import { listCatalogItems } from "../services/catalog-db";
 import "../session-types";
 import { requireUser } from "../middleware/auth";
 import { optionalId, optionalString, requiredIsoDate, requiredString, ValidationError } from "../services/validation";
+
+function findMatchingCatalogItem(userId: string, title: string) {
+  if (!title) return null;
+  const items = listCatalogItems(userId);
+  const normalized = title.toLowerCase();
+  // Try exact match on name
+  const exact = items.find((i) => i.name.toLowerCase() === normalized);
+  if (exact) return { id: exact.id, name: exact.name, price_cents: exact.price_cents };
+  // Try substring match (title contains item name, or vice versa)
+  const partial = items.find(
+    (i) =>
+      normalized.includes(i.name.toLowerCase()) ||
+      i.name.toLowerCase().includes(normalized)
+  );
+  if (partial) return { id: partial.id, name: partial.name, price_cents: partial.price_cents };
+  return null;
+}
 
 const router: ExpressRouter = Router();
 router.use(requireUser);
@@ -142,6 +161,30 @@ router.put("/:id", async (req, res) => {
     const updated = updateAppointment(userId, req.params.id, {
       title, type, clientId, clientName, startTime, endTime, notes, status,
     });
+
+    // Auto-create receivable when appointment transitions to "concluido"
+    if (
+      updated &&
+      status === "concluido" &&
+      existing.status !== "concluido"
+    ) {
+      try {
+        const matched = findMatchingCatalogItem(userId, updated.title);
+        createReceivableFromAppointment(
+          userId,
+          {
+            id: updated.id,
+            title: updated.title,
+            client_id: updated.client_id,
+            client_name: updated.client_name,
+            start_time: updated.start_time,
+          },
+          matched
+        );
+      } catch (err) {
+        console.warn("Falha ao criar contas a receber:", err);
+      }
+    }
 
     res.json(updated);
   } catch (error) {

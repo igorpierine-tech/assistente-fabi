@@ -11,6 +11,7 @@ import { LoginScreen } from "@/components/LoginScreen";
 import { ClientsPanel } from "@/components/ClientsPanel";
 import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 import { SettingsView } from "@/components/SettingsView";
+import { FinanceiroView } from "@/components/FinanceiroView";
 import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -318,9 +319,8 @@ export default function Home() {
         );
       case "financeiro":
         return (
-          <div style={{ padding: "40px 32px" }}>
-            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.8rem", color: "var(--primary)", marginBottom: 8 }}>Financeiro</h2>
-            <p style={{ color: "var(--text-muted)" }}>Em breve — controle de recebíveis e relatórios financeiros.</p>
+          <div className="main-calendar">
+            <FinanceiroView />
           </div>
         );
       case "configuracoes":

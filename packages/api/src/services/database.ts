@@ -138,6 +138,29 @@ function initTables(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_catalog_user ON catalog_items(user_id, sort_order);
 
+    CREATE TABLE IF NOT EXISTS receivables (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      appointment_id TEXT REFERENCES appointments(id) ON DELETE SET NULL,
+      catalog_item_id TEXT REFERENCES catalog_items(id) ON DELETE SET NULL,
+      client_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+      client_name TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL DEFAULT 0,
+      service_date TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      paid_at TEXT,
+      payment_method TEXT,
+      status TEXT NOT NULL DEFAULT 'pendente',
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_receivables_user_status ON receivables(user_id, status, due_date);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_receivables_appointment
+      ON receivables(appointment_id) WHERE appointment_id IS NOT NULL;
+
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT,
