@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:uuid",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:pdfkit --external:uuid",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test src/services/validation.test.ts src/services/mobile-auth.test.ts"
@@ -23,6 +23,7 @@
     "luxon": "^3.6.1",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.85.0",
+    "pdfkit": "^0.15.0",
     "tsx": "^4.19.0",
     "uuid": "^11.1.0"
   },
@@ -33,6 +34,7 @@
     "@types/express-session": "^1.18.1",
     "@types/luxon": "^3.4.2",
     "@types/multer": "^1.4.12",
+    "@types/pdfkit": "^0.13.4",
     "@types/uuid": "^10.0.0",
     "esbuild": "^0.28.2",
     "typescript": "^5.8.0"

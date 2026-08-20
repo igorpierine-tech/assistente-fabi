@@ -9,6 +9,7 @@ import { appointmentsRouter } from "./routes/appointments";
 import { adminRouter } from "./routes/admin";
 import { catalogRouter } from "./routes/catalog";
 import { receivablesRouter } from "./routes/receivables";
+import { salesRouter } from "./routes/sales";
 import { bookingRouter } from "./routes/booking";
 import { publicBookingRouter } from "./routes/public-booking";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
@@ -105,6 +106,7 @@ app.use("/booking", bookingRouter);
 app.use("/public/booking", publicBookingRouter);
 app.use("/catalog", catalogRouter);
 app.use("/receivables", receivablesRouter);
+app.use("/sales", salesRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });

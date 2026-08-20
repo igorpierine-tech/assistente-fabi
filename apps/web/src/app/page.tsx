@@ -12,6 +12,7 @@ import { ClientsPanel } from "@/components/ClientsPanel";
 import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 import { SettingsView } from "@/components/SettingsView";
 import { FinanceiroView } from "@/components/FinanceiroView";
+import { VendasView } from "@/components/VendasView";
 import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -315,6 +316,12 @@ export default function Home() {
         return (
           <div className="main-calendar">
             <BookingRequestsPanel />
+          </div>
+        );
+      case "vendas":
+        return (
+          <div className="main-calendar">
+            <VendasView />
           </div>
         );
       case "financeiro":

@@ -8,6 +8,7 @@ export type View =
   | "assistente"
   | "clientes"
   | "agendamentos"
+  | "vendas"
   | "financeiro"
   | "configuracoes";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "assistente", label: "Assistente IA", icon: "sparkle" },
   { id: "clientes", label: "Clientes", icon: "people" },
   { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
+  { id: "vendas", label: "Vendas", icon: "tag" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
 ];
@@ -83,6 +85,13 @@ function NavIcon({ name }: { name: string }) {
       return (
         <svg {...props} strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 11l4-4 4 3 3-3 5 4M2 11l3 3 4-3M14 11l3 3 3-3" />
+        </svg>
+      );
+    case "tag":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10 2H4a2 2 0 00-2 2v6l8 8 8-8-8-8z" />
+          <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
         </svg>
       );
     default:
