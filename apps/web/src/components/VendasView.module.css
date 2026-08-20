@@ -1,7 +1,8 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 28px 32px;
+  color: var(--text);
 }
 
 .header {
@@ -16,13 +17,13 @@
 .title {
   font-family: var(--font-heading);
   font-size: 1.8rem;
-  color: var(--primary, #d9b268);
+  color: var(--primary);
   margin: 0 0 4px;
   font-weight: 400;
 }
 
 .subtitle {
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   font-size: 0.875rem;
   margin: 0;
 }
@@ -31,66 +32,83 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.6rem 1.1rem;
-  background: var(--secondary, #d9b268);
-  color: #1a2e18;
+  padding: 10px 20px;
+  background: var(--primary);
+  color: var(--gold, #d9b268);
   border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
 }
 
-.addBtn:hover { filter: brightness(1.08); }
+.addBtn:hover {
+  background: var(--primary-light, #2f4a2b);
+}
 
 .tableWrap {
-  background: rgba(253, 250, 243, 0.03);
-  border: 1px solid rgba(217, 178, 104, 0.15);
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.15));
+  border-radius: 14px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(26, 46, 24, 0.04);
 }
 
-.table { width: 100%; border-collapse: collapse; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
 
 .table thead th {
   text-align: left;
-  padding: 12px 14px;
-  font-size: 11px;
+  padding: 14px 16px;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted, #8a7f6a);
-  border-bottom: 1px solid rgba(217, 178, 104, 0.15);
-  background: rgba(217, 178, 104, 0.04);
-  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border, rgba(184, 135, 58, 0.15));
+  background: rgba(184, 135, 58, 0.06);
 }
 
 .table tbody td {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(217, 178, 104, 0.08);
-  color: var(--text, #f4ede0);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border, rgba(184, 135, 58, 0.1));
+  color: var(--text);
   font-size: 0.88rem;
   vertical-align: middle;
 }
 
-.table tbody tr:last-child td { border-bottom: none; }
-.table tbody tr:hover { background: rgba(217, 178, 104, 0.03); }
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
 
-.clientCol { font-weight: 500; }
+.table tbody tr:hover {
+  background: rgba(184, 135, 58, 0.04);
+}
+
+.clientCol {
+  font-weight: 600;
+  color: var(--primary);
+}
+
 .subCol {
   font-size: 0.78rem;
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .amount {
   font-variant-numeric: tabular-nums;
-  color: var(--secondary, #d9b268);
-  font-weight: 500;
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .methodTag {
   font-size: 0.82rem;
-  color: var(--text, #f4ede0);
+  color: var(--text);
 }
 
 .actions {
@@ -101,60 +119,65 @@
 }
 
 .iconOnly {
-  padding: 5px 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(217, 178, 104, 0.25);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.3));
   background: transparent;
-  color: var(--secondary, #d9b268);
+  color: var(--secondary, #b8873a);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
   font-family: inherit;
   font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .iconOnly:hover {
-  background: rgba(217, 178, 104, 0.1);
-  border-color: var(--secondary, #d9b268);
+  background: rgba(184, 135, 58, 0.08);
+  border-color: var(--secondary, #b8873a);
 }
 
-.iconOnly:disabled { opacity: 0.5; cursor: wait; }
+.iconOnly:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
 
 .contractGenerated {
   background: rgba(107, 143, 94, 0.15);
-  border-color: rgba(107, 143, 94, 0.4);
-  color: #a4c496;
+  border-color: rgba(107, 143, 94, 0.5);
+  color: #4a7a3e;
 }
 
 .iconBtn {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(217, 178, 104, 0.25);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.3));
   background: transparent;
-  color: var(--text, #f4ede0);
-  font-size: 0.78rem;
+  color: var(--text);
+  font-size: 0.8rem;
   cursor: pointer;
   font-family: inherit;
+  font-weight: 500;
 }
 
 .iconBtn:hover {
-  background: rgba(217, 178, 104, 0.08);
-  border-color: var(--secondary, #d9b268);
+  background: rgba(184, 135, 58, 0.06);
+  border-color: var(--secondary, #b8873a);
 }
 
 .iconBtnDanger:hover {
-  background: rgba(192, 74, 42, 0.12);
+  background: rgba(192, 74, 42, 0.08);
   border-color: #c04a2a;
-  color: #ff8266;
+  color: #c04a2a;
 }
 
 .empty {
-  padding: 40px 16px;
+  padding: 48px 16px;
   text-align: center;
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -162,41 +185,48 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(26, 46, 24, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 200;
   padding: 20px;
+  backdrop-filter: blur(4px);
 }
 
 .modal {
-  background: #12160f;
-  border: 1px solid rgba(217, 178, 104, 0.2);
+  background: var(--surface, #fdfaf3);
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.2));
   border-radius: 16px;
   padding: 28px;
   max-width: 560px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  color: var(--text);
+  box-shadow: 0 20px 40px rgba(26, 46, 24, 0.15);
 }
 
 .modalTitle {
   font-family: var(--font-heading);
-  font-size: 1.4rem;
-  color: var(--primary, #d9b268);
-  margin: 0 0 20px;
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin: 0 0 22px;
   font-weight: 400;
 }
 
-.formGrid { display: grid; gap: 14px; }
+.formGrid {
+  display: grid;
+  gap: 16px;
+}
 
 .field label {
   display: block;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   margin-bottom: 6px;
 }
 
@@ -206,21 +236,32 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(217, 178, 104, 0.2);
-  background: #1a2118;
-  color: var(--text, #f4ede0);
-  font-size: 0.9rem;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.25));
+  background: #ffffff;
+  color: var(--text);
+  font-size: 0.92rem;
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
-  color-scheme: dark;
+  transition: border-color 0.15s;
 }
 
 .field input:focus,
 .field textarea:focus,
-.field select:focus { border-color: var(--secondary, #d9b268); }
+.field select:focus {
+  border-color: var(--secondary, #b8873a);
+}
 
-.field textarea { min-height: 60px; resize: vertical; }
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
 
 .fieldRow {
   display: grid;
@@ -237,65 +278,71 @@
 .modeToggle {
   display: flex;
   gap: 4px;
-  background: rgba(217, 178, 104, 0.08);
+  background: rgba(184, 135, 58, 0.08);
   padding: 4px;
-  border-radius: 8px;
-  margin-bottom: 8px;
+  border-radius: 10px;
 }
 
 .modeBtn {
   flex: 1;
-  padding: 8px 12px;
+  padding: 9px 12px;
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: var(--text-muted, #8a7f6a);
-  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
   font-weight: 500;
+  transition: background 0.15s, color 0.15s;
 }
 
 .modeBtnActive {
-  background: var(--secondary, #d9b268);
-  color: #1a2e18;
+  background: var(--primary);
+  color: var(--gold, #d9b268);
 }
 
 .newClientBlock {
-  padding: 12px;
-  background: rgba(217, 178, 104, 0.04);
-  border-radius: 8px;
-  border: 1px dashed rgba(217, 178, 104, 0.2);
+  padding: 14px;
+  background: rgba(184, 135, 58, 0.05);
+  border-radius: 10px;
+  border: 1px dashed rgba(184, 135, 58, 0.3);
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .modalActions {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .btnSecondary {
-  padding: 10px 18px;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
   background: transparent;
-  color: var(--text, #f4ede0);
-  border: 1px solid rgba(217, 178, 104, 0.25);
+  color: var(--text);
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.3));
   font-size: 0.9rem;
   cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
 }
 
 .btnPrimary {
-  padding: 10px 22px;
-  border-radius: 8px;
-  background: var(--secondary, #d9b268);
-  color: #1a2e18;
+  padding: 10px 24px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--gold, #d9b268);
   border: none;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  font-family: inherit;
 }
 
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
