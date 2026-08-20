@@ -10,7 +10,7 @@ import { AppointmentCard } from "@/components/AppointmentCard";
 import { LoginScreen } from "@/components/LoginScreen";
 import { ClientsPanel } from "@/components/ClientsPanel";
 import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
-import { CatalogPanel } from "@/components/CatalogPanel";
+import { SettingsView } from "@/components/SettingsView";
 import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -326,7 +326,7 @@ export default function Home() {
       case "configuracoes":
         return (
           <div className="main-calendar">
-            <CatalogPanel />
+            <SettingsView />
           </div>
         );
     }

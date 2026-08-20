@@ -1,0 +1,110 @@
+.hint {
+  color: var(--text-muted, #8a7f6a);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.daysList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dayRow {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 14px;
+  background: rgba(217, 178, 104, 0.04);
+  border: 1px solid rgba(217, 178, 104, 0.12);
+  border-radius: 10px;
+}
+
+.dayToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text, #f4ede0);
+  font-weight: 500;
+  padding-top: 6px;
+}
+
+.dayToggle input {
+  accent-color: var(--secondary, #d9b268);
+  width: 16px;
+  height: 16px;
+}
+
+.windows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.windowRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text, #f4ede0);
+  font-size: 0.9rem;
+}
+
+.windowRow input[type="time"] {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(217, 178, 104, 0.25);
+  background: #1a2118;
+  color: var(--text, #f4ede0);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  color-scheme: dark;
+}
+
+.windowRow input[type="time"]:focus {
+  border-color: var(--secondary, #d9b268);
+}
+
+.removeWin {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #8a7f6a);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 2px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.removeWin:hover {
+  background: rgba(192, 74, 42, 0.15);
+  color: #ff8266;
+}
+
+.addWin {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed rgba(217, 178, 104, 0.3);
+  color: var(--secondary, #d9b268);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.addWin:hover {
+  border-color: var(--secondary, #d9b268);
+  background: rgba(217, 178, 104, 0.06);
+}
+
+.closed {
+  color: var(--text-muted, #8a7f6a);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 6px 0;
+}

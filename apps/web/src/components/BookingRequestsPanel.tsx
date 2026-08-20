@@ -19,31 +19,12 @@ interface BookingRequest {
   created_at: string;
 }
 
-interface Settings {
-  slug: string;
-  title: string;
-  intro: string | null;
-  timezone: string;
-  min_notice_hours: number;
-  max_advance_days: number;
-  buffer_minutes: number;
-}
-
-interface SessionType {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  duration_minutes: number;
-  active: number;
-}
-
 interface PublicUrl {
   slug: string;
   url: string;
 }
 
-type Tab = "pending" | "confirmed" | "settings";
+type Tab = "pending" | "confirmed";
 
 function formatWhen(iso: string, tz: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -59,36 +40,27 @@ function formatWhen(iso: string, tz: string) {
 export function BookingRequestsPanel() {
   const [tab, setTab] = useState<Tab>("pending");
   const [requests, setRequests] = useState<BookingRequest[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [types, setTypes] = useState<SessionType[]>([]);
+  const [timezone, setTimezone] = useState<string>("America/Cuiaba");
   const [publicUrl, setPublicUrl] = useState<PublicUrl | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [newType, setNewType] = useState({
-    name: "",
-    description: "",
-    durationMinutes: 60,
-  });
-
-  const timezone = settings?.timezone || "America/Cuiaba";
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [reqRes, setRes, typRes, urlRes] = await Promise.all([
+      const [reqRes, setRes, urlRes] = await Promise.all([
         fetch(`${API_URL}/booking/requests`, { credentials: "include" }),
         fetch(`${API_URL}/booking/settings`, { credentials: "include" }),
-        fetch(`${API_URL}/booking/types`, { credentials: "include" }),
         fetch(`${API_URL}/booking/public-url`, { credentials: "include" }),
       ]);
-      if (!reqRes.ok || !setRes.ok || !typRes.ok || !urlRes.ok) {
+      if (!reqRes.ok || !setRes.ok || !urlRes.ok) {
         throw new Error("load");
       }
       setRequests(await reqRes.json());
-      setSettings(await setRes.json());
-      setTypes(await typRes.json());
+      const settings = await setRes.json();
+      setTimezone(settings.timezone || "America/Cuiaba");
       setPublicUrl(await urlRes.json());
       setError(null);
     } catch {
@@ -104,11 +76,9 @@ export function BookingRequestsPanel() {
 
   const filtered = useMemo(() => {
     if (tab === "pending") return requests.filter((r) => r.status === "pending");
-    if (tab === "confirmed")
-      return requests.filter(
-        (r) => r.status === "confirmed" || r.status === "rejected" || r.status === "canceled"
-      );
-    return [];
+    return requests.filter(
+      (r) => r.status === "confirmed" || r.status === "rejected" || r.status === "canceled"
+    );
   }, [requests, tab]);
 
   async function handleConfirm(id: string) {
@@ -148,57 +118,6 @@ export function BookingRequestsPanel() {
     } finally {
       setBusyId(null);
     }
-  }
-
-  async function saveSettings(patch: Partial<Settings>) {
-    const res = await fetch(`${API_URL}/booking/settings`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error || "Falha ao salvar");
-      return;
-    }
-    await fetchAll();
-  }
-
-  async function addType() {
-    if (!newType.name.trim()) return;
-    const res = await fetch(`${API_URL}/booking/types`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newType),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error || "Falha ao criar tipo");
-      return;
-    }
-    setNewType({ name: "", description: "", durationMinutes: 60 });
-    await fetchAll();
-  }
-
-  async function toggleType(t: SessionType) {
-    await fetch(`${API_URL}/booking/types/${t.id}`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !t.active }),
-    });
-    await fetchAll();
-  }
-
-  async function removeType(t: SessionType) {
-    if (!confirm(`Remover "${t.name}"?`)) return;
-    await fetch(`${API_URL}/booking/types/${t.id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    await fetchAll();
   }
 
   function copyLink() {
@@ -253,19 +172,12 @@ export function BookingRequestsPanel() {
         >
           Histórico
         </button>
-        <button
-          type="button"
-          onClick={() => setTab("settings")}
-          className={`${styles.tab} ${tab === "settings" ? styles.tabActive : ""}`}
-        >
-          Configurações
-        </button>
       </div>
 
       {loading && <div className={styles.loading}>Carregando…</div>}
       {error && <div className={styles.error}>{error}</div>}
 
-      {!loading && !error && tab !== "settings" && (
+      {!loading && !error && (
         <div className={styles.list}>
           {filtered.length === 0 && (
             <div className={styles.empty}>
@@ -332,19 +244,6 @@ export function BookingRequestsPanel() {
           ))}
         </div>
       )}
-
-      {!loading && !error && tab === "settings" && settings && (
-        <SettingsForm
-          settings={settings}
-          types={types}
-          newType={newType}
-          onNewTypeChange={setNewType}
-          onAddType={addType}
-          onToggleType={toggleType}
-          onRemoveType={removeType}
-          onSave={saveSettings}
-        />
-      )}
     </div>
   );
 }
@@ -358,190 +257,4 @@ function StatusPill({ status }: { status: BookingRequest["status"] }) {
   } as const;
   const info = map[status];
   return <span className={`${styles.pill} ${info.cls}`}>{info.label}</span>;
-}
-
-function SettingsForm({
-  settings,
-  types,
-  newType,
-  onNewTypeChange,
-  onAddType,
-  onToggleType,
-  onRemoveType,
-  onSave,
-}: {
-  settings: Settings;
-  types: SessionType[];
-  newType: { name: string; description: string; durationMinutes: number };
-  onNewTypeChange: (v: {
-    name: string;
-    description: string;
-    durationMinutes: number;
-  }) => void;
-  onAddType: () => void;
-  onToggleType: (t: SessionType) => void;
-  onRemoveType: (t: SessionType) => void;
-  onSave: (patch: Partial<Settings>) => void;
-}) {
-  const [local, setLocal] = useState<Settings>(settings);
-  useEffect(() => setLocal(settings), [settings]);
-
-  function submit() {
-    onSave({
-      slug: local.slug,
-      title: local.title,
-      intro: local.intro,
-      buffer_minutes: local.buffer_minutes,
-      max_advance_days: local.max_advance_days,
-      min_notice_hours: local.min_notice_hours,
-    });
-  }
-
-  return (
-    <div className={styles.settingsGrid}>
-      <div className={styles.settingsCard}>
-        <h2 className={styles.sectionTitle}>Página pública</h2>
-        <label className={styles.field}>
-          <span>Endereço (slug)</span>
-          <input
-            type="text"
-            value={local.slug}
-            onChange={(e) => setLocal({ ...local, slug: e.target.value })}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>Título</span>
-          <input
-            type="text"
-            value={local.title}
-            onChange={(e) => setLocal({ ...local, title: e.target.value })}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>Texto de boas-vindas</span>
-          <textarea
-            rows={3}
-            value={local.intro ?? ""}
-            onChange={(e) => setLocal({ ...local, intro: e.target.value })}
-          />
-        </label>
-        <div className={styles.row3}>
-          <label className={styles.field}>
-            <span>Antecedência mínima (h)</span>
-            <input
-              type="number"
-              min={0}
-              max={168}
-              value={local.min_notice_hours}
-              onChange={(e) =>
-                setLocal({ ...local, min_notice_hours: Number(e.target.value) })
-              }
-            />
-          </label>
-          <label className={styles.field}>
-            <span>Janela máxima (dias)</span>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={local.max_advance_days}
-              onChange={(e) =>
-                setLocal({ ...local, max_advance_days: Number(e.target.value) })
-              }
-            />
-          </label>
-          <label className={styles.field}>
-            <span>Intervalo entre sessões (min)</span>
-            <input
-              type="number"
-              min={0}
-              max={180}
-              value={local.buffer_minutes}
-              onChange={(e) =>
-                setLocal({ ...local, buffer_minutes: Number(e.target.value) })
-              }
-            />
-          </label>
-        </div>
-        <button type="button" className={styles.saveBtn} onClick={submit}>
-          Salvar
-        </button>
-      </div>
-
-      <div className={styles.settingsCard}>
-        <h2 className={styles.sectionTitle}>Tipos de sessão</h2>
-        {types.length === 0 && (
-          <div className={styles.empty}>
-            Nenhum tipo cadastrado ainda. Adicione ao lado para começar.
-          </div>
-        )}
-        <div className={styles.typeList}>
-          {types.map((t) => (
-            <div key={t.id} className={styles.typeRow}>
-              <div>
-                <div className={styles.typeName}>
-                  {t.name}
-                  {!t.active && (
-                    <span className={styles.typeInactive}>inativo</span>
-                  )}
-                </div>
-                <div className={styles.typeMeta}>
-                  {t.duration_minutes} min · /{t.slug}
-                </div>
-              </div>
-              <div className={styles.typeActions}>
-                <button type="button" onClick={() => onToggleType(t)}>
-                  {t.active ? "Desativar" : "Ativar"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.typeDelete}
-                  onClick={() => onRemoveType(t)}
-                >
-                  Remover
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className={styles.newType}>
-          <div className={styles.newTypeTitle}>Novo tipo</div>
-          <input
-            type="text"
-            placeholder="Nome (ex: Consultoria financeira)"
-            value={newType.name}
-            onChange={(e) =>
-              onNewTypeChange({ ...newType, name: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Descrição breve (opcional)"
-            value={newType.description}
-            onChange={(e) =>
-              onNewTypeChange({ ...newType, description: e.target.value })
-            }
-          />
-          <label className={styles.field}>
-            <span>Duração (min)</span>
-            <input
-              type="number"
-              min={15}
-              max={600}
-              value={newType.durationMinutes}
-              onChange={(e) =>
-                onNewTypeChange({
-                  ...newType,
-                  durationMinutes: Number(e.target.value),
-                })
-              }
-            />
-          </label>
-          <button type="button" className={styles.saveBtn} onClick={onAddType}>
-            Adicionar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
