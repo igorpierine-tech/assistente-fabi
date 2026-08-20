@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm --filter web... install --frozen-lockfile
 
 ARG NEXT_PUBLIC_API_URL=https://raizes-riquezas.up.railway.app
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
