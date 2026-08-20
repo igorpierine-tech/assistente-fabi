@@ -10,6 +10,7 @@ import { AppointmentCard } from "@/components/AppointmentCard";
 import { LoginScreen } from "@/components/LoginScreen";
 import { ClientsPanel } from "@/components/ClientsPanel";
 import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
+import { CatalogPanel } from "@/components/CatalogPanel";
 import type { CalendarEvent } from "@/components/CalendarView";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -324,9 +325,8 @@ export default function Home() {
         );
       case "configuracoes":
         return (
-          <div style={{ padding: "40px 32px" }}>
-            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.8rem", color: "var(--primary)", marginBottom: 8 }}>Configurações</h2>
-            <p style={{ color: "var(--text-muted)" }}>Em breve — preferências, integrações e conta.</p>
+          <div className="main-calendar">
+            <CatalogPanel />
           </div>
         );
     }

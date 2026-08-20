@@ -122,6 +122,22 @@ function initTables(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_booking_requests_user_status ON booking_requests(user_id, status, requested_start);
     CREATE INDEX IF NOT EXISTS idx_booking_types_user ON booking_session_types(user_id, active, sort_order);
 
+    CREATE TABLE IF NOT EXISTS catalog_items (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      kind TEXT NOT NULL DEFAULT 'servico',
+      price_cents INTEGER NOT NULL DEFAULT 0,
+      duration_minutes INTEGER,
+      active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_catalog_user ON catalog_items(user_id, sort_order);
+
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT,
