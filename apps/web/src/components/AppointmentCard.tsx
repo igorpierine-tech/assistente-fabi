@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "./AppointmentCard.module.css";
 import type { CalendarEvent } from "./CalendarView";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface AppointmentCardProps {
   event: CalendarEvent | null;
@@ -13,15 +15,53 @@ interface AppointmentCardProps {
   onDelete?: (eventId: string) => void;
 }
 
-const APPOINTMENT_TYPES = [
-  { value: "constelacao", label: "Constelação Familiar" },
-  { value: "consultoria_financeira", label: "Consultoria Financeira" },
-  { value: "planejamento", label: "Planejamento" },
+interface ClientRow {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+}
+
+interface CatalogItem {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: "produto" | "servico";
+  price_cents: number;
+  duration_minutes: number | null;
+  active: number;
+}
+
+// Non-catalog internal types (always available)
+const INTERNAL_TYPES = [
+  { value: "bloqueio_pessoal", label: "Bloqueio pessoal" },
   { value: "reuniao", label: "Reunião" },
-  { value: "bloqueio_pessoal", label: "Bloqueio Pessoal" },
+  { value: "planejamento", label: "Planejamento" },
   { value: "evento_curso", label: "Evento / Curso" },
   { value: "outro", label: "Outro" },
 ];
+
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function addMinutesIso(iso: string, minutes: number): string {
+  // iso is in `YYYY-MM-DDTHH:mm` format used by datetime-local inputs
+  const d = new Date(iso);
+  d.setMinutes(d.getMinutes() + minutes);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${da}T${h}:${mi}`;
+}
 
 const STATUS_OPTIONS: Array<{ value: CalendarEvent["status"]; label: string; color: string }> = [
   { value: "previsto", label: "Previsto", color: "#FFA726" },
@@ -38,8 +78,11 @@ function generateId() {
 export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, onDelete }: AppointmentCardProps) {
   const [activeTab, setActiveTab] = useState<"dados" | "prontuario" | "historico">("dados");
 
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+
   const [title, setTitle] = useState(event?.title || "");
-  const [type, setType] = useState(event?.type || "constelacao");
+  const [type, setType] = useState(event?.type || "");
   const [status, setStatus] = useState(event?.status || "previsto");
   const [clientName, setClientName] = useState(event?.clientName || "");
   const [clientPhone, setClientPhone] = useState(event?.clientPhone || "");
@@ -52,6 +95,73 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
   );
   const [notes, setNotes] = useState(event?.notes || "");
 
+  // Fetch clients and catalog on mount
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch(`${API_URL}/clients`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+      fetch(`${API_URL}/catalog`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : []))
+        .catch(() => []),
+    ]).then(([c, k]: [ClientRow[], CatalogItem[]]) => {
+      if (cancelled) return;
+      setClients(c);
+      const activeItems = k.filter((i) => i.active === 1);
+      setCatalogItems(activeItems);
+      // Default type: first catalog item if nothing set yet
+      if (!event?.type && activeItems.length > 0 && !type) {
+        setType(slugify(activeItems[0].name));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Map from type value → catalog item
+  const catalogByType = useMemo(() => {
+    const map = new Map<string, CatalogItem>();
+    for (const item of catalogItems) map.set(slugify(item.name), item);
+    return map;
+  }, [catalogItems]);
+
+  // Client-name → client match (case-insensitive exact)
+  function findClientByName(name: string): ClientRow | undefined {
+    const trimmed = name.trim().toLowerCase();
+    if (!trimmed) return undefined;
+    return clients.find((c) => c.name.toLowerCase() === trimmed);
+  }
+
+  function handleClientNameChange(name: string) {
+    setClientName(name);
+    const match = findClientByName(name);
+    if (match) {
+      setClientPhone(match.phone || "");
+      setClientEmail(match.email || "");
+    }
+  }
+
+  function handleTypeChange(newType: string) {
+    setType(newType);
+    // If catalog item selected, adjust end time based on its duration
+    const item = catalogByType.get(newType);
+    if (item && item.duration_minutes && startDate) {
+      setEndDate(addMinutesIso(startDate, item.duration_minutes));
+    }
+  }
+
+  function handleStartChange(newStart: string) {
+    setStartDate(newStart);
+    // If catalog item is selected, keep end synced with duration
+    const item = catalogByType.get(type);
+    if (item && item.duration_minutes && newStart) {
+      setEndDate(addMinutesIso(newStart, item.duration_minutes));
+    }
+  }
+
   const [queixaPrincipal, setQueixaPrincipal] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [encaminhamentos, setEncaminhamentos] = useState("");
@@ -60,7 +170,11 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
   function handleSave() {
     if (!startDate || !endDate) return;
 
-    const finalTitle = title || `${APPOINTMENT_TYPES.find((t) => t.value === type)?.label || "Atendimento"}${clientName ? ` — ${clientName}` : ""}`;
+    // Resolve a friendly label from catalog or internal fallback
+    const catalogItem = catalogByType.get(type);
+    const internal = INTERNAL_TYPES.find((t) => t.value === type);
+    const typeLabel = catalogItem?.name || internal?.label || "Atendimento";
+    const finalTitle = title || `${typeLabel}${clientName ? ` — ${clientName}` : ""}`;
 
     const prontuarioNotes = [
       notes,
@@ -160,11 +274,44 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
               {/* Tipo de atendimento */}
               <div className={styles.fieldFull}>
                 <label className={styles.label}>Tipo de Atendimento</label>
-                <select className={styles.select} value={type} onChange={(e) => setType(e.target.value)}>
-                  {APPOINTMENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
+                <select
+                  className={styles.select}
+                  value={type}
+                  onChange={(e) => handleTypeChange(e.target.value)}
+                >
+                  {catalogItems.length === 0 && (
+                    <option value="">— nenhum produto/serviço cadastrado —</option>
+                  )}
+                  {catalogItems.length > 0 && (
+                    <optgroup label="Produtos e serviços">
+                      {catalogItems.map((item) => {
+                        const value = slugify(item.name);
+                        const dur = item.duration_minutes
+                          ? ` · ${item.duration_minutes} min`
+                          : "";
+                        return (
+                          <option key={item.id} value={value}>
+                            {item.name}
+                            {dur}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  )}
+                  <optgroup label="Outros">
+                    {INTERNAL_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
+                {catalogItems.length === 0 && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 6 }}>
+                    Cadastre produtos e serviços em Configurações → Produtos e serviços
+                    para vê-los aqui.
+                  </p>
+                )}
               </div>
 
               {/* Título */}
@@ -185,7 +332,7 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
                   className={styles.input}
                   type="datetime-local"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => handleStartChange(e.target.value)}
                 />
               </div>
 
@@ -206,13 +353,36 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
 
               {/* Cliente */}
               <div className={styles.fieldFull}>
-                <label className={styles.label}>Nome completo</label>
+                <label className={styles.label}>
+                  Nome completo
+                  {clients.length > 0 && (
+                    <span
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--text-muted)",
+                        marginLeft: 8,
+                        textTransform: "none",
+                        letterSpacing: 0,
+                        fontWeight: 400,
+                      }}
+                    >
+                      · escolha um cadastrado ou digite um novo
+                    </span>
+                  )}
+                </label>
                 <input
                   className={styles.input}
                   value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
+                  onChange={(e) => handleClientNameChange(e.target.value)}
                   placeholder="Nome do cliente"
+                  list="appointment-clients-list"
+                  autoComplete="off"
                 />
+                <datalist id="appointment-clients-list">
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.name} />
+                  ))}
+                </datalist>
               </div>
 
               <div className={styles.fieldHalf}>
