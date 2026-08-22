@@ -7,14 +7,14 @@ import {
   deleteCatalogItem,
   type CatalogKind,
 } from "../services/catalog-db";
-import { requireUser } from "../middleware/auth";
+import { requireUser, sharedOwnerId } from "../middleware/auth";
 import "../session-types";
 
 const router: ExpressRouter = Router();
 router.use(requireUser);
 
 function userId(req: Request): string {
-  return req.session.googleUser!.id;
+  return sharedOwnerId(req);
 }
 
 function parseKind(value: unknown): CatalogKind {

@@ -9,7 +9,17 @@ import {
 } from "./database";
 
 export class SyncedCalendarService implements CalendarService {
-  constructor(private calendar: GoogleCalendarService, private userId: string) {}
+  /**
+   * @param calendar Google Calendar client for the current session
+   * @param userId Owner id for the appointment row (per-user, personal)
+   * @param clientOwnerId Owner id for CLIENT look-ups (workspace, may be shared).
+   *                     Falls back to `userId` when not provided.
+   */
+  constructor(
+    private calendar: GoogleCalendarService,
+    private userId: string,
+    private clientOwnerId: string = userId
+  ) {}
 
   async listToday() {
     return this.calendar.listToday();
@@ -32,7 +42,7 @@ export class SyncedCalendarService implements CalendarService {
     let clientEmail = params.clientEmail;
 
     if (params.clientName) {
-      const client = getClientByName(this.userId, params.clientName);
+      const client = getClientByName(this.clientOwnerId, params.clientName);
       if (client) {
         clientId = client.id;
         if (!clientEmail && client.email) {

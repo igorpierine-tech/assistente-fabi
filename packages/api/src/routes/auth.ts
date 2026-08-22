@@ -3,7 +3,12 @@ import { Router, type Router as ExpressRouter } from "express";
 import { google } from "googleapis";
 import { consumeMobileLogin, createMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
-import { isEmailAuthorized, getWorkspaceId } from "../services/auth-config";
+import {
+  isEmailAuthorized,
+  getWorkspaceId,
+  getPrimaryAppointmentOwnerEmail,
+} from "../services/auth-config";
+import { getDb } from "../services/database";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -81,15 +86,44 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     }
 
     const googleTokens = { ...req.session.googleTokens, ...tokens };
-    // If a shared workspace is configured, use it as the user_id so every
-    // authorized user sees the same data. Otherwise use Google's user id.
-    const workspaceId = getWorkspaceId();
+    // Always keep the person's real Google user id in the session.
+    // Shared vs per-user scoping is decided per-route via
+    // `sharedOwnerId` / `personalOwnerId` helpers.
     const googleUser = {
-      id: workspaceId || userInfo.data.id || "google-user",
+      id: userInfo.data.id || "google-user",
       name: userInfo.data.name || "Fabiana",
       email,
     };
     const isMobile = req.session.oauthPlatform === "mobile";
+
+    // One-time backfill: if this user is the configured "primary appointment
+    // owner", reassign any workspace-owned appointments/booking_requests to
+    // their personal id. Safe to run every login (idempotent no-op after
+    // the first time).
+    try {
+      const workspaceId = getWorkspaceId();
+      const primaryEmail = getPrimaryAppointmentOwnerEmail();
+      if (
+        workspaceId &&
+        primaryEmail &&
+        email &&
+        email.toLowerCase() === primaryEmail &&
+        googleUser.id !== workspaceId
+      ) {
+        const db = getDb();
+        db.prepare(
+          `UPDATE appointments SET user_id = ? WHERE user_id = ?`
+        ).run(googleUser.id, workspaceId);
+        db.prepare(
+          `UPDATE booking_requests SET user_id = ? WHERE user_id = ?`
+        ).run(googleUser.id, workspaceId);
+        db.prepare(
+          `UPDATE conversations SET user_id = ? WHERE user_id = ?`
+        ).run(googleUser.id, workspaceId);
+      }
+    } catch (err) {
+      console.warn("Appointment backfill skipped:", (err as Error).message);
+    }
 
     req.session.regenerate((regenerateError) => {
       if (regenerateError) {

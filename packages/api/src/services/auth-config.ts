@@ -26,3 +26,14 @@ export function getWorkspaceId(): string | undefined {
   const value = process.env.WORKSPACE_ID?.trim();
   return value && value.length > 0 ? value : undefined;
 }
+
+/**
+ * When a workspace is configured, this env var names the person whose
+ * personal calendar should inherit any past workspace-owned appointments
+ * (i.e., data created before per-user appointment scoping was introduced).
+ * The reassignment runs each time this user signs in — idempotent.
+ */
+export function getPrimaryAppointmentOwnerEmail(): string | null {
+  const value = process.env.PRIMARY_APPOINTMENT_OWNER_EMAIL?.trim().toLowerCase();
+  return value && value.length > 0 ? value : null;
+}

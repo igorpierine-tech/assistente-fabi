@@ -240,14 +240,14 @@ function migrateToWorkspace(db: Database.Database) {
   const workspaceId = process.env.WORKSPACE_ID?.trim();
   if (!workspaceId) return;
 
+  // Only genuinely SHARED resources go into the workspace. Appointments and
+  // booking_requests stay per-user because each Google account has its own
+  // Google Calendar; conversations stay per-user because chats are personal.
   const simpleTables = [
     "clients",
-    "appointments",
-    "conversations",
     "catalog_items",
     "receivables",
     "sales",
-    "booking_requests",
   ];
 
   db.transaction(() => {

@@ -8,7 +8,7 @@ import {
   markContractGenerated,
 } from "../services/sales-db";
 import { generateContractPdf } from "../services/contract-pdf";
-import { requireUser } from "../middleware/auth";
+import { requireUser, sharedOwnerId } from "../middleware/auth";
 import { createClient, getClient } from "../services/database";
 import "../session-types";
 import type { PaymentMethod } from "../services/receivables-db";
@@ -17,7 +17,7 @@ const router: ExpressRouter = Router();
 router.use(requireUser);
 
 function userId(req: Request): string {
-  return req.session.googleUser!.id;
+  return sharedOwnerId(req);
 }
 
 const VALID_METHODS: PaymentMethod[] = [

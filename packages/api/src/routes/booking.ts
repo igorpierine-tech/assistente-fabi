@@ -2,7 +2,7 @@ import { Router, type Request, type Router as ExpressRouter } from "express";
 import { DateTime } from "luxon";
 import { GoogleCalendarService } from "../services/google-calendar";
 import { SyncedCalendarService } from "../services/synced-calendar";
-import { requireGoogleCalendar, requireUser } from "../middleware/auth";
+import { requireGoogleCalendar, requireUser, sharedOwnerId, personalOwnerId } from "../middleware/auth";
 import {
   ensureSettings,
   updateSettings,
@@ -18,7 +18,7 @@ const router: ExpressRouter = Router();
 router.use(requireUser);
 
 function userId(req: Request): string {
-  return req.session.googleUser!.id;
+  return sharedOwnerId(req);
 }
 
 function slugify(input: string): string {
@@ -133,7 +133,13 @@ router.post("/requests/:id/confirm", requireGoogleCalendar, async (req, res) => 
         req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
       }
     );
-    const calendar = new SyncedCalendarService(gcal, userId(req));
+    // Appointment stored on the confirmer's personal calendar,
+    // but client lookup uses the shared workspace.
+    const calendar = new SyncedCalendarService(
+      gcal,
+      personalOwnerId(req),
+      sharedOwnerId(req)
+    );
 
     const title = `${request.session_type_name} — ${request.client_name}`;
     const description = [

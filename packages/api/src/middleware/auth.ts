@@ -6,16 +6,25 @@ export function requireUser(req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({ error: "Não autenticado" });
     return;
   }
-  // If a shared workspace is configured, every authenticated user maps to the
-  // same workspace_id so they see and edit the same data.
-  const workspaceId = getWorkspaceId();
-  if (workspaceId && req.session.googleUser.id !== workspaceId) {
-    req.session.googleUser = {
-      ...req.session.googleUser,
-      id: workspaceId,
-    };
-  }
   next();
+}
+
+/**
+ * Returns the id to use for SHARED resources (clients, catalog, receivables,
+ * sales, booking settings/types/requests). Falls back to the personal user id
+ * when no workspace is configured.
+ */
+export function sharedOwnerId(req: Request): string {
+  const workspaceId = getWorkspaceId();
+  return workspaceId || req.session.googleUser!.id;
+}
+
+/**
+ * Returns the id to use for PER-USER resources — currently only
+ * appointments — so each Google account keeps its own calendar in sync.
+ */
+export function personalOwnerId(req: Request): string {
+  return req.session.googleUser!.id;
 }
 
 export function requireGoogleCalendar(req: Request, res: Response, next: NextFunction): void {

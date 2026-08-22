@@ -17,7 +17,7 @@ import {
 } from "../services/database";
 import multer from "multer";
 import "../session-types";
-import { requireGoogleCalendar, requireUser } from "../middleware/auth";
+import { requireGoogleCalendar, requireUser, sharedOwnerId } from "../middleware/auth";
 import { rateLimit } from "../middleware/security";
 import { optionalId, requiredString, ValidationError } from "../services/validation";
 
@@ -109,7 +109,11 @@ function calendarForSession(req: Request): SyncedCalendarService {
   const gcal = new GoogleCalendarService(req.session.googleTokens!, (tokens) => {
     req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
   });
-  return new SyncedCalendarService(gcal, req.session.googleUser!.id);
+  return new SyncedCalendarService(
+    gcal,
+    req.session.googleUser!.id,
+    sharedOwnerId(req)
+  );
 }
 
 // --- Chat endpoints ---
@@ -138,7 +142,7 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
       return;
     }
 
-    const workspace = buildWorkspaceService(user.id);
+    const workspace = buildWorkspaceService(sharedOwnerId(req));
     const result = await getAgent().chat(message, convId, calendar, user.name, workspace);
 
     addMessage(user.id, convId, "assistant", result.message);
@@ -184,7 +188,7 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
     addMessage(user.id, convId, "user", text);
 
     const calendar = calendarForSession(req);
-    const workspace = buildWorkspaceService(user.id);
+    const workspace = buildWorkspaceService(sharedOwnerId(req));
     const result = await getAgent().chat(text, convId, calendar, user.name, workspace);
 
     addMessage(user.id, convId, "assistant", result.message);

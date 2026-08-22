@@ -11,7 +11,7 @@ import { GoogleCalendarService } from "../services/google-calendar";
 import { createReceivableFromAppointment } from "../services/receivables-db";
 import { listCatalogItems } from "../services/catalog-db";
 import "../session-types";
-import { requireUser } from "../middleware/auth";
+import { requireUser, sharedOwnerId } from "../middleware/auth";
 import { optionalId, optionalString, requiredIsoDate, requiredString, ValidationError } from "../services/validation";
 
 function findMatchingCatalogItem(userId: string, title: string) {
@@ -87,7 +87,7 @@ router.post("/", async (req, res) => {
 
     let clientId: string | undefined;
     if (clientName) {
-      const client = getClientByName(userId, clientName);
+      const client = getClientByName(sharedOwnerId(req), clientName);
       if (client) clientId = client.id;
     }
 
@@ -142,7 +142,7 @@ router.put("/:id", async (req, res) => {
 
     let clientId: string | undefined;
     if (clientName) {
-      const client = getClientByName(userId, clientName);
+      const client = getClientByName(sharedOwnerId(req), clientName);
       if (client) clientId = client.id;
     }
 
@@ -169,9 +169,10 @@ router.put("/:id", async (req, res) => {
       existing.status !== "concluido"
     ) {
       try {
-        const matched = findMatchingCatalogItem(userId, updated.title);
+        const shared = sharedOwnerId(req);
+        const matched = findMatchingCatalogItem(shared, updated.title);
         createReceivableFromAppointment(
-          userId,
+          shared,
           {
             id: updated.id,
             title: updated.title,

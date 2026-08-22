@@ -8,7 +8,7 @@ import {
   getClientAppointments,
 } from "../services/database";
 import "../session-types";
-import { requireUser } from "../middleware/auth";
+import { requireUser, sharedOwnerId } from "../middleware/auth";
 import { optionalEmail, optionalId, optionalString, requiredString } from "../services/validation";
 
 const router: ExpressRouter = Router();
@@ -19,14 +19,14 @@ router.param("id", (req, _res, next, value) => {
 });
 
 router.get("/", (req, res) => {
-  const userId = req.session.googleUser!.id;
+  const userId = sharedOwnerId(req);
   const search = optionalString(req.query.search, "Busca", 100);
   const clients = listClients(userId, search);
   res.json(clients);
 });
 
 router.get("/:id", (req, res) => {
-  const client = getClient(req.session.googleUser!.id, req.params.id);
+  const client = getClient(sharedOwnerId(req), req.params.id);
   if (!client) {
     res.status(404).json({ error: "Cliente não encontrado" });
     return;
@@ -39,12 +39,12 @@ router.post("/", (req, res) => {
   const phone = optionalString(req.body?.phone, "Telefone", 32);
   const email = optionalEmail(req.body?.email);
   const notes = optionalString(req.body?.notes, "Prontuário", 10_000);
-  const client = createClient(req.session.googleUser!.id, { name, phone, email, notes });
+  const client = createClient(sharedOwnerId(req), { name, phone, email, notes });
   res.status(201).json(client);
 });
 
 router.put("/:id", (req, res) => {
-  const userId = req.session.googleUser!.id;
+  const userId = sharedOwnerId(req);
   const existing = getClient(userId, req.params.id);
   if (!existing) {
     res.status(404).json({ error: "Cliente não encontrado" });
@@ -59,7 +59,7 @@ router.put("/:id", (req, res) => {
 });
 
 router.delete("/:id", (req, res) => {
-  const deleted = deleteClient(req.session.googleUser!.id, req.params.id);
+  const deleted = deleteClient(sharedOwnerId(req), req.params.id);
   if (!deleted) {
     res.status(404).json({ error: "Cliente não encontrado" });
     return;
@@ -68,7 +68,7 @@ router.delete("/:id", (req, res) => {
 });
 
 router.get("/:id/appointments", (req, res) => {
-  const userId = req.session.googleUser!.id;
+  const userId = sharedOwnerId(req);
   const client = getClient(userId, req.params.id);
   if (!client) {
     res.status(404).json({ error: "Cliente não encontrado" });
