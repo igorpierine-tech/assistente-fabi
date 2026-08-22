@@ -130,7 +130,6 @@ export function CalendarView({ events, onEventClick, onNewEvent }: CalendarViewP
 
   function formatTime(iso: string) {
     return new Date(iso).toLocaleTimeString("pt-BR", {
-      timeZone: "America/Cuiaba",
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "America/Cuiaba",
