@@ -14,6 +14,7 @@ import { SettingsView } from "@/components/SettingsView";
 import { FinanceiroView } from "@/components/FinanceiroView";
 import { VendasView } from "@/components/VendasView";
 import type { CalendarEvent } from "@/components/CalendarView";
+import { isoToLocalInput, localInputToIso } from "@/lib/timezone";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -282,6 +283,45 @@ export default function Home() {
     }
   }
 
+  async function handleMoveEvent(event: CalendarEvent, newDayStr: string) {
+    // Preserve time-of-day: replace only the YYYY-MM-DD part (in Cuiabá TZ)
+    function shiftToDay(iso: string): string {
+      const local = isoToLocalInput(iso); // "YYYY-MM-DDTHH:mm" in Cuiabá
+      if (!local) return iso;
+      const time = local.split("T")[1] || "00:00";
+      return localInputToIso(`${newDayStr}T${time}`);
+    }
+    const newStart = shiftToDay(event.startDate);
+    const newEnd = shiftToDay(event.endDate);
+
+    // Optimistic UI: reflect the move immediately
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === event.id ? { ...e, startDate: newStart, endDate: newEnd } : e
+      )
+    );
+
+    try {
+      const res = await fetch(`${API_URL}/appointments/${event.id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startTime: newStart,
+          endTime: newEnd,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Não foi possível mover o agendamento.");
+      }
+      await fetchAppointments();
+    } catch {
+      alert("Erro de rede ao mover o agendamento.");
+      await fetchAppointments();
+    }
+  }
+
   async function handleDeleteEvent(eventId: string) {
     try {
       const res = await fetch(`${API_URL}/appointments/${eventId}`, {
@@ -343,6 +383,7 @@ export default function Home() {
               events={events}
               onEventClick={handleEventClick}
               onNewEvent={handleNewEvent}
+              onEventMove={handleMoveEvent}
             />
           </div>
         );

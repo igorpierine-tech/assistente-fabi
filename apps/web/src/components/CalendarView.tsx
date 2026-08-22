@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import styles from "./CalendarView.module.css";
+import { isoToLocalInput } from "@/lib/timezone";
 
 export interface CalendarEvent {
   id: string;
@@ -20,7 +21,14 @@ interface CalendarViewProps {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onNewEvent: (date: string) => void;
+  /**
+   * Called when the user drags an event onto another day. Receives the
+   * event and the target day (YYYY-MM-DD, Cuiabá date). Should update the
+   * appointment's start/end preserving the time-of-day.
+   */
+  onEventMove?: (event: CalendarEvent, newDayStr: string) => void | Promise<void>;
 }
+
 
 type ViewMode = "mes" | "semana" | "dia";
 
@@ -70,11 +78,50 @@ function eventSpansDays(event: CalendarEvent): boolean {
   return event.startDate.slice(0, 10) !== event.endDate.slice(0, 10);
 }
 
-export function CalendarView({ events, onEventClick, onNewEvent }: CalendarViewProps) {
+export function CalendarView({ events, onEventClick, onNewEvent, onEventMove }: CalendarViewProps) {
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [viewMode, setViewMode] = useState<ViewMode>("mes");
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+
+  function handleDragStart(e: React.DragEvent<HTMLDivElement>, event: CalendarEvent) {
+    if (!onEventMove) return;
+    setDraggingId(event.id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", event.id);
+  }
+
+  function handleDragEnd() {
+    setDraggingId(null);
+    setDragOverDay(null);
+  }
+
+  function handleDayDragOver(e: React.DragEvent<HTMLDivElement>, dayStr: string) {
+    if (!draggingId || !onEventMove) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverDay !== dayStr) setDragOverDay(dayStr);
+  }
+
+  function handleDayDragLeave(dayStr: string) {
+    setDragOverDay((prev) => (prev === dayStr ? null : prev));
+  }
+
+  async function handleDayDrop(e: React.DragEvent<HTMLDivElement>, dayStr: string) {
+    if (!onEventMove || !draggingId) return;
+    e.preventDefault();
+    const eventId = e.dataTransfer.getData("text/plain") || draggingId;
+    const moved = events.find((ev) => ev.id === eventId);
+    setDraggingId(null);
+    setDragOverDay(null);
+    if (!moved) return;
+    // Skip no-op drops (dropped on the same day)
+    const originalDay = isoToLocalInput(moved.startDate).slice(0, 10);
+    if (originalDay === dayStr) return;
+    await onEventMove(moved, dayStr);
+  }
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -193,11 +240,15 @@ export function CalendarView({ events, onEventClick, onNewEvent }: CalendarViewP
               const maxShow = 3;
               const overflow = dayEvents.length - maxShow;
 
+              const isDropTarget = dragOverDay === dayStr;
               return (
                 <div
                   key={dayStr}
-                  className={`${styles.dayCell} ${!cell.isCurrentMonth ? styles.dayCellOther : ""} ${isToday ? styles.dayCellToday : ""}`}
+                  className={`${styles.dayCell} ${!cell.isCurrentMonth ? styles.dayCellOther : ""} ${isToday ? styles.dayCellToday : ""} ${isDropTarget ? styles.dayCellDropTarget : ""}`}
                   onClick={() => onNewEvent(dayStr)}
+                  onDragOver={(e) => handleDayDragOver(e, dayStr)}
+                  onDragLeave={() => handleDayDragLeave(dayStr)}
+                  onDrop={(e) => handleDayDrop(e, dayStr)}
                 >
                   <span className={`${styles.dayNumber} ${isToday ? styles.dayNumberToday : ""}`}>
                     {cell.day}
@@ -205,13 +256,17 @@ export function CalendarView({ events, onEventClick, onNewEvent }: CalendarViewP
                   <div className={styles.dayEvents}>
                     {dayEvents.slice(0, maxShow).map((ev) => {
                       const colors = TYPE_COLORS[ev.type] || TYPE_COLORS.outro;
+                      const isDragging = draggingId === ev.id;
                       return (
                         <div
                           key={ev.id}
-                          className={styles.eventBar}
+                          className={`${styles.eventBar} ${isDragging ? styles.eventBarDragging : ""}`}
                           style={{ background: colors.bg, borderLeft: `3px solid ${colors.border}`, color: colors.text }}
                           onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
-                          title={ev.title}
+                          title={onEventMove ? `${ev.title}\nArraste para mover de dia` : ev.title}
+                          draggable={!!onEventMove}
+                          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ev); }}
+                          onDragEnd={handleDragEnd}
                         >
                           <span className={styles.eventDot} style={{ background: STATUS_DOT[ev.status] || STATUS_DOT.previsto }} />
                           <span className={styles.eventBarTitle}>{ev.title}</span>

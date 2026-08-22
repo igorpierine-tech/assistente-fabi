@@ -157,6 +157,12 @@
   background: rgba(184, 135, 58, 0.06);
 }
 
+.dayCellDropTarget {
+  background: rgba(184, 135, 58, 0.18) !important;
+  outline: 2px dashed var(--secondary, #b8873a);
+  outline-offset: -4px;
+}
+
 .dayNumber {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -193,16 +199,27 @@
   border-radius: 3px;
   font-size: 0.68rem;
   font-weight: 500;
-  cursor: pointer;
+  cursor: grab;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.15s;
   line-height: 1.6;
+  user-select: none;
 }
 
 .eventBar:hover {
-  opacity: 0.8;
+  opacity: 0.85;
+  transform: translateX(1px);
+}
+
+.eventBar:active {
+  cursor: grabbing;
+}
+
+.eventBarDragging {
+  opacity: 0.35;
+  transform: scale(0.97);
 }
 
 .eventDot {
