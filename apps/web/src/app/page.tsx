@@ -13,6 +13,7 @@ import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 import { SettingsView } from "@/components/SettingsView";
 import { FinanceiroView } from "@/components/FinanceiroView";
 import { VendasView } from "@/components/VendasView";
+import { FloatingAssistant } from "@/components/FloatingAssistant";
 import type { CalendarEvent } from "@/components/CalendarView";
 import { isoToLocalInput, localInputToIso } from "@/lib/timezone";
 
@@ -443,6 +444,11 @@ export default function Home() {
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
         />
+      )}
+
+      {/* Floating AI assistant — hidden on /assistente view (full chat is already there) */}
+      {userId && activeView !== "assistente" && (
+        <FloatingAssistant userId={userId} />
       )}
     </div>
   );

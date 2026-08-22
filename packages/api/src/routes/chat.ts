@@ -4,6 +4,7 @@ import { FabiAgent } from "@assistente-fabi/ai";
 import { GoogleCalendarService } from "../services/google-calendar";
 import { SyncedCalendarService } from "../services/synced-calendar";
 import { TranscriptionService } from "../services/transcription";
+import { buildWorkspaceService } from "../services/workspace-service";
 import {
   getConversation,
   createConversation,
@@ -137,7 +138,8 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
       return;
     }
 
-    const result = await getAgent().chat(message, convId, calendar, user.name);
+    const workspace = buildWorkspaceService(user.id);
+    const result = await getAgent().chat(message, convId, calendar, user.name, workspace);
 
     addMessage(user.id, convId, "assistant", result.message);
 
@@ -182,7 +184,8 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
     addMessage(user.id, convId, "user", text);
 
     const calendar = calendarForSession(req);
-    const result = await getAgent().chat(text, convId, calendar, user.name);
+    const workspace = buildWorkspaceService(user.id);
+    const result = await getAgent().chat(text, convId, calendar, user.name, workspace);
 
     addMessage(user.id, convId, "assistant", result.message);
 

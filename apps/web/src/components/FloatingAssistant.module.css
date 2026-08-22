@@ -1,0 +1,165 @@
+.fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--primary, #1a2e18);
+  color: var(--gold, #d9b268);
+  border: 2px solid var(--gold, #d9b268);
+  cursor: pointer;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(26, 46, 24, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  padding: 0;
+  overflow: visible;
+}
+
+.fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 14px 36px rgba(26, 46, 24, 0.45), 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.fab:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.fabOpen {
+  background: var(--gold, #d9b268);
+  color: var(--primary, #1a2e18);
+  border-color: var(--primary, #1a2e18);
+}
+
+.fabLogo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.fabPing {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--gold, #d9b268);
+  opacity: 0;
+  animation: assistantPing 2.6s ease-out infinite;
+  pointer-events: none;
+}
+
+.fabOpen .fabPing {
+  display: none;
+}
+
+@keyframes assistantPing {
+  0% { opacity: 0.6; transform: scale(1); }
+  70% { opacity: 0; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+.drawer {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  width: min(400px, calc(100vw - 48px));
+  height: min(600px, calc(100vh - 140px));
+  background: var(--surface, #fdfaf3);
+  border-radius: 18px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.2));
+  box-shadow: 0 24px 60px rgba(26, 46, 24, 0.3), 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 901;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: drawerSlideUp 0.22s cubic-bezier(0.32, 0.72, 0.32, 1);
+}
+
+@keyframes drawerSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #1a2e18 0%, #2f4a2b 100%);
+  color: var(--gold, #d9b268);
+  border-bottom: 1px solid rgba(184, 135, 58, 0.2);
+}
+
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.drawerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a4c496;
+  box-shadow: 0 0 0 3px rgba(164, 196, 150, 0.25);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--gold, #d9b268);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.closeBtn:hover {
+  opacity: 1;
+  background: rgba(217, 178, 104, 0.12);
+}
+
+.drawerBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure the embedded ChatPanel fills the drawer */
+.drawerBody > * {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 600px) {
+  .fab {
+    bottom: 16px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
+  }
+  .fabLogo {
+    width: 40px;
+    height: 40px;
+  }
+  .drawer {
+    bottom: 88px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    height: calc(100vh - 120px);
+  }
+}
