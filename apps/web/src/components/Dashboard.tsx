@@ -46,7 +46,11 @@ function getInitials(name: string) {
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Cuiaba",
+  });
 }
 
 const BORDER_COLORS: Record<string, string> = {

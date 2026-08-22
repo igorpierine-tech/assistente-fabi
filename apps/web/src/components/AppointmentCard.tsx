@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import styles from "./AppointmentCard.module.css";
 import type { CalendarEvent } from "./CalendarView";
+import {
+  isoToLocalInput,
+  localInputToIso,
+  formatDateCuiaba,
+  APP_TIMEZONE,
+} from "@/lib/timezone";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -51,16 +57,13 @@ function slugify(input: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function addMinutesIso(iso: string, minutes: number): string {
-  // iso is in `YYYY-MM-DDTHH:mm` format used by datetime-local inputs
-  const d = new Date(iso);
-  d.setMinutes(d.getMinutes() + minutes);
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  const h = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${mo}-${da}T${h}:${mi}`;
+function addMinutesLocalInput(local: string, minutes: number): string {
+  // `local` is a `YYYY-MM-DDTHH:mm` string in Cuiabá local time (from the
+  // datetime-local input). Convert it to UTC, add minutes, convert back.
+  const iso = localInputToIso(local);
+  if (!iso) return local;
+  const shifted = new Date(new Date(iso).getTime() + minutes * 60000);
+  return isoToLocalInput(shifted.toISOString());
 }
 
 const STATUS_OPTIONS: Array<{ value: CalendarEvent["status"]; label: string; color: string }> = [
@@ -88,10 +91,18 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
   const [clientPhone, setClientPhone] = useState(event?.clientPhone || "");
   const [clientEmail, setClientEmail] = useState(event?.clientEmail || "");
   const [startDate, setStartDate] = useState(
-    event?.startDate ? event.startDate.slice(0, 16) : initialDate ? `${initialDate}T09:00` : ""
+    event?.startDate
+      ? isoToLocalInput(event.startDate)
+      : initialDate
+      ? `${initialDate}T09:00`
+      : ""
   );
   const [endDate, setEndDate] = useState(
-    event?.endDate ? event.endDate.slice(0, 16) : initialDate ? `${initialDate}T10:30` : ""
+    event?.endDate
+      ? isoToLocalInput(event.endDate)
+      : initialDate
+      ? `${initialDate}T10:30`
+      : ""
   );
   const [notes, setNotes] = useState(event?.notes || "");
 
@@ -149,7 +160,7 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
     // If catalog item selected, adjust end time based on its duration
     const item = catalogByType.get(newType);
     if (item && item.duration_minutes && startDate) {
-      setEndDate(addMinutesIso(startDate, item.duration_minutes));
+      setEndDate(addMinutesLocalInput(startDate, item.duration_minutes));
     }
   }
 
@@ -158,7 +169,7 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
     // If catalog item is selected, keep end synced with duration
     const item = catalogByType.get(type);
     if (item && item.duration_minutes && newStart) {
-      setEndDate(addMinutesIso(newStart, item.duration_minutes));
+      setEndDate(addMinutesLocalInput(newStart, item.duration_minutes));
     }
   }
 
@@ -192,21 +203,17 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
       clientName,
       clientPhone,
       clientEmail,
-      startDate: new Date(startDate).toISOString(),
-      endDate: new Date(endDate).toISOString(),
+      startDate: localInputToIso(startDate),
+      endDate: localInputToIso(endDate),
       notes: prontuarioNotes,
     });
   }
 
   function formatDateDisplay(iso: string) {
     if (!iso) return "";
-    return new Date(iso).toLocaleDateString("pt-BR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    return formatDateCuiaba(iso);
   }
+  void APP_TIMEZONE; // referenced to keep import used across the file
 
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === status);
 
