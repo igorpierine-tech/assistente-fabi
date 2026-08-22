@@ -3,6 +3,7 @@ import { Router, type Router as ExpressRouter } from "express";
 import { google } from "googleapis";
 import { consumeMobileLogin, createMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
+import { isEmailAuthorized, getWorkspaceId } from "../services/auth-config";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -69,11 +70,24 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     }
     oauth2Client.setCredentials({ ...req.session.googleTokens, ...tokens });
     const userInfo = await google.oauth2({ version: "v2", auth: oauth2Client }).userinfo.get();
+    const email = userInfo.data.email || undefined;
+
+    // Enforce authorized emails allowlist (when configured).
+    if (!isEmailAuthorized(email)) {
+      res.status(403).send(
+        `Acesso não autorizado para ${email || "esta conta"}. Peça ao administrador para adicionar seu e-mail à lista de permissões.`
+      );
+      return;
+    }
+
     const googleTokens = { ...req.session.googleTokens, ...tokens };
+    // If a shared workspace is configured, use it as the user_id so every
+    // authorized user sees the same data. Otherwise use Google's user id.
+    const workspaceId = getWorkspaceId();
     const googleUser = {
-      id: userInfo.data.id || "google-user",
+      id: workspaceId || userInfo.data.id || "google-user",
       name: userInfo.data.name || "Fabiana",
-      email: userInfo.data.email || undefined,
+      email,
     };
     const isMobile = req.session.oauthPlatform === "mobile";
 

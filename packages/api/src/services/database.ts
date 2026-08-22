@@ -223,6 +223,122 @@ function initTables(db: Database.Database) {
     ? Math.min(Math.max(configuredRetention, 30), 3650)
     : 365;
   db.prepare(`DELETE FROM audit_logs WHERE created_at < datetime('now', ?)`).run(`-${retentionDays} days`);
+
+  // Consolidate all existing data into the shared workspace, if configured.
+  migrateToWorkspace(db);
+}
+
+/**
+ * When WORKSPACE_ID env var is set, all rows across the app's tables get
+ * moved to that single owner id. Runs on every startup and is idempotent
+ * (rows already at the workspace id are skipped).
+ *
+ * This is how we let multiple Google logins share the same data: everyone
+ * effectively acts as the same "workspace user".
+ */
+function migrateToWorkspace(db: Database.Database) {
+  const workspaceId = process.env.WORKSPACE_ID?.trim();
+  if (!workspaceId) return;
+
+  const simpleTables = [
+    "clients",
+    "appointments",
+    "conversations",
+    "catalog_items",
+    "receivables",
+    "sales",
+    "booking_requests",
+  ];
+
+  db.transaction(() => {
+    for (const table of simpleTables) {
+      try {
+        db.prepare(`UPDATE ${table} SET user_id = ? WHERE user_id != ?`).run(
+          workspaceId,
+          workspaceId
+        );
+      } catch (err) {
+        console.warn(`Migration skip on ${table}:`, (err as Error).message);
+      }
+    }
+
+    // booking_settings: PRIMARY KEY on user_id — collapse to single row.
+    try {
+      const alreadyExists = db
+        .prepare(`SELECT user_id FROM booking_settings WHERE user_id = ?`)
+        .get(workspaceId);
+      if (alreadyExists) {
+        db.prepare(`DELETE FROM booking_settings WHERE user_id != ?`).run(workspaceId);
+      } else {
+        const first = db
+          .prepare(
+            `SELECT slug, title, intro, timezone, work_hours, buffer_minutes,
+                    max_advance_days, min_notice_hours
+             FROM booking_settings WHERE user_id != ? LIMIT 1`
+          )
+          .get(workspaceId) as
+          | {
+              slug: string;
+              title: string;
+              intro: string | null;
+              timezone: string;
+              work_hours: string;
+              buffer_minutes: number;
+              max_advance_days: number;
+              min_notice_hours: number;
+            }
+          | undefined;
+        if (first) {
+          db.prepare(`DELETE FROM booking_settings WHERE user_id != ?`).run(workspaceId);
+          db.prepare(
+            `INSERT INTO booking_settings
+              (user_id, slug, title, intro, timezone, work_hours,
+               buffer_minutes, max_advance_days, min_notice_hours)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).run(
+            workspaceId,
+            first.slug,
+            first.title,
+            first.intro,
+            first.timezone,
+            first.work_hours,
+            first.buffer_minutes,
+            first.max_advance_days,
+            first.min_notice_hours
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("booking_settings migration:", (err as Error).message);
+    }
+
+    // booking_session_types: UNIQUE(user_id, slug) — reuse workspace rows,
+    // fold in any non-workspace rows whose slug isn't already taken.
+    try {
+      const existingSlugs = new Set(
+        (
+          db
+            .prepare(`SELECT slug FROM booking_session_types WHERE user_id = ?`)
+            .all(workspaceId) as Array<{ slug: string }>
+        ).map((r) => r.slug)
+      );
+      const others = db
+        .prepare(`SELECT id, slug FROM booking_session_types WHERE user_id != ?`)
+        .all(workspaceId) as Array<{ id: string; slug: string }>;
+      for (const row of others) {
+        if (existingSlugs.has(row.slug)) {
+          db.prepare(`DELETE FROM booking_session_types WHERE id = ?`).run(row.id);
+        } else {
+          db.prepare(
+            `UPDATE booking_session_types SET user_id = ? WHERE id = ?`
+          ).run(workspaceId, row.id);
+          existingSlugs.add(row.slug);
+        }
+      }
+    } catch (err) {
+      console.warn("booking_session_types migration:", (err as Error).message);
+    }
+  })();
 }
 
 // --- Clients ---

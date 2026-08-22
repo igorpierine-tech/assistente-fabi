@@ -245,19 +245,59 @@ export default function Home() {
     setShowNewEvent(true);
   }
 
-  function handleSaveEvent(event: CalendarEvent) {
-    setEvents((prev) => {
-      const exists = prev.find((e) => e.id === event.id);
-      if (exists) return prev.map((e) => (e.id === event.id ? event : e));
-      return [...prev, event];
-    });
-    setSelectedEvent(null);
-    setShowNewEvent(false);
+  async function handleSaveEvent(event: CalendarEvent) {
+    // Locally-generated ids start with "evt_"; persisted rows use uuid.
+    const isNew = event.id.startsWith("evt_") || !appointmentRows.find((r) => r.id === event.id);
+    const body = {
+      title: event.title,
+      type: event.type,
+      clientName: event.clientName || undefined,
+      startTime: event.startDate,
+      endTime: event.endDate,
+      notes: event.notes || undefined,
+      status: event.status,
+    };
+    try {
+      const url = isNew
+        ? `${API_URL}/appointments`
+        : `${API_URL}/appointments/${event.id}`;
+      const method = isNew ? "POST" : "PUT";
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Não foi possível salvar o agendamento.");
+        return;
+      }
+      // Refresh from server so the persisted id shows up
+      await fetchAppointments();
+      setSelectedEvent(null);
+      setShowNewEvent(false);
+    } catch {
+      alert("Erro de rede ao salvar o agendamento.");
+    }
   }
 
-  function handleDeleteEvent(eventId: string) {
-    setEvents((prev) => prev.filter((e) => e.id !== eventId));
-    setSelectedEvent(null);
+  async function handleDeleteEvent(eventId: string) {
+    try {
+      const res = await fetch(`${API_URL}/appointments/${eventId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok && res.status !== 404) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Não foi possível excluir o agendamento.");
+        return;
+      }
+      await fetchAppointments();
+      setSelectedEvent(null);
+    } catch {
+      alert("Erro de rede ao excluir o agendamento.");
+    }
   }
 
   if (loading) {
