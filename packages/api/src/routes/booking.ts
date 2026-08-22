@@ -6,11 +6,7 @@ import { requireGoogleCalendar, requireUser } from "../middleware/auth";
 import {
   ensureSettings,
   updateSettings,
-  listSessionTypes,
-  createSessionType,
-  updateSessionType,
-  deleteSessionType,
-  getSessionTypeBySlug,
+  listCatalogSessionTypes,
   listBookingRequests,
   getBookingRequestById,
   markBookingRequest,
@@ -78,83 +74,30 @@ router.put("/settings", (req, res) => {
 });
 
 // --- Session types ---
+// Sourced from the catalog (Configurações → Produtos e serviços). Only
+// active services with a defined duration appear as bookable types.
 
 router.get("/types", (req, res) => {
-  res.json(listSessionTypes(userId(req), false));
+  res.json(listCatalogSessionTypes(userId(req)));
 });
 
-router.post("/types", (req, res) => {
-  const b = req.body as {
-    name?: string;
-    description?: string;
-    durationMinutes?: number;
-    color?: string;
-    active?: boolean;
-    slug?: string;
-  } | null;
-  if (!b || !b.name || !b.durationMinutes) {
-    res.status(400).json({ error: "Nome e duração são obrigatórios" });
-    return;
-  }
-  const slug = slugify(b.slug || b.name);
-  if (!slug) {
-    res.status(400).json({ error: "Slug inválido" });
-    return;
-  }
-  const existing = getSessionTypeBySlug(userId(req), slug);
-  if (existing) {
-    res.status(409).json({ error: "Já existe um tipo com esse slug" });
-    return;
-  }
-  const type = createSessionType(userId(req), {
-    slug,
-    name: b.name,
-    description: b.description ?? null,
-    duration_minutes: Math.max(15, Math.min(600, Math.round(b.durationMinutes))),
-    color: b.color ?? null,
-    active: b.active === false ? 0 : 1,
+// Types are now managed via the catalog (Configurações → Produtos e serviços).
+// POST/PUT/DELETE /types return 410 Gone so clients notice the change.
+router.post("/types", (_req, res) => {
+  res.status(410).json({
+    error:
+      "Tipos de sessão agora vêm do catálogo. Cadastre em Configurações → Produtos e serviços (kind: serviço, com duração).",
   });
-  res.status(201).json(type);
 });
-
-router.put("/types/:id", (req, res) => {
-  const b = req.body as {
-    name?: string;
-    description?: string;
-    durationMinutes?: number;
-    color?: string;
-    active?: boolean;
-    slug?: string;
-    sort_order?: number;
-  } | null;
-  if (!b) {
-    res.status(400).json({ error: "Body inválido" });
-    return;
-  }
-  const patch: Parameters<typeof updateSessionType>[2] = {};
-  if (b.name !== undefined) patch.name = b.name;
-  if (b.description !== undefined) patch.description = b.description;
-  if (b.durationMinutes !== undefined)
-    patch.duration_minutes = Math.max(15, Math.min(600, Math.round(b.durationMinutes)));
-  if (b.color !== undefined) patch.color = b.color;
-  if (b.active !== undefined) patch.active = b.active ? 1 : 0;
-  if (b.slug !== undefined) patch.slug = slugify(b.slug);
-  if (b.sort_order !== undefined) patch.sort_order = b.sort_order;
-  const updated = updateSessionType(userId(req), String(req.params.id), patch);
-  if (!updated) {
-    res.status(404).json({ error: "Tipo não encontrado" });
-    return;
-  }
-  res.json(updated);
+router.put("/types/:id", (_req, res) => {
+  res.status(410).json({
+    error: "Edite em Configurações → Produtos e serviços.",
+  });
 });
-
-router.delete("/types/:id", (req, res) => {
-  const ok = deleteSessionType(userId(req), String(req.params.id));
-  if (!ok) {
-    res.status(404).json({ error: "Tipo não encontrado" });
-    return;
-  }
-  res.status(204).end();
+router.delete("/types/:id", (_req, res) => {
+  res.status(410).json({
+    error: "Exclua em Configurações → Produtos e serviços.",
+  });
 });
 
 // --- Requests ---

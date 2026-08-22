@@ -227,6 +227,73 @@ export function deleteSessionType(userId: string, id: string): boolean {
   return result.changes > 0;
 }
 
+/**
+ * Slug helper mirroring the one used by the catalog. Public booking URLs
+ * reference session types by slug, so we compute them from the item name.
+ */
+export function slugifyCatalog(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+/**
+ * Return active services from the catalog formatted as BookingSessionType.
+ * The catalog is the single source of truth for what shows up on the public
+ * booking page and in the admin's "Types" list.
+ */
+export function listCatalogSessionTypes(userId: string): BookingSessionType[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, name, description, price_cents, duration_minutes, active, sort_order
+       FROM catalog_items
+       WHERE user_id = ? AND kind = 'servico' AND active = 1
+       ORDER BY sort_order ASC, name ASC`
+    )
+    .all(userId) as Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    price_cents: number;
+    duration_minutes: number | null;
+    active: number;
+    sort_order: number;
+  }>;
+  return rows
+    .filter((r) => (r.duration_minutes ?? 0) > 0)
+    .map((r) => ({
+      id: r.id,
+      user_id: userId,
+      slug: slugifyCatalog(r.name),
+      name: r.name,
+      description: r.description,
+      duration_minutes: r.duration_minutes || 60,
+      color: null,
+      active: r.active,
+      sort_order: r.sort_order,
+    }));
+}
+
+export function findCatalogSessionTypeBySlug(
+  userId: string,
+  slug: string
+): BookingSessionType | null {
+  const items = listCatalogSessionTypes(userId);
+  return items.find((i) => i.slug === slug) ?? null;
+}
+
+export function findCatalogSessionTypeById(
+  userId: string,
+  id: string
+): BookingSessionType | null {
+  const items = listCatalogSessionTypes(userId);
+  return items.find((i) => i.id === id) ?? null;
+}
+
 export interface CreateBookingRequestInput {
   userId: string;
   sessionTypeId: string | null;

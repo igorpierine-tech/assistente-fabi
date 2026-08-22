@@ -3,9 +3,9 @@ import { DateTime } from "luxon";
 import {
   getSettingsBySlug,
   getSettingsForUser,
-  listSessionTypes,
-  getSessionTypeBySlug,
-  getSessionTypeById,
+  listCatalogSessionTypes,
+  findCatalogSessionTypeBySlug,
+  findCatalogSessionTypeById,
   createBookingRequest,
   listConflictingRequests,
   getBookingRequestByToken,
@@ -65,7 +65,7 @@ router.get("/:slug", (req, res) => {
     res.status(404).json({ error: "Página de agendamento não encontrada" });
     return;
   }
-  const types = listSessionTypes(settings.user_id, true).map(publicType);
+  const types = listCatalogSessionTypes(settings.user_id).map(publicType);
   res.json({ page: publicPage(settings), types });
 });
 
@@ -82,8 +82,8 @@ router.get("/:slug/availability", (req, res) => {
     res.status(400).json({ error: "Tipo de sessão é obrigatório" });
     return;
   }
-  const type = getSessionTypeBySlug(settings.user_id, typeSlug);
-  if (!type || !type.active) {
+  const type = findCatalogSessionTypeBySlug(settings.user_id, typeSlug);
+  if (!type) {
     res.status(404).json({ error: "Tipo de sessão não disponível" });
     return;
   }
@@ -176,8 +176,8 @@ router.post("/:slug/request", submitLimiter, (req, res) => {
     return;
   }
 
-  const type = getSessionTypeBySlug(settings.user_id, typeSlug);
-  if (!type || !type.active) {
+  const type = findCatalogSessionTypeBySlug(settings.user_id, typeSlug);
+  if (!type) {
     res.status(400).json({ error: "Tipo de sessão inválido" });
     return;
   }
@@ -275,5 +275,5 @@ export { router as publicBookingRouter };
 
 // Utility export used by admin routes: current session type look-up.
 export function _internalGetType(userId: string, id: string) {
-  return getSessionTypeById(userId, id);
+  return findCatalogSessionTypeById(userId, id);
 }

@@ -70,11 +70,6 @@ export function BookingSettingsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [newType, setNewType] = useState({
-    name: "",
-    description: "",
-    durationMinutes: 60,
-  });
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -119,42 +114,6 @@ export function BookingSettingsPanel() {
     await fetchAll();
   }
 
-  async function addType() {
-    if (!newType.name.trim()) return;
-    const res = await fetch(`${API_URL}/booking/types`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newType),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error || "Falha ao criar tipo");
-      return;
-    }
-    setNewType({ name: "", description: "", durationMinutes: 60 });
-    await fetchAll();
-  }
-
-  async function toggleType(t: SessionType) {
-    await fetch(`${API_URL}/booking/types/${t.id}`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !t.active }),
-    });
-    await fetchAll();
-  }
-
-  async function removeType(t: SessionType) {
-    if (!confirm(`Remover "${t.name}"?`)) return;
-    await fetch(`${API_URL}/booking/types/${t.id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    await fetchAll();
-  }
-
   function copyLink() {
     if (!publicUrl) return;
     navigator.clipboard.writeText(publicUrl.url).then(() => {
@@ -190,11 +149,6 @@ export function BookingSettingsPanel() {
       <SettingsForm
         settings={settings}
         types={types}
-        newType={newType}
-        onNewTypeChange={setNewType}
-        onAddType={addType}
-        onToggleType={toggleType}
-        onRemoveType={removeType}
         onSave={saveSettings}
       />
     </div>
@@ -204,24 +158,10 @@ export function BookingSettingsPanel() {
 function SettingsForm({
   settings,
   types,
-  newType,
-  onNewTypeChange,
-  onAddType,
-  onToggleType,
-  onRemoveType,
   onSave,
 }: {
   settings: Settings;
   types: SessionType[];
-  newType: { name: string; description: string; durationMinutes: number };
-  onNewTypeChange: (v: {
-    name: string;
-    description: string;
-    durationMinutes: number;
-  }) => void;
-  onAddType: () => void;
-  onToggleType: (t: SessionType) => void;
-  onRemoveType: (t: SessionType) => void;
   onSave: (patch: Partial<Settings>) => void;
 }) {
   const [local, setLocal] = useState<Settings>(settings);
@@ -407,73 +347,31 @@ function SettingsForm({
 
       <div className={styles.settingsCard}>
         <h2 className={styles.sectionTitle}>Tipos de sessão</h2>
-        {types.length === 0 && (
+        <p className={extraStyles.hint}>
+          Os tipos de sessão disponíveis para agendamento vêm do catálogo. Cadastre
+          e edite em <strong>Configurações → Produtos e serviços</strong>. Só
+          entram aqui os itens do tipo <em>Serviço</em>, ativos e com duração definida.
+        </p>
+        {types.length === 0 ? (
           <div className={styles.empty}>
-            Nenhum tipo cadastrado ainda. Adicione ao lado para começar.
+            Nenhum serviço cadastrado no catálogo com duração definida. Vá em
+            Produtos e serviços e adicione ao menos um serviço com duração para
+            que ele apareça na página pública de agendamento.
+          </div>
+        ) : (
+          <div className={styles.typeList}>
+            {types.map((t) => (
+              <div key={t.id} className={styles.typeRow}>
+                <div>
+                  <div className={styles.typeName}>{t.name}</div>
+                  <div className={styles.typeMeta}>
+                    {t.duration_minutes} min · /{t.slug}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-        <div className={styles.typeList}>
-          {types.map((t) => (
-            <div key={t.id} className={styles.typeRow}>
-              <div>
-                <div className={styles.typeName}>
-                  {t.name}
-                  {!t.active && <span className={styles.typeInactive}>inativo</span>}
-                </div>
-                <div className={styles.typeMeta}>
-                  {t.duration_minutes} min · /{t.slug}
-                </div>
-              </div>
-              <div className={styles.typeActions}>
-                <button type="button" onClick={() => onToggleType(t)}>
-                  {t.active ? "Desativar" : "Ativar"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.typeDelete}
-                  onClick={() => onRemoveType(t)}
-                >
-                  Remover
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className={styles.newType}>
-          <div className={styles.newTypeTitle}>Novo tipo</div>
-          <input
-            type="text"
-            placeholder="Nome (ex: Consultoria financeira)"
-            value={newType.name}
-            onChange={(e) => onNewTypeChange({ ...newType, name: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Descrição breve (opcional)"
-            value={newType.description}
-            onChange={(e) =>
-              onNewTypeChange({ ...newType, description: e.target.value })
-            }
-          />
-          <label className={styles.field}>
-            <span>Duração (min)</span>
-            <input
-              type="number"
-              min={15}
-              max={600}
-              value={newType.durationMinutes}
-              onChange={(e) =>
-                onNewTypeChange({
-                  ...newType,
-                  durationMinutes: Number(e.target.value),
-                })
-              }
-            />
-          </label>
-          <button type="button" className={styles.saveBtn} onClick={onAddType}>
-            Adicionar
-          </button>
-        </div>
       </div>
     </div>
   );
