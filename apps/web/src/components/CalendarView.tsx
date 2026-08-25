@@ -481,6 +481,7 @@ function TimeGridView({
 
   return (
     <div className={styles.timeGrid}>
+     <div className={styles.timeGridScroll}>
       <div className={styles.timeGridHeader} style={{ gridTemplateColumns: gridColumns }}>
         <div className={styles.timeGutterHeader} />
         {days.map((d) => {
@@ -523,7 +524,7 @@ function TimeGridView({
             <div
               key={dayStr}
               className={`${styles.timeGridDayColumn} ${isDropTarget ? styles.dayCellDropTarget : ""}`}
-              style={{ height: totalHeight }}
+              style={{ height: totalHeight, minHeight: totalHeight }}
               onClick={() => onNewEvent(dayStr)}
               onDragOver={(e) => onDayDragOver(e, dayStr)}
               onDragLeave={() => onDayDragLeave(dayStr)}
@@ -595,6 +596,7 @@ function TimeGridView({
           );
         })}
       </div>
+     </div>
     </div>
   );
 }

@@ -173,6 +173,19 @@
   background: var(--surface);
 }
 
+/*
+ * Header + body live inside ONE scroll container so their column widths line up
+ * regardless of the vertical scrollbar. Without this the header would be a bit
+ * wider than the body (which loses ~15px to the scrollbar), and the vertical
+ * dividers would shift out of sync with the day labels.
+ */
+.timeGridScroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
 .timeGridHeader {
   display: grid;
   /* gridTemplateColumns is set inline to match the body exactly */
@@ -230,8 +243,6 @@
 }
 
 .timeGridBody {
-  flex: 1;
-  overflow-y: auto;
   display: grid;
   position: relative;
 }
