@@ -420,9 +420,26 @@ export interface AppointmentRow {
   updated_at: string;
 }
 
+/**
+ * Owner ids to match when READING appointments/booking_requests. Includes
+ * both the personal user id and the legacy shared workspace id, so
+ * appointments created before the per-user split remain visible.
+ * WRITE operations still use only the personal id — we never change the
+ * owner of legacy rows.
+ */
+function appointmentOwnerIds(personalUserId: string): string[] {
+  const workspaceId = process.env.WORKSPACE_ID?.trim();
+  if (workspaceId && workspaceId !== personalUserId) {
+    return [personalUserId, workspaceId];
+  }
+  return [personalUserId];
+}
+
 export function listAppointments(userId: string, filters?: { startDate?: string; endDate?: string; clientId?: string; status?: string }): AppointmentRow[] {
-  const conditions: string[] = [`user_id = ?`];
-  const params: unknown[] = [userId];
+  const ids = appointmentOwnerIds(userId);
+  const placeholders = ids.map(() => "?").join(", ");
+  const conditions: string[] = [`user_id IN (${placeholders})`];
+  const params: unknown[] = [...ids];
 
   if (filters?.startDate) {
     conditions.push(`start_time >= ?`);
@@ -446,11 +463,21 @@ export function listAppointments(userId: string, filters?: { startDate?: string;
 }
 
 export function getAppointment(userId: string, id: string): AppointmentRow | undefined {
-  return getDb().prepare(`SELECT * FROM appointments WHERE user_id = ? AND id = ?`).get(userId, id) as AppointmentRow | undefined;
+  const ids = appointmentOwnerIds(userId);
+  const placeholders = ids.map(() => "?").join(", ");
+  return getDb()
+    .prepare(`SELECT * FROM appointments WHERE user_id IN (${placeholders}) AND id = ?`)
+    .get(...ids, id) as AppointmentRow | undefined;
 }
 
 export function getAppointmentByGoogleId(userId: string, googleEventId: string): AppointmentRow | undefined {
-  return getDb().prepare(`SELECT * FROM appointments WHERE user_id = ? AND google_event_id = ?`).get(userId, googleEventId) as AppointmentRow | undefined;
+  const ids = appointmentOwnerIds(userId);
+  const placeholders = ids.map(() => "?").join(", ");
+  return getDb()
+    .prepare(
+      `SELECT * FROM appointments WHERE user_id IN (${placeholders}) AND google_event_id = ?`
+    )
+    .get(...ids, googleEventId) as AppointmentRow | undefined;
 }
 
 export function createAppointment(userId: string, data: {
@@ -514,20 +541,34 @@ export function updateAppointment(userId: string, id: string, data: Partial<{
   }
   if (fields.length === 0) return getAppointment(userId, id);
   fields.push(`updated_at = datetime('now')`);
-  values.push(userId, id);
-  getDb().prepare(`UPDATE appointments SET ${fields.join(", ")} WHERE user_id = ? AND id = ?`).run(...values);
+  const ids = appointmentOwnerIds(userId);
+  const placeholders = ids.map(() => "?").join(", ");
+  values.push(...ids, id);
+  getDb()
+    .prepare(
+      `UPDATE appointments SET ${fields.join(", ")} WHERE user_id IN (${placeholders}) AND id = ?`
+    )
+    .run(...values);
   return getAppointment(userId, id);
 }
 
 export function deleteAppointment(userId: string, id: string): boolean {
-  const result = getDb().prepare(`DELETE FROM appointments WHERE user_id = ? AND id = ?`).run(userId, id);
+  const ids = appointmentOwnerIds(userId);
+  const placeholders = ids.map(() => "?").join(", ");
+  const result = getDb()
+    .prepare(`DELETE FROM appointments WHERE user_id IN (${placeholders}) AND id = ?`)
+    .run(...ids, id);
   return result.changes > 0;
 }
 
 export function getClientAppointments(userId: string, clientId: string): AppointmentRow[] {
-  return getDb().prepare(
-    `SELECT * FROM appointments WHERE user_id = ? AND client_id = ? ORDER BY start_time DESC`
-  ).all(userId, clientId) as AppointmentRow[];
+  const ids = appointmentOwnerIds(userId);
+  const placeholders = ids.map(() => "?").join(", ");
+  return getDb()
+    .prepare(
+      `SELECT * FROM appointments WHERE user_id IN (${placeholders}) AND client_id = ? ORDER BY start_time DESC`
+    )
+    .all(...ids, clientId) as AppointmentRow[];
 }
 
 // --- Conversations ---

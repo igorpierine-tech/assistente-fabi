@@ -3,12 +3,7 @@ import { Router, type Router as ExpressRouter } from "express";
 import { google } from "googleapis";
 import { consumeMobileLogin, createMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
-import {
-  isEmailAuthorized,
-  getWorkspaceId,
-  getPrimaryAppointmentOwnerEmail,
-} from "../services/auth-config";
-import { getDb } from "../services/database";
+import { isEmailAuthorized } from "../services/auth-config";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -96,34 +91,11 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     };
     const isMobile = req.session.oauthPlatform === "mobile";
 
-    // One-time backfill: if this user is the configured "primary appointment
-    // owner", reassign any workspace-owned appointments/booking_requests to
-    // their personal id. Safe to run every login (idempotent no-op after
-    // the first time).
-    try {
-      const workspaceId = getWorkspaceId();
-      const primaryEmail = getPrimaryAppointmentOwnerEmail();
-      if (
-        workspaceId &&
-        primaryEmail &&
-        email &&
-        email.toLowerCase() === primaryEmail &&
-        googleUser.id !== workspaceId
-      ) {
-        const db = getDb();
-        db.prepare(
-          `UPDATE appointments SET user_id = ? WHERE user_id = ?`
-        ).run(googleUser.id, workspaceId);
-        db.prepare(
-          `UPDATE booking_requests SET user_id = ? WHERE user_id = ?`
-        ).run(googleUser.id, workspaceId);
-        db.prepare(
-          `UPDATE conversations SET user_id = ? WHERE user_id = ?`
-        ).run(googleUser.id, workspaceId);
-      }
-    } catch (err) {
-      console.warn("Appointment backfill skipped:", (err as Error).message);
-    }
+    // Note: legacy appointments/booking_requests may still be stored with the
+    // shared workspace id (from an earlier data model). We DO NOT rewrite
+    // them here — the appointment/booking DB helpers accept either the
+    // personal id or the workspace id, so old records stay visible while new
+    // ones are scoped per user.
 
     req.session.regenerate((regenerateError) => {
       if (regenerateError) {
