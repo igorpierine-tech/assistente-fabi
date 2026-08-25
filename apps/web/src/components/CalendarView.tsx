@@ -477,9 +477,11 @@ function TimeGridView({
     });
   }
 
+  const gridColumns = `56px repeat(${days.length}, minmax(0, 1fr))`;
+
   return (
     <div className={styles.timeGrid}>
-      <div className={styles.timeGridHeader}>
+      <div className={styles.timeGridHeader} style={{ gridTemplateColumns: gridColumns }}>
         <div className={styles.timeGutterHeader} />
         {days.map((d) => {
           const dayStr = dateObjToLocalStr(d);
@@ -502,7 +504,7 @@ function TimeGridView({
 
       <div
         className={styles.timeGridBody}
-        style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: gridColumns }}
       >
         <div className={styles.timeGutter} style={{ height: totalHeight }}>
           {hours.map((h) => (

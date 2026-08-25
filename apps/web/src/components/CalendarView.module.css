@@ -175,26 +175,12 @@
 
 .timeGridHeader {
   display: grid;
-  grid-template-columns: 56px 1fr;
+  /* gridTemplateColumns is set inline to match the body exactly */
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   position: sticky;
   top: 0;
   z-index: 3;
-}
-
-.timeGridHeader > :nth-child(2),
-.timeGridHeader > :nth-child(3),
-.timeGridHeader > :nth-child(4),
-.timeGridHeader > :nth-child(5),
-.timeGridHeader > :nth-child(6),
-.timeGridHeader > :nth-child(7),
-.timeGridHeader > :nth-child(8) {
-  grid-column: auto;
-}
-
-.timeGridHeader {
-  grid-template-columns: 56px repeat(auto-fit, minmax(0, 1fr));
 }
 
 .timeGutterHeader {
