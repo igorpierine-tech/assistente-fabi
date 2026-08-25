@@ -313,16 +313,23 @@ export function CalendarView({ events, onEventClick, onNewEvent, onEventMove }: 
               const overflow = dayEvents.length - maxShow;
 
               const isDropTarget = dragOverDay === dayStr;
+              const openDayView = () => {
+                setAnchorDate(new Date(cell.year, cell.month, cell.day));
+                setViewMode("dia");
+              };
               return (
                 <div
                   key={dayStr}
                   className={`${styles.dayCell} ${!cell.isCurrentMonth ? styles.dayCellOther : ""} ${isToday ? styles.dayCellToday : ""} ${isDropTarget ? styles.dayCellDropTarget : ""}`}
-                  onClick={() => onNewEvent(dayStr)}
+                  onClick={openDayView}
                   onDragOver={(e) => handleDayDragOver(e, dayStr)}
                   onDragLeave={() => handleDayDragLeave(dayStr)}
                   onDrop={(e) => handleDayDrop(e, dayStr)}
+                  title="Clique para ver o dia"
                 >
-                  <span className={`${styles.dayNumber} ${isToday ? styles.dayNumberToday : ""}`}>
+                  <span
+                    className={`${styles.dayNumber} ${isToday ? styles.dayNumberToday : ""}`}
+                  >
                     {cell.day}
                   </span>
                   <div className={styles.dayEvents}>
