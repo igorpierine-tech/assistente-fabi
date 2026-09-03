@@ -5,20 +5,32 @@ const LOCAL_API_URL = Platform.select({
   default: "http://localhost:3001",
 });
 
-function normalizeApiUrl(value: string): string {
-  const url = value.trim().replace(/\/+$/, "");
+/**
+ * Normalize the API URL. Historically this threw for missing/invalid values,
+ * which crashed the JS bundle at module-load time — before any React
+ * component could render, resulting in a splash screen followed by an
+ * immediate close on Android. We now log a warning and fall back to the
+ * platform default so the app always boots.
+ */
+function normalizeApiUrl(raw: string | undefined | null): string {
+  const value = (raw || LOCAL_API_URL || "http://localhost:3001").trim().replace(/\/+$/, "");
 
-  if (!/^https?:\/\//i.test(url)) {
-    throw new Error("EXPO_PUBLIC_API_URL deve começar com http:// ou https://");
+  if (!/^https?:\/\//i.test(value)) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `EXPO_PUBLIC_API_URL sem esquema válido ("${value}"), usando fallback local.`
+    );
+    return LOCAL_API_URL || "http://localhost:3001";
   }
 
-  if (!__DEV__ && !url.startsWith("https://")) {
-    throw new Error("EXPO_PUBLIC_API_URL deve usar HTTPS em builds de produção");
+  if (!__DEV__ && !value.startsWith("https://")) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `EXPO_PUBLIC_API_URL não é HTTPS em build de produção ("${value}"). O app ainda vai tentar, mas conexões seguras são recomendadas.`
+    );
   }
 
-  return url;
+  return value;
 }
 
-export const API_URL = normalizeApiUrl(
-  process.env.EXPO_PUBLIC_API_URL || LOCAL_API_URL || "http://localhost:3001"
-);
+export const API_URL = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL);
