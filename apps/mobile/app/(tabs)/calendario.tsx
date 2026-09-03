@@ -1,5 +1,14 @@
-import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Modal,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authenticatedFetch, hasSession } from "../../services/auth";
 
@@ -23,9 +32,23 @@ const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Jul
 
 interface CalEvent {
   id: string; title: string; type: string; date: Date; startH: number; startM: number; durMin: number;
+  startIso: string; endIso: string;
 }
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
+
+/** Return a Cuiabá-anchored ISO for date+time. Handles the -4 UTC offset. */
+function cuiabaDayAndTimeToIso(day: Date, hour: number, minute: number): string {
+  // Cuiabá is UTC-4 year-round. We build UTC by adding 4h to the local time.
+  const utc = Date.UTC(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
+    hour + 4,
+    minute
+  );
+  return new Date(utc).toISOString();
+}
 
 /** Extract date parts (year/month/day/hour/minute) from an ISO in Cuiabá TZ. */
 function cuiabaParts(iso: string): {
@@ -58,6 +81,9 @@ export default function CalendarioScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
   const [events, setEvents] = useState<CalEvent[]>([]);
+  const [moving, setMoving] = useState<CalEvent | null>(null);
+  const [movingBusy, setMovingBusy] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -86,13 +112,60 @@ export default function CalendarioScreen() {
               startH: startAt.hour,
               startM: startAt.minute,
               durMin: Math.max(1, Math.round((endAt - startMs) / 60000)),
+              startIso: row.start_time,
+              endIso: row.end_time,
             };
           })
         );
     }
     load().catch(() => undefined);
     return () => { active = false; };
-  }, [currentDate]);
+  }, [currentDate, refreshTrigger]);
+
+  const rescheduleTo = useCallback(
+    async (targetDate: Date) => {
+      if (!moving) return;
+      setMovingBusy(true);
+      try {
+        // Preserve original time-of-day, change only the date part.
+        const newStartIso = cuiabaDayAndTimeToIso(
+          targetDate,
+          moving.startH,
+          moving.startM
+        );
+        const durationMs = new Date(moving.endIso).getTime() - new Date(moving.startIso).getTime();
+        const newEndIso = new Date(new Date(newStartIso).getTime() + durationMs).toISOString();
+
+        const res = await authenticatedFetch(`/appointments/${moving.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ startTime: newStartIso, endTime: newEndIso }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          Alert.alert("Erro", err.error || "Não foi possível mover o agendamento.");
+          return;
+        }
+        setMoving(null);
+        setRefreshTrigger((t) => t + 1);
+      } finally {
+        setMovingBusy(false);
+      }
+    },
+    [moving]
+  );
+
+  function openMoveModal(event: CalEvent) {
+    setMoving(event);
+  }
+
+  // Build a list of upcoming dates for the picker (30 days)
+  const upcomingDays = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -179,16 +252,88 @@ export default function CalendarioScreen() {
         {dayEvents.map((ev) => {
           const colors = TYPE_COLORS[ev.type] || TYPE_COLORS.constelacao;
           return (
-            <View key={ev.id} style={[s.evCard, { borderLeftColor: colors.border }]}>
+            <TouchableOpacity
+              key={ev.id}
+              style={[s.evCard, { borderLeftColor: colors.border }]}
+              onLongPress={() => openMoveModal(ev)}
+              activeOpacity={0.85}
+              delayLongPress={350}
+            >
               <View style={[s.evTypeBadge, { backgroundColor: colors.bg }]}>
-                <Text style={[s.evTypeText, { color: colors.text }]}>{getTypeName(ev.type)}</Text>
+                <Text style={[s.evTypeText, { color: colors.text }]}>
+                  {getTypeName(ev.type)}
+                </Text>
               </View>
               <Text style={s.evTitle}>{ev.title}</Text>
-              <Text style={s.evTime}>{pad(ev.startH)}:{pad(ev.startM)} — {pad(Math.floor((ev.startH * 60 + ev.startM + ev.durMin) / 60))}:{pad((ev.startH * 60 + ev.startM + ev.durMin) % 60)}</Text>
-            </View>
+              <Text style={s.evTime}>
+                {pad(ev.startH)}:{pad(ev.startM)} —{" "}
+                {pad(Math.floor((ev.startH * 60 + ev.startM + ev.durMin) / 60))}:
+                {pad((ev.startH * 60 + ev.startM + ev.durMin) % 60)}
+              </Text>
+              <Text style={s.evHint}>Segure para mover ↔</Text>
+            </TouchableOpacity>
           );
         })}
       </ScrollView>
+
+      {/* Move-to-day modal */}
+      <Modal
+        visible={!!moving}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMoving(null)}
+      >
+        <View style={s.moveOverlay}>
+          <View style={s.moveSheet}>
+            <Text style={s.moveTitle}>Mover para outro dia</Text>
+            {moving && (
+              <Text style={s.moveSub}>
+                {moving.title}
+                {"\n"}
+                <Text style={{ color: C.textMuted, fontSize: 13 }}>
+                  Horário mantido: {pad(moving.startH)}:{pad(moving.startM)}
+                </Text>
+              </Text>
+            )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.dayChips}
+            >
+              {upcomingDays.map((d) => {
+                const label = d.toLocaleDateString("pt-BR", {
+                  weekday: "short",
+                  day: "2-digit",
+                  month: "short",
+                  timeZone: "America/Cuiaba",
+                });
+                return (
+                  <TouchableOpacity
+                    key={d.getTime()}
+                    style={s.dayChip}
+                    onPress={() => rescheduleTo(d)}
+                    disabled={movingBusy}
+                  >
+                    <Text style={s.dayChipText}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            {movingBusy && (
+              <View style={{ paddingVertical: 10, alignItems: "center" }}>
+                <ActivityIndicator color={C.secondary} />
+              </View>
+            )}
+            <TouchableOpacity
+              style={s.moveCancel}
+              onPress={() => setMoving(null)}
+              disabled={movingBusy}
+            >
+              <Text style={s.moveCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Legend */}
       <View style={s.legend}>
@@ -240,6 +385,16 @@ const s = StyleSheet.create({
   evTypeText: { fontSize: 11, fontWeight: "600" },
   evTitle: { fontSize: 14, fontWeight: "500", color: C.text, marginBottom: 2 },
   evTime: { fontSize: 12, color: C.textMuted },
+  evHint: { fontSize: 10, color: C.secondary, marginTop: 6, opacity: 0.7 },
+  moveOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  moveSheet: { backgroundColor: C.surface, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, paddingBottom: 32 },
+  moveTitle: { color: C.primary, fontFamily: "serif", fontSize: 20 },
+  moveSub: { color: C.text, fontSize: 14, marginTop: 8, lineHeight: 20 },
+  dayChips: { paddingVertical: 16, gap: 8 },
+  dayChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, marginRight: 6 },
+  dayChipText: { color: C.primary, fontSize: 13, fontWeight: "600" },
+  moveCancel: { alignSelf: "center", paddingHorizontal: 20, paddingVertical: 12, marginTop: 6 },
+  moveCancelText: { color: C.textMuted, fontWeight: "600" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },

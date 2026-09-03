@@ -1,5 +1,6 @@
-import { Tabs } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { View, StyleSheet, Text } from "react-native";
+import { FloatingAssistant } from "../../components/FloatingAssistant";
 
 type IconName = "home" | "chat" | "calendar" | "clients" | "more";
 
@@ -65,7 +66,11 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const pathname = usePathname();
+  const hideFab = pathname?.includes("assistente") ?? false;
+
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -124,6 +129,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="financeiro" options={{ href: null }} />
       <Tabs.Screen name="catalogo" options={{ href: null }} />
     </Tabs>
+    <FloatingAssistant hidden={hideFab} />
+    </>
   );
 }
 
