@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authenticatedFetch, hasSession } from "../../services/auth";
@@ -10,11 +10,12 @@ const C = {
 
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   constelacao: { bg: "#FFF3E0", border: "#F57C00", text: "#E65100" },
-  consultoria: { bg: "#FFF8E1", border: "#FFC107", text: "#F57F17" },
+  consultoria_financeira: { bg: "#FFF8E1", border: "#FFC107", text: "#F57F17" },
   planejamento: { bg: "#E8F5E9", border: "#66BB6A", text: "#2E7D32" },
   reuniao: { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" },
-  bloqueio: { bg: "#F5F5F5", border: "#BDBDBD", text: "#616161" },
-  evento: { bg: "#F3E5F5", border: "#AB47BC", text: "#6A1B9A" },
+  bloqueio_pessoal: { bg: "#F5F5F5", border: "#BDBDBD", text: "#616161" },
+  evento_curso: { bg: "#F3E5F5", border: "#AB47BC", text: "#6A1B9A" },
+  outro: { bg: "#ECEFF1", border: "#78909C", text: "#37474F" },
 };
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -24,39 +25,74 @@ interface CalEvent {
   id: string; title: string; type: string; date: Date; startH: number; startM: number; durMin: number;
 }
 
-function generateDemoEvents(): CalEvent[] {
-  const today = new Date();
-  const d = today.getDate();
-  return [
-    ["1", "Constelação — Maria Valentina", "constelacao", 0, 9, 0, 90], ["2", "Consultoria — Ana Paula", "consultoria", 0, 11, 0, 60],
-    ["3", "Planejamento — Masterday", "planejamento", 0, 14, 0, 60], ["4", "Constelação — Juliana Costa", "constelacao", 0, 15, 30, 90],
-    ["5", "Reunião — R&R", "reuniao", 0, 17, 30, 30], ["6", "Constelação — Fernanda", "constelacao", 1, 9, 0, 90],
-    ["7", "Consultoria — Roberto", "consultoria", 1, 14, 0, 60], ["8", "Constelação — Patrícia", "constelacao", 2, 10, 0, 90],
-  ].map(([id, title, type, offset, startH, startM, durMin]) => ({ id: String(id), title: String(title), type: String(type), date: new Date(today.getFullYear(), today.getMonth(), d + Number(offset)), startH: Number(startH), startM: Number(startM), durMin: Number(durMin) }));
-}
-
 function pad(n: number) { return n.toString().padStart(2, "0"); }
+
+/** Extract date parts (year/month/day/hour/minute) from an ISO in Cuiabá TZ. */
+function cuiabaParts(iso: string): {
+  year: number; month: number; day: number; hour: number; minute: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Cuiaba",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .formatToParts(new Date(iso))
+    .reduce<Record<string, string>>((acc, p) => {
+      acc[p.type] = p.value;
+      return acc;
+    }, {});
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month) - 1,
+    day: Number(parts.day),
+    hour: Number(parts.hour === "24" ? 0 : parts.hour),
+    minute: Number(parts.minute),
+  };
+}
 
 export default function CalendarioScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
-  const demoEvents = useMemo(generateDemoEvents, []);
-  const [events, setEvents] = useState<CalEvent[]>(demoEvents);
+  const [events, setEvents] = useState<CalEvent[]>([]);
 
   useEffect(() => {
     let active = true;
     async function load() {
-      if (!(await hasSession())) { if (active) setEvents(demoEvents); return; }
+      if (!(await hasSession())) { if (active) setEvents([]); return; }
       const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-      const response = await authenticatedFetch(`/appointments?startDate=${encodeURIComponent(start.toISOString())}&endDate=${encodeURIComponent(end.toISOString())}`);
+      const response = await authenticatedFetch(
+        `/appointments?startDate=${encodeURIComponent(start.toISOString())}&endDate=${encodeURIComponent(end.toISOString())}`
+      );
       if (!response.ok) return;
-      const rows: Array<{ id: string; title: string; type: string; start_time: string; end_time: string }> = await response.json();
-      if (active) setEvents(rows.map((row) => { const startAt = new Date(row.start_time); const endAt = new Date(row.end_time); return { id: row.id, title: row.title, type: row.type || "evento", date: startAt, startH: startAt.getHours(), startM: startAt.getMinutes(), durMin: Math.max(1, Math.round((endAt.getTime() - startAt.getTime()) / 60000)) }; }));
+      const rows: Array<{
+        id: string; title: string; type: string; start_time: string; end_time: string;
+      }> = await response.json();
+      if (active)
+        setEvents(
+          rows.map((row) => {
+            const startAt = cuiabaParts(row.start_time);
+            const endAt = new Date(row.end_time).getTime();
+            const startMs = new Date(row.start_time).getTime();
+            return {
+              id: row.id,
+              title: row.title,
+              type: row.type || "outro",
+              date: new Date(startAt.year, startAt.month, startAt.day),
+              startH: startAt.hour,
+              startM: startAt.minute,
+              durMin: Math.max(1, Math.round((endAt - startMs) / 60000)),
+            };
+          })
+        );
     }
     load().catch(() => undefined);
     return () => { active = false; };
-  }, [currentDate, demoEvents]);
+  }, [currentDate]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -78,7 +114,15 @@ export default function CalendarioScreen() {
   function goToday() { setCurrentDate(new Date()); setSelectedDay(today.getDate()); }
 
   function getTypeName(type: string) {
-    const m: Record<string, string> = { constelacao: "Constelação", consultoria: "Consultoria", planejamento: "Planejamento", reuniao: "Reunião", bloqueio: "Bloqueio", evento: "Evento" };
+    const m: Record<string, string> = {
+      constelacao: "Constelação",
+      consultoria_financeira: "Consultoria",
+      planejamento: "Planejamento",
+      reuniao: "Reunião",
+      bloqueio_pessoal: "Bloqueio",
+      evento_curso: "Evento",
+      outro: "Outro",
+    };
     return m[type] || type;
   }
 
@@ -151,7 +195,21 @@ export default function CalendarioScreen() {
         {Object.entries(TYPE_COLORS).map(([key, colors]) => (
           <View key={key} style={s.legendItem}>
             <View style={[s.legendDot, { backgroundColor: colors.border }]} />
-            <Text style={s.legendText}>{key === "constelacao" ? "Const." : key === "consultoria" ? "Consult." : key === "planejamento" ? "Plan." : key === "reuniao" ? "Reunião" : key === "bloqueio" ? "Bloq." : "Evento"}</Text>
+            <Text style={s.legendText}>
+              {key === "constelacao"
+                ? "Const."
+                : key === "consultoria_financeira"
+                ? "Consult."
+                : key === "planejamento"
+                ? "Plan."
+                : key === "reuniao"
+                ? "Reunião"
+                : key === "bloqueio_pessoal"
+                ? "Bloq."
+                : key === "evento_curso"
+                ? "Evento"
+                : "Outro"}
+            </Text>
           </View>
         ))}
       </View>

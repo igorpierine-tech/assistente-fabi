@@ -7,8 +7,29 @@ import { RR } from "../../config/theme";
 
 type Appointment = { id: string; title: string; client_name?: string | null; start_time: string; end_time: string };
 
-function greeting() { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; }
-function time(iso?: string) { return iso ? new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"; }
+function greeting() {
+  const h = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "America/Cuiaba",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date())
+  );
+  return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+}
+function time(iso?: string) {
+  return iso
+    ? new Date(iso).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Cuiaba",
+      })
+    : "—";
+}
+function isToday(iso: string): boolean {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Cuiaba" });
+  return fmt.format(new Date(iso)) === fmt.format(new Date());
+}
 
 export default function InicioScreen() {
   const [events, setEvents] = useState<Appointment[]>([]);
@@ -28,9 +49,20 @@ export default function InicioScreen() {
     return () => { active = false; };
   }, []);
 
-  const today = useMemo(() => { const now = new Date(); return events.filter((e) => { const d = new Date(e.start_time); return d.toDateString() === now.toDateString(); }).sort((a, b) => +new Date(a.start_time) - +new Date(b.start_time)); }, [events]);
+  const today = useMemo(
+    () =>
+      events
+        .filter((e) => isToday(e.start_time))
+        .sort((a, b) => +new Date(a.start_time) - +new Date(b.start_time)),
+    [events]
+  );
   const next = today.find((e) => new Date(e.end_time) > new Date()) || today[0];
-  const date = new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+  const date = new Date().toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    timeZone: "America/Cuiaba",
+  });
 
   return <SafeAreaView style={s.root} edges={["bottom"]}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
     <View style={s.top}><View style={s.brandMark}><Text style={s.brandLetter}>R</Text></View><View style={{ flex: 1 }}><Text style={s.eyebrow}>{greeting()},</Text><Text style={s.name}>Fabiana</Text></View><TouchableOpacity style={s.bell} onPress={() => router.push("/(tabs)/agendamentos")}><Text style={s.bellIcon}>♢</Text>{pending > 0 && <View style={s.count}><Text style={s.countText}>{pending}</Text></View>}</TouchableOpacity></View>
