@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Raízes e Riquezas",
-    "slug": "assistente-fabi",
+    "slug": "raizes-e-riquezas",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon-square.png",
@@ -41,9 +41,7 @@
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "129b9e36-4c78-426a-a51c-1b9500414e5f"
-      }
+      "eas": {}
     },
     "owner": "raizes-e-riquezas"
   }
