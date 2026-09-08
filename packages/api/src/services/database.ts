@@ -103,7 +103,7 @@ function initTables(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS booking_requests (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
-      session_type_id TEXT REFERENCES booking_session_types(id) ON DELETE SET NULL,
+      session_type_id TEXT,
       session_type_name TEXT NOT NULL,
       client_name TEXT NOT NULL,
       client_email TEXT NOT NULL,
@@ -224,8 +224,47 @@ function initTables(db: Database.Database) {
     : 365;
   db.prepare(`DELETE FROM audit_logs WHERE created_at < datetime('now', ?)`).run(`-${retentionDays} days`);
 
+  // Remove stale FK on booking_requests.session_type_id that pointed at
+  // booking_session_types — session types now come from catalog_items.
+  migrateBookingRequestsFK(db);
+
   // Consolidate all existing data into the shared workspace, if configured.
   migrateToWorkspace(db);
+}
+
+function migrateBookingRequestsFK(db: Database.Database) {
+  const cols = db.prepare(`PRAGMA table_info(booking_requests)`).all() as Array<{ name: string }>;
+  if (cols.length === 0) return;
+  const fks = db.prepare(`PRAGMA foreign_key_list(booking_requests)`).all() as Array<{ table: string }>;
+  if (!fks.some((fk) => fk.table === "booking_session_types")) return;
+  db.pragma("foreign_keys = OFF");
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE booking_requests_new (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        session_type_id TEXT,
+        session_type_name TEXT NOT NULL,
+        client_name TEXT NOT NULL,
+        client_email TEXT NOT NULL,
+        client_phone TEXT,
+        client_notes TEXT,
+        requested_start TEXT NOT NULL,
+        requested_end TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        google_event_id TEXT,
+        manage_token TEXT UNIQUE NOT NULL,
+        responded_at TEXT,
+        responded_reason TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO booking_requests_new SELECT * FROM booking_requests;
+      DROP TABLE booking_requests;
+      ALTER TABLE booking_requests_new RENAME TO booking_requests;
+      CREATE INDEX IF NOT EXISTS idx_booking_requests_user_status ON booking_requests(user_id, status, requested_start);
+    `);
+  })();
+  db.pragma("foreign_keys = ON");
 }
 
 /**
