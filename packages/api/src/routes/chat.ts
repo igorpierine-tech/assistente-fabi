@@ -1,7 +1,7 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { FabiAgent } from "@assistente-fabi/ai";
-import { GoogleCalendarService } from "../services/google-calendar";
+import { GoogleCalendarService, GoogleAuthError } from "../services/google-calendar";
 import { SyncedCalendarService } from "../services/synced-calendar";
 import { TranscriptionService } from "../services/transcription";
 import { buildWorkspaceService } from "../services/workspace-service";
@@ -105,12 +105,15 @@ function formatToday(events: Awaited<ReturnType<GoogleCalendarService["listToday
   return `Sua agenda de hoje:\n\n${lines.join("\n")}`;
 }
 
-function calendarForSession(req: Request): SyncedCalendarService {
-  const gcal = new GoogleCalendarService(req.session.googleTokens!, (tokens) => {
+function createGcal(req: Request): GoogleCalendarService {
+  return new GoogleCalendarService(req.session.googleTokens!, (tokens) => {
     req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
   });
+}
+
+function calendarForSession(req: Request): SyncedCalendarService {
   return new SyncedCalendarService(
-    gcal,
+    createGcal(req),
     req.session.googleUser!.id,
     sharedOwnerId(req)
   );
@@ -132,7 +135,13 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
     const { id: convId, isNew } = conversation;
     addMessage(user.id, convId, "user", message);
 
-    const calendar = calendarForSession(req);
+    const gcal = createGcal(req);
+    await gcal.ensureValidTokens();
+    const calendar = new SyncedCalendarService(
+      gcal,
+      req.session.googleUser!.id,
+      sharedOwnerId(req)
+    );
 
     if (isTodayAgendaQuestion(message)) {
       const events = await calendar.listToday();
@@ -157,7 +166,11 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
       res.status(400).json({ error: error.message });
       return;
     }
-    console.error("Erro no chat:", error);
+    if (error instanceof GoogleAuthError) {
+      res.status(401).json({ error: error.message, reauth: true });
+      return;
+    }
+    console.error("Erro no chat:", error instanceof Error ? error.message : error);
     res.status(500).json({ error: "Erro ao processar mensagem" });
   }
 });
@@ -187,7 +200,13 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
     const { id: convId, isNew } = conversation;
     addMessage(user.id, convId, "user", text);
 
-    const calendar = calendarForSession(req);
+    const gcalVoice = createGcal(req);
+    await gcalVoice.ensureValidTokens();
+    const calendar = new SyncedCalendarService(
+      gcalVoice,
+      req.session.googleUser!.id,
+      sharedOwnerId(req)
+    );
     const workspace = buildWorkspaceService(sharedOwnerId(req));
     const result = await getAgent().chat(text, convId, calendar, user.name, workspace);
 
@@ -207,7 +226,11 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
       res.status(400).json({ error: error.message });
       return;
     }
-    console.error("Erro no voice:", error);
+    if (error instanceof GoogleAuthError) {
+      res.status(401).json({ error: error.message, reauth: true });
+      return;
+    }
+    console.error("Erro no voice:", error instanceof Error ? error.message : error);
     res.status(500).json({ error: "Erro ao processar áudio" });
   }
 });

@@ -117,6 +117,18 @@ export function ChatPanel({ userId }: ChatPanelProps) {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.reauth) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: "Sua conexão com o Google expirou. Por favor, clique em **Sair** e faça login novamente para reconectar a agenda.",
+              timestamp: new Date(),
+            },
+          ]);
+          setIsLoading(false);
+          return;
+        }
         throw new Error(data.error || "Erro ao processar mensagem");
       }
 
