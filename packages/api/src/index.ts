@@ -18,6 +18,7 @@ import { isValidSignedSession } from "./services/mobile-auth";
 import { rateLimit, requireTrustedOrigin, securityHeaders } from "./middleware/security";
 import { ValidationError } from "./services/validation";
 import { privacyRouter } from "./routes/privacy";
+import { publicPagesRouter } from "./routes/public-pages";
 import { auditRequests } from "./middleware/audit";
 import { sessionFilePath } from "./config/persistence";
 import "./session-types";
@@ -49,6 +50,11 @@ const allowedOrigins = new Set([
 ] as string[]);
 
 app.disable("x-powered-by");
+
+// Public pages (privacy policy, terms, landing) — mounted before CORS/session
+// so Google's verification crawler can access them without restrictions.
+app.use(publicPagesRouter);
+
 app.use(securityHeaders);
 app.use(cors({
   origin(origin, callback) {
