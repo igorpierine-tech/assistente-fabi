@@ -420,6 +420,16 @@ function seedFirstTenant(db: Database.Database) {
   `).run();
   if (updated.changes > 0) {
     console.log(`[seed] Tenant config updated for ${updated.changes} row(s)`);
+    db.transaction(() => {
+      for (const table of [
+        "appointments", "clients", "conversations", "messages",
+        "catalog_items", "receivables", "sales", "booking_requests",
+        "audit_logs",
+      ]) {
+        try { db.exec(`DELETE FROM ${table}`); } catch {}
+      }
+    })();
+    console.log("[seed] Test data cleared");
   }
 }
 
