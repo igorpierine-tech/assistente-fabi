@@ -416,7 +416,7 @@ function seedFirstTenant(db: Database.Database) {
         accent_color = '#2f4a2b',
         onboarding_completed = 1,
         updated_at = datetime('now')
-    WHERE business_name = 'Meu Negócio'
+    WHERE business_name != 'Raízes e Riquezas'
   `).run();
   if (updated.changes > 0) {
     console.log(`[seed] Tenant config updated for ${updated.changes} row(s)`);
