@@ -86,7 +86,7 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     // `sharedOwnerId` / `personalOwnerId` helpers.
     const googleUser = {
       id: userInfo.data.id || "google-user",
-      name: userInfo.data.name || "Fabiana",
+      name: userInfo.data.name || "",
       email,
     };
     const isMobile = req.session.oauthPlatform === "mobile";

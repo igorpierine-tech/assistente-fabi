@@ -139,7 +139,7 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
         <div className={styles.greeting}>
           <div className={styles.dateLabel}>{formatDateLabel()}</div>
           <h1 className={styles.hello}>
-            {getGreeting()}, <span className={styles.helloName}>{userName || "Fabiana"}</span>
+            {getGreeting()}, <span className={styles.helloName}>{userName || "profissional"}</span>
           </h1>
         </div>
         <div className={styles.topActions}>

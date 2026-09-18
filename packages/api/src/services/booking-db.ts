@@ -78,7 +78,7 @@ function safeParseWorkHours(raw: string): WorkHours {
 }
 
 function randomSlug(): string {
-  return `fabi-${randomBytes(3).toString("hex")}`;
+  return `ag-${randomBytes(3).toString("hex")}`;
 }
 
 export function getSettingsForUser(userId: string): BookingSettings | null {

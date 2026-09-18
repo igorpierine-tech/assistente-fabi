@@ -1,8 +1,6 @@
 /**
- * Timezone helpers. All appointment times are anchored to America/Cuiaba
- * (Fabi's practice location) regardless of the browser's local timezone.
- * This keeps schedules consistent whether Fabi logs in from Cuiabá, a laptop
- * on São Paulo time, a phone abroad, or a browser stuck on UTC.
+ * Timezone helpers. All appointment times are anchored to a fixed timezone
+ * regardless of the browser's local timezone.
  */
 
 export const APP_TIMEZONE = "America/Cuiaba";

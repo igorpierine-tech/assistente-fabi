@@ -25,11 +25,11 @@ export function FloatingAssistant({ userId }: FloatingAssistantProps) {
   return (
     <>
       {open && (
-        <div className={styles.drawer} role="dialog" aria-label="Assistente da Fabi">
+        <div className={styles.drawer} role="dialog" aria-label="Assistente de Agenda">
           <div className={styles.drawerHeader}>
             <div className={styles.drawerTitle}>
               <span className={styles.drawerDot} />
-              Assistente da Fabi
+              Assistente IA
             </div>
             <button
               className={styles.closeBtn}
@@ -57,8 +57,8 @@ export function FloatingAssistant({ userId }: FloatingAssistantProps) {
         className={`${styles.fab} ${open ? styles.fabOpen : ""}`}
         onClick={() => setOpen((v) => !v)}
         type="button"
-        aria-label={open ? "Fechar assistente" : "Abrir assistente da Fabi"}
-        title={open ? "Fechar assistente" : "Falar com a assistente"}
+        aria-label={open ? "Fechar assistente" : "Abrir assistente"}
+        title={open ? "Fechar assistente" : "Falar com o assistente"}
       >
         {open ? (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>

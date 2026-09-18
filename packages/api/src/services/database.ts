@@ -201,6 +201,26 @@ function initTables(db: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_audit_user_created ON audit_logs(user_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS tenant_config (
+      user_id TEXT PRIMARY KEY,
+      business_name TEXT NOT NULL DEFAULT 'Meu Negócio',
+      owner_name TEXT NOT NULL DEFAULT '',
+      profession TEXT NOT NULL DEFAULT '',
+      tagline TEXT NOT NULL DEFAULT '',
+      timezone TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
+      locale TEXT NOT NULL DEFAULT 'pt-BR',
+      logo_url TEXT,
+      primary_color TEXT NOT NULL DEFAULT '#7c3aed',
+      secondary_color TEXT NOT NULL DEFAULT '#c8a951',
+      accent_color TEXT NOT NULL DEFAULT '#6b8f5e',
+      heading_font TEXT NOT NULL DEFAULT '''Playfair Display'', serif',
+      body_font TEXT NOT NULL DEFAULT '''Inter'', sans-serif',
+      custom_prompt TEXT,
+      onboarding_completed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Existing databases predate multi-tenancy. Legacy rows are deliberately
@@ -750,5 +770,67 @@ export function deleteUserData(userId: string): void {
     database.prepare(`DELETE FROM booking_settings WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM privacy_consents WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM audit_logs WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM tenant_config WHERE user_id = ?`).run(userId);
   })();
+}
+
+// --- Tenant Config ---
+
+export interface TenantConfigRow {
+  user_id: string;
+  business_name: string;
+  owner_name: string;
+  profession: string;
+  tagline: string;
+  timezone: string;
+  locale: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  heading_font: string;
+  body_font: string;
+  custom_prompt: string | null;
+  onboarding_completed: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getTenantConfig(userId: string): TenantConfigRow | undefined {
+  return getDb().prepare(`SELECT * FROM tenant_config WHERE user_id = ?`).get(userId) as TenantConfigRow | undefined;
+}
+
+export function upsertTenantConfig(userId: string, config: Partial<Omit<TenantConfigRow, "user_id" | "created_at" | "updated_at">>): TenantConfigRow {
+  const database = getDb();
+  const existing = getTenantConfig(userId);
+
+  if (existing) {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    for (const [key, value] of Object.entries(config)) {
+      if (value !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+    if (fields.length > 0) {
+      fields.push(`updated_at = datetime('now')`);
+      values.push(userId);
+      database.prepare(`UPDATE tenant_config SET ${fields.join(", ")} WHERE user_id = ?`).run(...values);
+    }
+  } else {
+    const keys = ["user_id"];
+    const placeholders = ["?"];
+    const values: unknown[] = [userId];
+    for (const [key, value] of Object.entries(config)) {
+      if (value !== undefined) {
+        keys.push(key);
+        placeholders.push("?");
+        values.push(value);
+      }
+    }
+    database.prepare(`INSERT INTO tenant_config (${keys.join(", ")}) VALUES (${placeholders.join(", ")})`).run(...values);
+  }
+
+  return getTenantConfig(userId)!;
 }

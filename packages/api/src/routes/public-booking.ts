@@ -20,6 +20,7 @@ import {
   type Busy,
 } from "../services/booking-availability";
 import { rateLimit } from "../middleware/security";
+import { getTenantConfig } from "../services/database";
 
 const router: ExpressRouter = Router();
 
@@ -42,6 +43,7 @@ function publicType(t: BookingSessionType) {
 }
 
 function publicPage(settings: BookingSettings) {
+  const tenant = getTenantConfig(settings.user_id);
   return {
     slug: settings.slug,
     title: settings.title,
@@ -49,6 +51,8 @@ function publicPage(settings: BookingSettings) {
     timezone: settings.timezone,
     maxAdvanceDays: settings.max_advance_days,
     minNoticeHours: settings.min_notice_hours,
+    businessName: tenant?.business_name || settings.title,
+    ownerName: tenant?.owner_name || "",
   };
 }
 

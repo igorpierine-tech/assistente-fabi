@@ -1,6 +1,6 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { FabiAgent } from "@assistente-fabi/ai";
+import { FabiAgent, type AgentConfig } from "@assistente-fabi/ai";
 import { GoogleCalendarService, GoogleAuthError } from "../services/google-calendar";
 import { SyncedCalendarService } from "../services/synced-calendar";
 import { TranscriptionService } from "../services/transcription";
@@ -14,6 +14,7 @@ import {
   listConversations,
   getMessages,
   deleteConversation,
+  getTenantConfig,
 } from "../services/database";
 import multer from "multer";
 import "../session-types";
@@ -91,10 +92,10 @@ function isTodayAgendaQuestion(message: string): boolean {
   return normalized === "qual minha agenda de hoje" || normalized === "qual a minha agenda de hoje";
 }
 
-function formatToday(events: Awaited<ReturnType<GoogleCalendarService["listToday"]>>): string {
+function formatToday(events: Awaited<ReturnType<GoogleCalendarService["listToday"]>>, timezone: string): string {
   if (!events.length) return "Você não tem compromissos hoje.";
   const clock = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Cuiaba", hour: "2-digit", minute: "2-digit",
+    timeZone: timezone, hour: "2-digit", minute: "2-digit",
   });
   const lines = events.map((event) => {
     if (event.start && /^\d{4}-\d{2}-\d{2}$/.test(event.start)) return `- Dia inteiro — ${event.title}`;
@@ -105,10 +106,27 @@ function formatToday(events: Awaited<ReturnType<GoogleCalendarService["listToday
   return `Sua agenda de hoje:\n\n${lines.join("\n")}`;
 }
 
+function getTenantTimezone(req: Request): string {
+  const config = getTenantConfig(sharedOwnerId(req));
+  return config?.timezone || "America/Sao_Paulo";
+}
+
+function getAgentConfig(req: Request): AgentConfig {
+  const config = getTenantConfig(sharedOwnerId(req));
+  return {
+    timezone: config?.timezone || "America/Sao_Paulo",
+    businessName: config?.business_name || "Assistente de Agenda",
+    profession: config?.profession || "profissional",
+    customPrompt: config?.custom_prompt || undefined,
+  };
+}
+
 function createGcal(req: Request): GoogleCalendarService {
-  return new GoogleCalendarService(req.session.googleTokens!, (tokens) => {
-    req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
-  });
+  return new GoogleCalendarService(
+    req.session.googleTokens!,
+    (tokens) => { req.session.googleTokens = { ...req.session.googleTokens, ...tokens }; },
+    getTenantTimezone(req),
+  );
 }
 
 function calendarForSession(req: Request): SyncedCalendarService {
@@ -145,14 +163,15 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
 
     if (isTodayAgendaQuestion(message)) {
       const events = await calendar.listToday();
-      const reply = formatToday(events);
+      const reply = formatToday(events, getTenantTimezone(req));
       addMessage(user.id, convId, "assistant", reply);
       res.json({ message: reply, conversationId: convId, events, user: { name: user.name } });
       return;
     }
 
     const workspace = buildWorkspaceService(sharedOwnerId(req));
-    const result = await getAgent().chat(message, convId, calendar, user.name, workspace);
+    const agentConfig = getAgentConfig(req);
+    const result = await getAgent().chat(message, convId, calendar, user.name, workspace, agentConfig);
 
     addMessage(user.id, convId, "assistant", result.message);
 
@@ -208,7 +227,8 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
       sharedOwnerId(req)
     );
     const workspace = buildWorkspaceService(sharedOwnerId(req));
-    const result = await getAgent().chat(text, convId, calendar, user.name, workspace);
+    const agentConfig = getAgentConfig(req);
+    const result = await getAgent().chat(text, convId, calendar, user.name, workspace, agentConfig);
 
     addMessage(user.id, convId, "assistant", result.message);
 

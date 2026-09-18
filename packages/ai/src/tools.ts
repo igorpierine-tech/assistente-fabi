@@ -30,7 +30,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "create_event",
       description:
-        "Cria um novo evento no Google Calendar. Use SOMENTE após a Fabiana confirmar o agendamento.",
+        "Cria um novo evento no Google Calendar. Use SOMENTE após o profissional confirmar o agendamento.",
       parameters: {
         type: "object",
         properties: {
@@ -40,16 +40,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           description: { type: "string", description: "Descrição/observações do evento (opcional)" },
           appointmentType: {
             type: "string",
-            enum: [
-              "constelacao",
-              "consultoria_financeira",
-              "planejamento",
-              "reuniao",
-              "bloqueio_pessoal",
-              "evento_curso",
-              "outro",
-            ],
-            description: "Tipo do compromisso para categorização",
+            description: "Tipo do compromisso para categorização (use o slug do catálogo de serviços ou 'outro')",
           },
           clientName: { type: "string", description: "Nome do cliente (se aplicável)" },
           clientEmail: {
@@ -67,7 +58,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "update_event",
       description:
-        "Atualiza um evento existente. Use SOMENTE após confirmação da Fabiana.",
+        "Atualiza um evento existente. Use SOMENTE após confirmação do profissional.",
       parameters: {
         type: "object",
         properties: {
@@ -86,7 +77,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "delete_event",
       description:
-        "Remove um evento do Google Calendar. Use SOMENTE após confirmação da Fabiana.",
+        "Remove um evento do Google Calendar. Use SOMENTE após confirmação do profissional.",
       parameters: {
         type: "object",
         properties: {
@@ -257,7 +248,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "create_receivable",
       description:
-        "Cria uma nova conta a receber. Use quando a Fabiana quiser registrar um valor a receber de um cliente.",
+        "Cria uma nova conta a receber. Use quando o profissional quiser registrar um valor a receber de um cliente.",
       parameters: {
         type: "object",
         properties: {

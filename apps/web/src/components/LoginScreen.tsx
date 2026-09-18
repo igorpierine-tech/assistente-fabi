@@ -14,7 +14,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className={styles.logoWrap}>
           <Image
             src="/logo-raizes.png"
-            alt="Raízes e Riquezas"
+            alt="Assistente de Agenda"
             width={220}
             height={220}
             priority
@@ -23,14 +23,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         </div>
 
         <h1 className={styles.title}>
-          Bem-vinda,
+          Bem-vindo(a) ao seu
           <br />
-          <em>Fabiana.</em>
+          <em>Assistente de Agenda.</em>
         </h1>
 
         <p className={styles.desc}>
-          Sua agenda, seus clientes e um assistente de IA — tudo num só lugar,
-          com uma linguagem quente e enraizada.
+          Sua agenda, seus clientes e um assistente de IA — tudo num só lugar.
         </p>
 
         <button className={styles.primaryBtn} onClick={onLogin} type="button">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTenant } from "@/lib/tenant-context";
 import { LogoIcon } from "./Logo";
 import styles from "./Header.module.css";
 
@@ -11,13 +12,14 @@ interface HeaderProps {
 }
 
 export function Header({ userName, onLogout, activeView = "chat", onChangeView }: HeaderProps) {
+  const tenant = useTenant();
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
         <LogoIcon size={48} />
         <div>
-          <h1 className={styles.title}>Raízes e Riquezas</h1>
-          <p className={styles.subtitle}>Assistente da Fabi</p>
+          <h1 className={styles.title}>{tenant.businessName}</h1>
+          <p className={styles.subtitle}>{tenant.tagline}</p>
         </div>
       </div>
 

@@ -24,7 +24,7 @@ router.post("/consent", (req, res) => {
 router.get("/export", (req, res) => {
   const user = req.session.googleUser!;
   res.setHeader("Cache-Control", "no-store");
-  res.setHeader("Content-Disposition", `attachment; filename="assistente-fabi-dados-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.setHeader("Content-Disposition", `attachment; filename="assistente-agenda-dados-${new Date().toISOString().slice(0, 10)}.json"`);
   res.json({ exportedAt: new Date().toISOString(), user, data: exportUserData(user.id) });
 });
 

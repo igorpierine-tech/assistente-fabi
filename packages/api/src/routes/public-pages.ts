@@ -1,6 +1,9 @@
 import { Router, type Router as ExpressRouter } from "express";
+import { DEFAULT_BRAND } from "@assistente-fabi/shared";
 
 const router: ExpressRouter = Router();
+
+const APP_NAME = DEFAULT_BRAND.name;
 
 const PAGE_STYLE = `
   body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem 1rem; color: #333; line-height: 1.7; }
@@ -13,11 +16,11 @@ const PAGE_STYLE = `
 router.get("/", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Raízes e Riquezas — Assistente de Agenda</title><style>${PAGE_STYLE}</style></head><body>
-<h1>Raízes e Riquezas</h1>
+<title>${APP_NAME}</title><style>${PAGE_STYLE}</style></head><body>
+<h1>${APP_NAME}</h1>
 <p><strong>Assistente de Agenda Inteligente</strong> para gestão de atendimentos, agendamentos e organização profissional.</p>
 <h2>Sobre o aplicativo</h2>
-<p>O Raízes e Riquezas é um assistente pessoal que integra com o Google Calendar para facilitar a gestão de agenda de profissionais. Com ele você pode:</p>
+<p>O ${APP_NAME} é um assistente pessoal que integra com o Google Calendar para facilitar a gestão de agenda de profissionais. Com ele você pode:</p>
 <ul>
   <li>Gerenciar agendamentos de atendimentos</li>
   <li>Consultar sua agenda por voz ou texto</li>
@@ -29,20 +32,20 @@ router.get("/", (_req, res) => {
   <li><a href="/privacidade">Política de Privacidade</a></li>
   <li><a href="/termos">Termos de Serviço</a></li>
 </ul>
-<footer><p>&copy; ${new Date().getFullYear()} Raízes e Riquezas. Todos os direitos reservados.</p></footer>
+<footer><p>&copy; ${new Date().getFullYear()} ${APP_NAME}. Todos os direitos reservados.</p></footer>
 </body></html>`);
 });
 
 router.get("/privacidade", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Política de Privacidade — Raízes e Riquezas</title><style>${PAGE_STYLE}</style></head><body>
+<title>Política de Privacidade — ${APP_NAME}</title><style>${PAGE_STYLE}</style></head><body>
 <h1>Política de Privacidade</h1>
 <p><strong>Última atualização:</strong> ${new Date().toLocaleDateString("pt-BR")}</p>
-<p>Esta Política de Privacidade descreve como o aplicativo <strong>Raízes e Riquezas</strong> ("nós", "nosso") coleta, utiliza e protege as informações pessoais dos usuários ("você").</p>
+<p>Esta Política de Privacidade descreve como o aplicativo <strong>${APP_NAME}</strong> ("nós", "nosso") coleta, utiliza e protege as informações pessoais dos usuários ("você").</p>
 
 <h2>1. Dados que coletamos</h2>
-<p>Ao utilizar o Raízes e Riquezas, coletamos os seguintes dados:</p>
+<p>Ao utilizar o ${APP_NAME}, coletamos os seguintes dados:</p>
 <ul>
   <li><strong>Informações da conta Google:</strong> nome, endereço de e-mail e identificador do usuário, obtidos via autenticação Google OAuth 2.0.</li>
   <li><strong>Dados do Google Calendar:</strong> acesso aos eventos da sua agenda para leitura, criação, edição e exclusão de compromissos, conforme suas instruções.</li>
@@ -84,20 +87,20 @@ router.get("/privacidade", (_req, res) => {
 <p>Para dúvidas sobre esta política ou sobre seus dados, entre em contato pelo e-mail disponível na página de suporte do aplicativo.</p>
 
 <footer><p><a href="/">← Voltar à página inicial</a></p>
-<p>&copy; ${new Date().getFullYear()} Raízes e Riquezas. Todos os direitos reservados.</p></footer>
+<p>&copy; ${new Date().getFullYear()} ${APP_NAME}. Todos os direitos reservados.</p></footer>
 </body></html>`);
 });
 
 router.get("/termos", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Termos de Serviço — Raízes e Riquezas</title><style>${PAGE_STYLE}</style></head><body>
+<title>Termos de Serviço — ${APP_NAME}</title><style>${PAGE_STYLE}</style></head><body>
 <h1>Termos de Serviço</h1>
 <p><strong>Última atualização:</strong> ${new Date().toLocaleDateString("pt-BR")}</p>
-<p>Ao utilizar o aplicativo <strong>Raízes e Riquezas</strong>, você concorda com os seguintes termos.</p>
+<p>Ao utilizar o aplicativo <strong>${APP_NAME}</strong>, você concorda com os seguintes termos.</p>
 
 <h2>1. Descrição do serviço</h2>
-<p>O Raízes e Riquezas é um assistente de agenda que se integra ao Google Calendar para ajudar profissionais a gerenciar atendimentos, agendamentos e clientes por meio de chat com inteligência artificial.</p>
+<p>O ${APP_NAME} é um assistente de agenda que se integra ao Google Calendar para ajudar profissionais a gerenciar atendimentos, agendamentos e clientes por meio de chat com inteligência artificial.</p>
 
 <h2>2. Uso autorizado</h2>
 <p>O serviço é destinado a profissionais autorizados para gestão de suas agendas. Você é responsável por manter a segurança de sua conta e por todas as atividades realizadas com ela.</p>
@@ -115,7 +118,7 @@ router.get("/termos", (_req, res) => {
 <p>Você pode encerrar sua conta a qualquer momento, solicitando a exclusão dos seus dados através do aplicativo.</p>
 
 <footer><p><a href="/">← Voltar à página inicial</a></p>
-<p>&copy; ${new Date().getFullYear()} Raízes e Riquezas. Todos os direitos reservados.</p></footer>
+<p>&copy; ${new Date().getFullYear()} ${APP_NAME}. Todos os direitos reservados.</p></footer>
 </body></html>`);
 });
 

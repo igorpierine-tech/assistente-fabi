@@ -12,6 +12,7 @@ import { receivablesRouter } from "./routes/receivables";
 import { salesRouter } from "./routes/sales";
 import { bookingRouter } from "./routes/booking";
 import { publicBookingRouter } from "./routes/public-booking";
+import { tenantRouter } from "./routes/tenant";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
 import { getDb } from "./services/database";
 import { isValidSignedSession } from "./services/mobile-auth";
@@ -99,7 +100,7 @@ app.use(rateLimit({ prefix: "api", windowMs: 15 * 60_000, max: 300 }));
 app.use(auditRequests);
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "Raízes e Riquezas API" });
+  res.json({ status: "ok", service: "Assistente de Agenda API" });
 });
 
 app.use("/auth", authRouter);
@@ -113,6 +114,7 @@ app.use("/public/booking", publicBookingRouter);
 app.use("/catalog", catalogRouter);
 app.use("/receivables", receivablesRouter);
 app.use("/sales", salesRouter);
+app.use("/tenant", tenantRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
@@ -143,5 +145,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 getDb();
 
 app.listen(port, () => {
-  console.log(`Raízes e Riquezas API rodando na porta ${port}`);
+  console.log(`Assistente de Agenda API rodando na porta ${port}`);
 });

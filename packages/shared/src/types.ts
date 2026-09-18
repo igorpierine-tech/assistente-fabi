@@ -1,11 +1,4 @@
-export type AppointmentType =
-  | "constelacao"
-  | "consultoria_financeira"
-  | "planejamento"
-  | "reuniao"
-  | "bloqueio_pessoal"
-  | "evento_curso"
-  | "outro";
+export type AppointmentType = string;
 
 export interface Appointment {
   id: string;
@@ -84,4 +77,24 @@ export interface Client {
   appointmentHistory: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TenantConfig {
+  businessName: string;
+  ownerName: string;
+  profession: string;
+  tagline: string;
+  timezone: string;
+  locale: string;
+  logoUrl: string | null;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+  fonts: {
+    heading: string;
+    body: string;
+  };
+  onboardingCompleted: boolean;
 }

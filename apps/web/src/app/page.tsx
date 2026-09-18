@@ -8,6 +8,7 @@ import { DaySummary } from "@/components/DaySummary";
 import { CalendarView } from "@/components/CalendarView";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { LoginScreen } from "@/components/LoginScreen";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { ClientsPanel } from "@/components/ClientsPanel";
 import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 import { SettingsView } from "@/components/SettingsView";
@@ -16,6 +17,7 @@ import { VendasView } from "@/components/VendasView";
 import { FloatingAssistant } from "@/components/FloatingAssistant";
 import type { CalendarEvent } from "@/components/CalendarView";
 import { isoToLocalInput, localInputToIso } from "@/lib/timezone";
+import { TenantContext, DEFAULT_TENANT_CONFIG, type TenantConfig } from "@/lib/tenant-context";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -124,6 +126,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<View>("inicio");
   const [pendingBookingCount, setPendingBookingCount] = useState(0);
+  const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -158,6 +161,17 @@ export default function Home() {
     }
   }, []);
 
+  const fetchTenantConfig = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/tenant/config`, { credentials: "include" });
+      if (res.ok) {
+        setTenantConfig(await res.json());
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
   useEffect(() => {
     setClients(buildDashboardClients(clientRows, appointmentRows));
   }, [clientRows, appointmentRows]);
@@ -166,8 +180,9 @@ export default function Home() {
     if (isAuthenticated) {
       fetchAppointments();
       fetchClients();
+      fetchTenantConfig();
     }
-  }, [isAuthenticated, fetchAppointments, fetchClients]);
+  }, [isAuthenticated, fetchAppointments, fetchClients, fetchTenantConfig]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -213,6 +228,7 @@ export default function Home() {
         setUserName(data.user.name || "");
         fetchAppointments();
         fetchClients();
+        fetchTenantConfig();
       }
     } catch {
       setIsAuthenticated(false);
@@ -234,6 +250,7 @@ export default function Home() {
     setActiveView("inicio");
     setClientRows([]);
     setAppointmentRows([]);
+    setTenantConfig(null);
   }
 
   function handleEventClick(event: CalendarEvent) {
@@ -355,6 +372,17 @@ export default function Home() {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
+  if (tenantConfig && !tenantConfig.onboardingCompleted) {
+    return (
+      <OnboardingWizard
+        userName={userName}
+        onComplete={() => {
+          fetchTenantConfig();
+        }}
+      />
+    );
+  }
+
   function renderContent() {
     switch (activeView) {
       case "inicio":
@@ -422,34 +450,35 @@ export default function Home() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar
-        activeView={activeView}
-        onChangeView={setActiveView}
-        userName={userName || "Fabiana"}
-        clientCount={clients.length}
-        pendingBookingCount={pendingBookingCount}
-        onLogout={handleLogout}
-      />
-      <main className="app-main">
-        {renderContent()}
-      </main>
-
-      {(selectedEvent || showNewEvent) && (
-        <AppointmentCard
-          event={selectedEvent}
-          isNew={showNewEvent}
-          initialDate={newEventDate}
-          onClose={() => { setSelectedEvent(null); setShowNewEvent(false); }}
-          onSave={handleSaveEvent}
-          onDelete={handleDeleteEvent}
+    <TenantContext value={tenantConfig || DEFAULT_TENANT_CONFIG}>
+      <div className="app-layout">
+        <Sidebar
+          activeView={activeView}
+          onChangeView={setActiveView}
+          userName={userName}
+          clientCount={clients.length}
+          pendingBookingCount={pendingBookingCount}
+          onLogout={handleLogout}
         />
-      )}
+        <main className="app-main">
+          {renderContent()}
+        </main>
 
-      {/* Floating AI assistant — hidden on /assistente view (full chat is already there) */}
-      {userId && activeView !== "assistente" && (
-        <FloatingAssistant userId={userId} />
-      )}
-    </div>
+        {(selectedEvent || showNewEvent) && (
+          <AppointmentCard
+            event={selectedEvent}
+            isNew={showNewEvent}
+            initialDate={newEventDate}
+            onClose={() => { setSelectedEvent(null); setShowNewEvent(false); }}
+            onSave={handleSaveEvent}
+            onDelete={handleDeleteEvent}
+          />
+        )}
+
+        {userId && activeView !== "assistente" && (
+          <FloatingAssistant userId={userId} />
+        )}
+      </div>
+    </TenantContext>
   );
 }

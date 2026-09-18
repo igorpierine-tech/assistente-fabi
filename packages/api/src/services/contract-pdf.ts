@@ -43,7 +43,7 @@ interface ProviderInfo {
 }
 
 const DEFAULT_PROVIDER: ProviderInfo = {
-  name: "Fabiana — Raízes e Riquezas",
+  name: "Prestador de Serviços",
   document: "",
   email: "",
   phone: "",

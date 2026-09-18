@@ -1,53 +1,27 @@
-import type { AppointmentType } from "./types";
+// Default values — used as fallbacks when tenant config is not available.
+// New code should pass tenant config explicitly instead of importing these.
 
-export const TIMEZONE = "America/Cuiaba";
+export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 
-export const APPOINTMENT_DURATIONS: Record<AppointmentType, number> = {
-  constelacao: 90,
-  consultoria_financeira: 60,
-  planejamento: 60,
-  reuniao: 30,
-  bloqueio_pessoal: 0,
-  evento_curso: 120,
-  outro: 60,
-};
+/** @deprecated Use tenant config timezone instead */
+export const TIMEZONE = DEFAULT_TIMEZONE;
 
 export const BUFFER_MINUTES = 15;
 
 export const DEFAULT_REMINDERS = [1440, 60]; // 24h e 1h antes
 
-export const CALENDAR_COLORS: Record<AppointmentType, string> = {
-  constelacao: "#8B5E3C",
-  consultoria_financeira: "#C8A951",
-  planejamento: "#6B8F5E",
-  reuniao: "#5E7E8B",
-  bloqueio_pessoal: "#9E9E9E",
-  evento_curso: "#8B6B5E",
-  outro: "#7E7E7E",
-};
-
-export const APPOINTMENT_LABELS: Record<AppointmentType, string> = {
-  constelacao: "Constelação",
-  consultoria_financeira: "Consultoria Financeira",
-  planejamento: "Planejamento",
-  reuniao: "Reunião",
-  bloqueio_pessoal: "Bloqueio Pessoal",
-  evento_curso: "Evento / Curso",
-  outro: "Outro",
-};
-
-export const BRAND = {
-  name: "Raízes e Riquezas",
+export const DEFAULT_BRAND = {
+  name: "Assistente de Agenda",
   tagline: "Agenda, clientes e assistente inteligente",
   colors: {
-    primary: "#5E4B37",       // Marrom raiz — cor principal
-    primaryLight: "#8B7355",  // Marrom claro
-    secondary: "#C8A951",     // Dourado — riqueza
-    secondaryLight: "#E8D490",// Dourado claro
-    accent: "#6B8F5E",        // Verde folha — natureza
-    accentLight: "#A3C496",   // Verde claro
-    background: "#FBF8F3",    // Off-white quente
-    backgroundDark: "#1A1612",// Fundo escuro
+    primary: "#7c3aed",
+    primaryLight: "#a78bfa",
+    secondary: "#c8a951",
+    secondaryLight: "#E8D490",
+    accent: "#6b8f5e",
+    accentLight: "#A3C496",
+    background: "#FBF8F3",
+    backgroundDark: "#1A1612",
     surface: "#FFFFFF",
     surfaceDark: "#2A2420",
     text: "#2C2418",
@@ -64,3 +38,22 @@ export const BRAND = {
     body: "'Inter', sans-serif",
   },
 } as const;
+
+/** @deprecated Use DEFAULT_BRAND instead */
+export const BRAND = DEFAULT_BRAND;
+
+// Default color map for calendar events — keyed by arbitrary service slug.
+// Tenants define their own colors via catalog_items.
+export const DEFAULT_CALENDAR_COLORS: Record<string, string> = {
+  "1": "#7986CB",
+  "2": "#33B679",
+  "3": "#8E24AA",
+  "4": "#E67C73",
+  "5": "#F6BF26",
+  "6": "#F4511E",
+  "7": "#039BE5",
+  "8": "#616161",
+  "9": "#3F51B5",
+  "10": "#0B8043",
+  "11": "#D50000",
+};

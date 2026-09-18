@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { buildSystemPrompt } from "./system-prompt";
 import { calendarTools, type ToolName } from "./tools";
 import type { WorkspaceService } from "./workspace";
-import { TIMEZONE } from "@assistente-fabi/shared";
+import { DEFAULT_TIMEZONE } from "@assistente-fabi/shared";
 
 export interface CalendarService {
   listEvents(startDate: string, endDate: string): Promise<unknown[]>;
@@ -49,6 +49,13 @@ function pruneConversations(): void {
   }
 }
 
+export interface AgentConfig {
+  timezone?: string;
+  businessName?: string;
+  profession?: string;
+  customPrompt?: string;
+}
+
 export class FabiAgent {
   private client: OpenAI;
 
@@ -61,7 +68,8 @@ export class FabiAgent {
     conversationId: string,
     calendar: CalendarService,
     userName?: string,
-    workspace?: WorkspaceService
+    workspace?: WorkspaceService,
+    config?: AgentConfig,
   ): Promise<{ message: string; conversationId: string }> {
     pruneConversations();
 
@@ -74,8 +82,9 @@ export class FabiAgent {
 
     history.push({ role: "user", content: userMessage });
 
-    const now = new Date().toLocaleString("pt-BR", { timeZone: TIMEZONE });
-    const systemPrompt = buildSystemPrompt(now, userName);
+    const tz = config?.timezone || DEFAULT_TIMEZONE;
+    const now = new Date().toLocaleString("pt-BR", { timeZone: tz });
+    const systemPrompt = buildSystemPrompt(now, userName, config);
 
     const buildMessages = (): ChatMessage[] => [
       { role: "system", content: systemPrompt },

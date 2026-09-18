@@ -1,7 +1,6 @@
 import { google, calendar_v3 } from "googleapis";
 import type { CalendarService } from "@assistente-fabi/ai";
-import { TIMEZONE, DEFAULT_REMINDERS, CALENDAR_COLORS, APPOINTMENT_LABELS } from "@assistente-fabi/shared";
-import type { AppointmentType } from "@assistente-fabi/shared";
+import { DEFAULT_TIMEZONE, DEFAULT_REMINDERS } from "@assistente-fabi/shared";
 import type { Credentials } from "google-auth-library";
 import { DateTime } from "luxon";
 
@@ -15,8 +14,14 @@ export class GoogleAuthError extends Error {
 export class GoogleCalendarService implements CalendarService {
   private calendar: calendar_v3.Calendar;
   private auth: InstanceType<typeof google.auth.OAuth2>;
+  private timezone: string;
 
-  constructor(credentials: Credentials, onTokens?: (tokens: Credentials) => void) {
+  constructor(
+    credentials: Credentials,
+    onTokens?: (tokens: Credentials) => void,
+    timezone?: string,
+  ) {
+    this.timezone = timezone || DEFAULT_TIMEZONE;
     this.auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
@@ -59,7 +64,7 @@ export class GoogleCalendarService implements CalendarService {
     }
   }
 
-  static todayBounds(now = DateTime.now().setZone(TIMEZONE)) {
+  todayBounds(now = DateTime.now().setZone(this.timezone)) {
     return {
       start: now.startOf("day").toUTC().toISO()!,
       end: now.endOf("day").toUTC().toISO()!,
@@ -67,7 +72,7 @@ export class GoogleCalendarService implements CalendarService {
   }
 
   async listToday() {
-    const bounds = GoogleCalendarService.todayBounds();
+    const bounds = this.todayBounds();
     return this.listEvents(bounds.start, bounds.end);
   }
 
@@ -79,7 +84,7 @@ export class GoogleCalendarService implements CalendarService {
         timeMax: endDate,
         singleEvents: true,
         orderBy: "startTime",
-        timeZone: TIMEZONE,
+        timeZone: this.timezone,
       });
 
       return (response.data.items || []).map((event) => ({
@@ -103,12 +108,12 @@ export class GoogleCalendarService implements CalendarService {
     clientEmail?: string;
   }) {
     return this.withAuth(async () => {
-      const colorId = this.getColorId(params.appointmentType as AppointmentType);
+      const colorId = this.getColorId(params.appointmentType);
 
       const event: calendar_v3.Schema$Event = {
         summary: params.title,
-        start: { dateTime: params.startTime, timeZone: TIMEZONE },
-        end: { dateTime: params.endTime, timeZone: TIMEZONE },
+        start: { dateTime: params.startTime, timeZone: this.timezone },
+        end: { dateTime: params.endTime, timeZone: this.timezone },
         description: params.description || "",
         colorId,
         reminders: {
@@ -146,8 +151,8 @@ export class GoogleCalendarService implements CalendarService {
     return this.withAuth(async () => {
       const updateData: calendar_v3.Schema$Event = {};
       if (params.title) updateData.summary = params.title as string;
-      if (params.startTime) updateData.start = { dateTime: params.startTime as string, timeZone: TIMEZONE };
-      if (params.endTime) updateData.end = { dateTime: params.endTime as string, timeZone: TIMEZONE };
+      if (params.startTime) updateData.start = { dateTime: params.startTime as string, timeZone: this.timezone };
+      if (params.endTime) updateData.end = { dateTime: params.endTime as string, timeZone: this.timezone };
       if (params.description) updateData.description = params.description as string;
 
       const response = await this.calendar.events.patch({
@@ -177,7 +182,7 @@ export class GoogleCalendarService implements CalendarService {
     });
   }
 
-  private getColorId(type: AppointmentType): string {
+  private getColorId(type: string): string {
     const colorMap: Record<string, string> = {
       constelacao: "6",
       consultoria_financeira: "5",

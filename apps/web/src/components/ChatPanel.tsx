@@ -25,7 +25,7 @@ interface ChatPanelProps {
 
 const WELCOME_MSG: Message = {
   role: "assistant",
-  content: "Olá, Fabi! Sou sua assistente de agenda. Você pode me perguntar sobre seus compromissos, pedir para agendar, alterar ou cancelar atendimentos. Use o microfone ou digite sua mensagem.",
+  content: "Olá! Sou seu assistente de agenda. Você pode me perguntar sobre seus compromissos, pedir para agendar, alterar ou cancelar atendimentos. Use o microfone ou digite sua mensagem.",
   timestamp: new Date(),
 };
 

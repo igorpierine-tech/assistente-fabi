@@ -1,5 +1,6 @@
 "use client";
 
+import { useTenant } from "@/lib/tenant-context";
 import styles from "./Sidebar.module.css";
 
 export type View =
@@ -21,7 +22,6 @@ interface SidebarProps {
   onLogout?: () => void;
 }
 
-const BRAND_NAME = "Raízes e Riquezas";
 
 const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "inicio", label: "Início", icon: "home" },
@@ -107,14 +107,16 @@ export function Sidebar({
   pendingBookingCount = 0,
   onLogout,
 }: SidebarProps) {
+  const tenant = useTenant();
+  const brandName = tenant.businessName;
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
         <div className={styles.avatar}>
-          <span className={styles.avatarLetter}>R</span>
+          <span className={styles.avatarLetter}>{brandName[0]?.toUpperCase() || "A"}</span>
         </div>
         <div className={styles.brandInfo}>
-          <div className={styles.brandName}>{BRAND_NAME}</div>
+          <div className={styles.brandName}>{brandName}</div>
           <div className={styles.brandSub}>{userName} · admin</div>
         </div>
       </div>

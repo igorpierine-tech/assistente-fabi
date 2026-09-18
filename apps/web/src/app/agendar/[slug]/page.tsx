@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   return {
-    title: "Agendar — Raízes e Riquezas",
+    title: "Agendar — Assistente de Agenda",
     description: `Agende sua sessão · ${slug}`,
   };
 }

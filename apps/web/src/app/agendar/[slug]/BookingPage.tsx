@@ -22,6 +22,8 @@ interface PageMeta {
   timezone: string;
   maxAdvanceDays: number;
   minNoticeHours: number;
+  businessName?: string;
+  ownerName?: string;
 }
 
 interface RequestResponse {
@@ -267,13 +269,13 @@ export function BookingPage({ slug }: { slug: string }) {
         <div className={styles.brand}>
           <Image
             src="/logo-raizes.png"
-            alt="Raízes e Riquezas"
+            alt={page.businessName || page.title}
             width={72}
             height={72}
             priority
           />
           <div>
-            <div className={styles.brandKicker}>Raízes e Riquezas</div>
+            <div className={styles.brandKicker}>{page.businessName || page.title}</div>
             <h1 className={styles.title}>{page.title}</h1>
           </div>
         </div>
@@ -599,7 +601,7 @@ function FormStep({
         {submitting ? "Enviando…" : "Solicitar horário"}
       </button>
       <p className={styles.finePrint}>
-        A Fabi ainda precisa confirmar. Você recebe a resposta por e-mail.
+        O profissional ainda precisa confirmar. Você recebe a resposta por e-mail.
       </p>
     </form>
   );
@@ -624,7 +626,7 @@ function ConfirmationView({
         às {formatTime(confirmation.requestedStart, timezone)}
       </p>
       <p className={styles.finePrint}>
-        Assim que a Fabi confirmar, você recebe o convite no e-mail com o
+        Assim que o profissional confirmar, você recebe o convite no e-mail com o
         Google Calendar. Se precisar alterar, guarde este link:
       </p>
       <div className={styles.manageLink}>
