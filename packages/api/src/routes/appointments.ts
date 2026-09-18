@@ -53,14 +53,50 @@ function calendarForSession(req: Request): GoogleCalendarService | null {
   });
 }
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+  const userId = req.session.googleUser!.id;
   const startDate = req.query.startDate === undefined ? undefined : requiredIsoDate(req.query.startDate, "Data inicial");
   const endDate = req.query.endDate === undefined ? undefined : requiredIsoDate(req.query.endDate, "Data final");
   const clientId = optionalId(req.query.clientId, "ID do cliente");
   const status = optionalStatus(req.query.status);
-  const appointments = listAppointments(req.session.googleUser!.id, {
-    startDate, endDate, clientId, status,
-  });
+
+  let appointments = listAppointments(userId, { startDate, endDate, clientId, status });
+
+  if (appointments.length === 0 && !startDate && !endDate) {
+    const calendar = calendarForSession(req);
+    if (calendar) {
+      try {
+        const now = new Date();
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const sixMonthsAhead = new Date(now);
+        sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
+        const events = await calendar.listEvents(sixMonthsAgo.toISOString(), sixMonthsAhead.toISOString());
+        let imported = 0;
+        for (const event of events) {
+          if (!event.id || !event.start || !event.end) continue;
+          if (getAppointmentByGoogleId(userId, event.id)) continue;
+          createAppointment(userId, {
+            title: event.title || "Sem título",
+            type: "outro",
+            startTime: event.start,
+            endTime: event.end,
+            notes: event.description || undefined,
+            googleEventId: event.id,
+            status: new Date(event.end) < now ? "concluido" : "confirmado",
+          });
+          imported++;
+        }
+        if (imported > 0) {
+          console.log(`[auto-sync] Imported ${imported} events from Google Calendar`);
+          appointments = listAppointments(userId, { startDate, endDate, clientId, status });
+        }
+      } catch (err) {
+        console.warn("[auto-sync] Failed:", (err as Error).message);
+      }
+    }
+  }
+
   res.json(appointments);
 });
 
