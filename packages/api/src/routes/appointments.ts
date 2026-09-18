@@ -2,6 +2,7 @@ import { Router, type Request, type Router as ExpressRouter } from "express";
 import {
   listAppointments,
   getAppointment,
+  getAppointmentByGoogleId,
   createAppointment,
   updateAppointment,
   deleteAppointment,
@@ -221,6 +222,52 @@ router.delete("/:id", async (req, res) => {
   } catch (error) {
     console.error("Erro ao excluir agendamento:", error);
     res.status(500).json({ error: "Erro ao excluir agendamento" });
+  }
+});
+
+router.post("/sync-from-google", async (req, res) => {
+  try {
+    const calendar = calendarForSession(req);
+    if (!calendar) {
+      res.status(400).json({ error: "Sessão do Google Calendar não disponível" });
+      return;
+    }
+    const userId = req.session.googleUser!.id;
+
+    const now = new Date();
+    const sixMonthsAgo = new Date(now);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsAhead = new Date(now);
+    sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
+
+    const events = await calendar.listEvents(
+      sixMonthsAgo.toISOString(),
+      sixMonthsAhead.toISOString()
+    );
+
+    let imported = 0;
+    let skipped = 0;
+    for (const event of events) {
+      if (!event.id || !event.start || !event.end) { skipped++; continue; }
+      const existing = getAppointmentByGoogleId(userId, event.id);
+      if (existing) { skipped++; continue; }
+
+      createAppointment(userId, {
+        title: event.title || "Sem título",
+        type: "outro",
+        startTime: event.start,
+        endTime: event.end,
+        notes: event.description || undefined,
+        googleEventId: event.id,
+        status: new Date(event.end) < now ? "concluido" : "confirmado",
+      });
+      imported++;
+    }
+
+    res.json({ imported, skipped, total: events.length });
+  } catch (error) {
+    console.error("Erro ao sincronizar com Google Calendar:", error);
+    res.status(500).json({ error: "Erro ao sincronizar com Google Calendar" });
   }
 });
 
