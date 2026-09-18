@@ -250,6 +250,9 @@ function initTables(db: Database.Database) {
 
   // Consolidate all existing data into the shared workspace, if configured.
   migrateToWorkspace(db);
+
+  // One-time seed: populate the first tenant with real business data.
+  seedFirstTenant(db);
 }
 
 function migrateBookingRequestsFK(db: Database.Database) {
@@ -398,6 +401,26 @@ function migrateToWorkspace(db: Database.Database) {
       console.warn("booking_session_types migration:", (err as Error).message);
     }
   })();
+}
+
+function seedFirstTenant(db: Database.Database) {
+  const updated = db.prepare(`
+    UPDATE tenant_config
+    SET business_name = 'Raízes e Riquezas',
+        owner_name = 'Fabiana',
+        profession = 'Consultora Financeira, Terapeuta e Consteladora',
+        tagline = 'Agenda, clientes e assistente inteligente',
+        timezone = 'America/Cuiaba',
+        primary_color = '#7c3aed',
+        secondary_color = '#d9b268',
+        accent_color = '#2f4a2b',
+        onboarding_completed = 1,
+        updated_at = datetime('now')
+    WHERE business_name = 'Meu Negócio'
+  `).run();
+  if (updated.changes > 0) {
+    console.log(`[seed] Tenant config updated for ${updated.changes} row(s)`);
+  }
 }
 
 // --- Clients ---
