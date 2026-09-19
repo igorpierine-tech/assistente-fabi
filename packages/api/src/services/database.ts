@@ -401,6 +401,21 @@ function migrateToWorkspace(db: Database.Database) {
       console.warn("booking_session_types migration:", (err as Error).message);
     }
   })();
+
+  // ZapSign columns on sales
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(sales)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has("zapsign_doc_token")) {
+      db.exec(`ALTER TABLE sales ADD COLUMN zapsign_doc_token TEXT`);
+    }
+    if (!names.has("zapsign_status")) {
+      db.exec(`ALTER TABLE sales ADD COLUMN zapsign_status TEXT`);
+    }
+    if (!names.has("zapsign_sign_url")) {
+      db.exec(`ALTER TABLE sales ADD COLUMN zapsign_sign_url TEXT`);
+    }
+  })();
 }
 
 function seedFirstTenant(db: Database.Database) {

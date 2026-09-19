@@ -29,9 +29,18 @@ interface Sale {
   sale_date: string;
   notes: string | null;
   contract_generated_at: string | null;
+  zapsign_doc_token: string | null;
+  zapsign_status: string | null;
+  zapsign_sign_url: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const SIGN_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending: { label: "Aguardando assinatura", color: "#b45309" },
+  signed: { label: "Assinado", color: "#16a34a" },
+  cancelled: { label: "Cancelado", color: "#dc2626" },
+};
 
 interface ClientRow {
   id: string;
@@ -137,6 +146,8 @@ export function VendasView() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sendingSignId, setSendingSignId] = useState<string | null>(null);
+  const [zapSignConfigured, setZapSignConfigured] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -149,6 +160,13 @@ export function VendasView() {
       if (saleRes.ok) setSales(await saleRes.json());
       if (clientRes.ok) setClients(await clientRes.json());
       if (catRes.ok) setCatalog(await catRes.json());
+      try {
+        const zsRes = await fetch(`${API_URL}/sales/zapsign/status`, { credentials: "include" });
+        if (zsRes.ok) {
+          const zs = await zsRes.json();
+          setZapSignConfigured(zs.configured);
+        }
+      } catch {}
     } catch {
       // silent
     }
@@ -263,6 +281,31 @@ export function VendasView() {
       credentials: "include",
     });
     await fetchAll();
+  }
+
+  async function sendForSignature(s: Sale) {
+    if (!s.client_email) {
+      alert("O cliente precisa ter um e-mail cadastrado para receber o contrato.");
+      return;
+    }
+    if (!confirm(`Enviar contrato de "${s.item_name}" para ${s.client_email} assinar via ZapSign?`)) return;
+    setSendingSignId(s.id);
+    try {
+      const res = await fetch(`${API_URL}/sales/${s.id}/send-signature`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Falha ao enviar para assinatura");
+      } else {
+        alert("Contrato enviado para assinatura com sucesso!");
+        await fetchAll();
+      }
+    } catch {
+      alert("Erro ao enviar para assinatura");
+    }
+    setSendingSignId(null);
   }
 
   async function downloadContract(s: Sale) {
@@ -384,6 +427,32 @@ export function VendasView() {
                         </svg>
                         {downloadingId === s.id ? "..." : "Contrato"}
                       </button>
+                      {zapSignConfigured && (
+                        s.zapsign_status ? (
+                          <span
+                            className={styles.signBadge}
+                            style={{ color: SIGN_STATUS_LABELS[s.zapsign_status]?.color || "#6b6152" }}
+                            title={s.zapsign_sign_url ? `Link: ${s.zapsign_sign_url}` : undefined}
+                          >
+                            {s.zapsign_status === "signed" ? "✓ " : s.zapsign_status === "pending" ? "⏳ " : ""}
+                            {SIGN_STATUS_LABELS[s.zapsign_status]?.label || s.zapsign_status}
+                          </span>
+                        ) : (
+                          <button
+                            className={styles.signBtn}
+                            onClick={() => sendForSignature(s)}
+                            disabled={sendingSignId === s.id}
+                            type="button"
+                            title="Enviar contrato para assinatura eletrônica via ZapSign"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M14 2l4 4-9 9H5v-4L14 2z" />
+                              <path d="M12 4l4 4" />
+                            </svg>
+                            {sendingSignId === s.id ? "Enviando..." : "Assinar"}
+                          </button>
+                        )
+                      )}
                       <button
                         className={styles.iconBtn}
                         onClick={() => openEdit(s)}

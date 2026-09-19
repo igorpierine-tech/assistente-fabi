@@ -6,8 +6,15 @@ import {
   updateSale,
   deleteSale,
   markContractGenerated,
+  updateZapSignStatus,
+  getSaleByZapSignToken,
 } from "../services/sales-db";
 import { generateContractPdf } from "../services/contract-pdf";
+import {
+  createDocumentFromPdf,
+  getDocumentStatus,
+  isConfigured as isZapSignConfigured,
+} from "../services/zapsign";
 import { requireUser, sharedOwnerId } from "../middleware/auth";
 import { createClient, getClient } from "../services/database";
 import "../session-types";
@@ -186,4 +193,119 @@ router.get("/:id/contract", async (req, res) => {
   }
 });
 
+router.get("/zapsign/status", (_req, res) => {
+  res.json({ configured: isZapSignConfigured() });
+});
+
+router.post("/:id/send-signature", async (req, res) => {
+  const id = String(req.params.id);
+  const sale = getSale(userId(req), id);
+  if (!sale) {
+    res.status(404).json({ error: "Venda não encontrada" });
+    return;
+  }
+  if (!isZapSignConfigured()) {
+    res.status(400).json({ error: "ZapSign não configurado. Defina ZAPSIGN_API_TOKEN nas variáveis de ambiente." });
+    return;
+  }
+  if (!sale.client_email) {
+    res.status(400).json({ error: "O cliente precisa ter um e-mail cadastrado para receber o contrato." });
+    return;
+  }
+  if (sale.zapsign_doc_token && sale.zapsign_status !== "cancelled") {
+    res.status(400).json({ error: "Este contrato já foi enviado para assinatura." });
+    return;
+  }
+
+  try {
+    const pdf = await generateContractPdf(sale);
+    markContractGenerated(userId(req), id);
+
+    const providerName = process.env.CONTRACT_PROVIDER_NAME || "Prestador de Serviços";
+    const providerEmail = process.env.CONTRACT_PROVIDER_EMAIL || "";
+
+    const signers = [
+      { name: sale.client_name, email: sale.client_email, phone: sale.client_phone || undefined },
+    ];
+    if (providerEmail) {
+      signers.push({ name: providerName, email: providerEmail, phone: undefined });
+    }
+
+    const docName = `Contrato - ${sale.client_name} - ${sale.item_name}`;
+    const result = await createDocumentFromPdf(pdf, docName, signers);
+
+    const clientSigner = result.signers[0];
+    updateZapSignStatus(userId(req), id, result.token, "pending", clientSigner?.sign_url || null);
+
+    res.json({
+      success: true,
+      docToken: result.token,
+      status: "pending",
+      signUrl: clientSigner?.sign_url || null,
+      signers: result.signers.map((s) => ({
+        name: s.name,
+        email: s.email,
+        signUrl: s.sign_url,
+      })),
+    });
+  } catch (err) {
+    console.error("Falha ao enviar para ZapSign:", err);
+    res.status(500).json({ error: "Não foi possível enviar o contrato para assinatura." });
+  }
+});
+
+router.get("/:id/signature-status", async (req, res) => {
+  const id = String(req.params.id);
+  const sale = getSale(userId(req), id);
+  if (!sale) {
+    res.status(404).json({ error: "Venda não encontrada" });
+    return;
+  }
+  if (!sale.zapsign_doc_token) {
+    res.status(400).json({ error: "Contrato não enviado para assinatura." });
+    return;
+  }
+
+  try {
+    const doc = await getDocumentStatus(sale.zapsign_doc_token);
+    const newStatus = doc.status === "signed" ? "signed" : doc.status === "cancelled" ? "cancelled" : "pending";
+    if (newStatus !== sale.zapsign_status) {
+      updateZapSignStatus(userId(req), id, sale.zapsign_doc_token, newStatus, sale.zapsign_sign_url);
+    }
+    res.json({
+      status: newStatus,
+      signers: doc.signers.map((s) => ({
+        name: s.name,
+        email: s.email,
+        status: s.status,
+        signed: s.signed,
+        signUrl: s.sign_url,
+      })),
+      signedFile: doc.signed_file || null,
+    });
+  } catch (err) {
+    console.error("Falha ao consultar status ZapSign:", err);
+    res.status(500).json({ error: "Não foi possível consultar o status da assinatura." });
+  }
+});
+
 export { router as salesRouter };
+
+const webhookRouter: ExpressRouter = Router();
+webhookRouter.post("/", (req, res) => {
+  const body = req.body as { doc_token?: string; status?: string } | null;
+  if (!body?.doc_token) {
+    res.status(400).json({ error: "Token ausente" });
+    return;
+  }
+  const sale = getSaleByZapSignToken(body.doc_token);
+  if (!sale) {
+    res.status(404).json({ error: "Documento não encontrado" });
+    return;
+  }
+  const newStatus = body.status === "signed" ? "signed" : body.status === "cancelled" ? "cancelled" : "pending";
+  updateZapSignStatus(sale.user_id, sale.id, sale.zapsign_doc_token!, newStatus, sale.zapsign_sign_url);
+  res.json({ ok: true });
+});
+
+export { webhookRouter as zapSignWebhookRouter };

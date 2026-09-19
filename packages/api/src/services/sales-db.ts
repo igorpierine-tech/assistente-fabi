@@ -18,6 +18,9 @@ export interface Sale {
   sale_date: string;
   notes: string | null;
   contract_generated_at: string | null;
+  zapsign_doc_token: string | null;
+  zapsign_status: string | null;
+  zapsign_sign_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -125,6 +128,27 @@ export function markContractGenerated(userId: string, id: string): void {
        WHERE user_id = ? AND id = ?`
     )
     .run(userId, id);
+}
+
+export function updateZapSignStatus(
+  userId: string,
+  id: string,
+  docToken: string,
+  status: string,
+  signUrl: string | null
+): void {
+  getDb()
+    .prepare(
+      `UPDATE sales SET zapsign_doc_token = ?, zapsign_status = ?, zapsign_sign_url = ?,
+       updated_at = datetime('now') WHERE user_id = ? AND id = ?`
+    )
+    .run(docToken, status, signUrl, userId, id);
+}
+
+export function getSaleByZapSignToken(docToken: string): Sale | undefined {
+  return getDb()
+    .prepare(`SELECT * FROM sales WHERE zapsign_doc_token = ?`)
+    .get(docToken) as Sale | undefined;
 }
 
 export function deleteSale(userId: string, id: string): boolean {

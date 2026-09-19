@@ -14,6 +14,7 @@ import { bookingRouter } from "./routes/booking";
 import { publicBookingRouter } from "./routes/public-booking";
 import { tenantRouter } from "./routes/tenant";
 import { dashboardRouter } from "./routes/dashboard";
+import { zapSignWebhookRouter } from "./routes/sales";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
 import { getDb } from "./services/database";
 import { isValidSignedSession } from "./services/mobile-auth";
@@ -70,6 +71,9 @@ app.use(cors({
 
 app.use(express.json({ limit: "1mb", strict: true }));
 app.use(express.urlencoded({ extended: false, limit: "32kb" }));
+
+// ZapSign webhook — before CORS/origin checks so external calls go through
+app.use("/webhooks/zapsign", zapSignWebhookRouter);
 app.use((req, _res, next) => {
   const authorization = req.get("authorization");
   if (!req.headers.cookie && authorization?.startsWith("Bearer ")) {
