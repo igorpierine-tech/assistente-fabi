@@ -26,7 +26,6 @@ interface SidebarProps {
 const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "inicio", label: "Início", icon: "home" },
   { id: "agenda", label: "Agenda", icon: "calendar" },
-  { id: "assistente", label: "Assistente IA", icon: "sparkle" },
   { id: "clientes", label: "Clientes", icon: "people" },
   { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
   { id: "vendas", label: "Vendas", icon: "tag" },

@@ -13,6 +13,7 @@ import { salesRouter } from "./routes/sales";
 import { bookingRouter } from "./routes/booking";
 import { publicBookingRouter } from "./routes/public-booking";
 import { tenantRouter } from "./routes/tenant";
+import { dashboardRouter } from "./routes/dashboard";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
 import { getDb } from "./services/database";
 import { isValidSignedSession } from "./services/mobile-auth";
@@ -115,6 +116,7 @@ app.use("/catalog", catalogRouter);
 app.use("/receivables", receivablesRouter);
 app.use("/sales", salesRouter);
 app.use("/tenant", tenantRouter);
+app.use("/dashboard", dashboardRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });

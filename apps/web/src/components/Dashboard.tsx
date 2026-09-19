@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./Dashboard.module.css";
 import type { CalendarEvent } from "./CalendarView";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface Client {
   id: string;
@@ -14,6 +16,35 @@ interface Client {
   sessions?: number;
   lastDate?: string;
   isNew?: boolean;
+}
+
+interface KPIs {
+  today: { count: number };
+  week: { count: number };
+  month: {
+    appointments: number;
+    completed: number;
+    cancelled: number;
+    completionRate: number;
+    lastMonthAppointments: number;
+  };
+  revenue: { thisMonth: number; lastMonth: number; trend: number };
+  receivables: {
+    pending: number;
+    pendingCount: number;
+    received: number;
+    overdue: number;
+    overdueCount: number;
+  };
+  upcoming: Array<{
+    id: string;
+    title: string;
+    clientName: string | null;
+    startTime: string;
+    endTime: string;
+    type: string;
+    status: string;
+  }>;
 }
 
 interface DashboardProps {
@@ -39,10 +70,8 @@ function formatDateLabel() {
   return `${weekday} · ${day} ${month} ${year}`;
 }
 
-function getInitials(name: string) {
-  const parts = name.split(" ");
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.substring(0, 2).toUpperCase();
+function formatCurrency(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function formatTime(iso: string) {
@@ -51,6 +80,30 @@ function formatTime(iso: string) {
     minute: "2-digit",
     timeZone: "America/Cuiaba",
   });
+}
+
+function formatShortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "America/Cuiaba",
+  }).replace(".", "");
+}
+
+function getInitials(name: string) {
+  const parts = name.split(" ");
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
+
+function TrendBadge({ value }: { value: number }) {
+  if (value === 0) return null;
+  const isUp = value > 0;
+  return (
+    <span className={`${styles.trend} ${isUp ? styles.trendUp : styles.trendDown}`}>
+      {isUp ? "↑" : "↓"} {Math.abs(value)}%
+    </span>
+  );
 }
 
 const BORDER_COLORS: Record<string, string> = {
@@ -63,7 +116,16 @@ const BORDER_COLORS: Record<string, string> = {
 };
 
 export function Dashboard({ userName, events, clients, onNavigate }: DashboardProps) {
-  const [filter, setFilter] = useState<"todos" | "ativos" | "novos">("todos");
+  const [kpis, setKpis] = useState<KPIs | null>(null);
+
+  const fetchKPIs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/dashboard/kpis`, { credentials: "include" });
+      if (res.ok) setKpis(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchKPIs(); }, [fetchKPIs]);
 
   const todayEvents = useMemo(() => {
     const today = new Date();
@@ -78,60 +140,16 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   }, [events]);
 
-  const weekEvents = useMemo(() => {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
-    return events.filter((e) => {
-      const d = new Date(e.startDate);
-      return d >= startOfWeek && d < endOfWeek;
-    });
-  }, [events]);
-
-  const filteredClients = useMemo(() => {
-    if (filter === "novos") return clients.filter((c) => c.isNew);
-    if (filter === "ativos") return clients.filter((c) => (c.sessions || 0) > 0);
-    return clients;
-  }, [clients, filter]);
-
   const newClientsThisMonth = useMemo(
     () => clients.filter((c) => c.isNew).length,
     [clients]
   );
 
-  const freeSlot = useMemo(() => {
-    if (todayEvents.length === 0) return null;
-    const last = todayEvents[todayEvents.length - 1];
-    const lastEnd = new Date(last.endDate);
-    const eod = new Date(lastEnd);
-    eod.setHours(17, 0, 0, 0);
-    if (lastEnd < eod) {
-      return {
-        start: formatTime(last.endDate),
-        end: "17:00",
-      };
-    }
-    return null;
-  }, [todayEvents]);
-
-  const newClient = clients.find((c) => c.isNew);
-
-  function getSubtitle(e: CalendarEvent) {
-    const typeMap: Record<string, string> = {
-      constelacao: "Sessão · presencial",
-      consultoria_financeira: "Sessão · online",
-      planejamento: "Planejamento",
-      reuniao: "Reunião",
-      evento_curso: "",
-    };
-    if (e.type === "evento_curso" && e.title.includes("Círculo")) {
-      return "6 pessoas";
-    }
-    return typeMap[e.type] || e.type;
-  }
+  const monthTrend = kpis
+    ? (kpis.month.lastMonthAppointments > 0
+        ? Math.round(((kpis.month.appointments - kpis.month.lastMonthAppointments) / kpis.month.lastMonthAppointments) * 100)
+        : kpis.month.appointments > 0 ? 100 : 0)
+    : 0;
 
   return (
     <div className={styles.container}>
@@ -151,7 +169,7 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
         </div>
       </div>
 
-      {/* Stats */}
+      {/* KPI Cards - Row 1 */}
       <div className={styles.statsRow}>
         <div className={`${styles.statCard} ${styles.statCardPrimary}`}>
           <div className={styles.statLabel}>HOJE</div>
@@ -160,73 +178,136 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>SEMANA</div>
-          <div className={styles.statValue}>{weekEvents.length}</div>
+          <div className={styles.statValue}>{kpis?.week.count ?? 0}</div>
           <div className={styles.statSub}>sessões</div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statLabel}>MÊS</div>
+          <div className={styles.statValue}>
+            {kpis?.month.appointments ?? 0}
+            <TrendBadge value={monthTrend} />
+          </div>
+          <div className={styles.statSub}>
+            {kpis ? `${kpis.month.completionRate}% concluídos` : "agendamentos"}
+          </div>
         </div>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>NOVOS CLIENTES</div>
           <div className={styles.statValue}>{newClientsThisMonth}</div>
-          <div className={styles.statSub}>este mês</div>
+          <div className={styles.statSub}>
+            {clients.length} total
+          </div>
         </div>
-        <div className={styles.statCard}>
-          <div className={styles.statLabel}>TOTAL DE CLIENTES</div>
-          <div className={styles.statValue}>{clients.length}</div>
-          <div className={styles.statSub}>cadastrados</div>
-        </div>
+      </div>
+
+      {/* Financial Row */}
+      <div className={styles.financeRow}>
+        <button className={styles.financeCard} onClick={() => onNavigate("financeiro")} type="button">
+          <div className={styles.financeIcon}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M10 2v16M6 6c0-1.1 1.8-2 4-2s4 .9 4 2-1.8 2-4 2-4 .9-4 2 1.8 2 4 2 4 .9 4 2" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div className={styles.financeInfo}>
+            <div className={styles.financeLabel}>Recebido no mês</div>
+            <div className={styles.financeValue}>
+              {kpis ? formatCurrency(kpis.receivables.received) : "—"}
+            </div>
+          </div>
+          {kpis && <TrendBadge value={kpis.revenue.trend} />}
+        </button>
+        <button className={styles.financeCard} onClick={() => onNavigate("financeiro")} type="button">
+          <div className={`${styles.financeIcon} ${styles.financeIconWarning}`}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="10" cy="10" r="8" />
+              <path d="M10 6v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className={styles.financeInfo}>
+            <div className={styles.financeLabel}>A receber</div>
+            <div className={styles.financeValue}>
+              {kpis ? formatCurrency(kpis.receivables.pending) : "—"}
+            </div>
+          </div>
+          {kpis && kpis.receivables.pendingCount > 0 && (
+            <span className={styles.financeCount}>{kpis.receivables.pendingCount}</span>
+          )}
+        </button>
+        <button
+          className={`${styles.financeCard} ${kpis && kpis.receivables.overdueCount > 0 ? styles.financeCardAlert : ""}`}
+          onClick={() => onNavigate("financeiro")}
+          type="button"
+        >
+          <div className={`${styles.financeIcon} ${styles.financeIconDanger}`}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M10 2L2 18h16L10 2z" strokeLinejoin="round" />
+              <line x1="10" y1="8" x2="10" y2="12" strokeLinecap="round" />
+              <circle cx="10" cy="15" r="0.5" fill="currentColor" />
+            </svg>
+          </div>
+          <div className={styles.financeInfo}>
+            <div className={styles.financeLabel}>Em atraso</div>
+            <div className={`${styles.financeValue} ${kpis && kpis.receivables.overdueCount > 0 ? styles.financeValueDanger : ""}`}>
+              {kpis ? formatCurrency(kpis.receivables.overdue) : "—"}
+            </div>
+          </div>
+          {kpis && kpis.receivables.overdueCount > 0 && (
+            <span className={`${styles.financeCount} ${styles.financeCountDanger}`}>{kpis.receivables.overdueCount}</span>
+          )}
+        </button>
+        <button className={styles.financeCard} onClick={() => onNavigate("vendas")} type="button">
+          <div className={`${styles.financeIcon} ${styles.financeIconSuccess}`}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M2 14l4-4 4 3 3-5 5 4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className={styles.financeInfo}>
+            <div className={styles.financeLabel}>Vendas no mês</div>
+            <div className={styles.financeValue}>
+              {kpis ? formatCurrency(kpis.revenue.thisMonth) : "—"}
+            </div>
+          </div>
+        </button>
       </div>
 
       {/* Main grid */}
       <div className={styles.mainGrid}>
-        {/* Left: Clients table */}
+        {/* Left: Upcoming appointments */}
         <div className={styles.clientsCard}>
           <div className={styles.clientsHeader}>
-            <h2 className={styles.clientsTitle}>Clientes recentes</h2>
-            <div className={styles.filterTabs}>
-              {(["todos", "ativos", "novos"] as const).map((f) => (
-                <button
-                  key={f}
-                  className={`${styles.filterTab} ${filter === f ? styles.filterTabActive : ""}`}
-                  onClick={() => setFilter(f)}
-                >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
-            </div>
+            <h2 className={styles.clientsTitle}>Próximos atendimentos</h2>
+            <button className={styles.viewAllBtn} onClick={() => onNavigate("agenda")} type="button">
+              Ver agenda →
+            </button>
           </div>
 
-          <div className={styles.tableHeader}>
-            <span className={styles.tableHeaderCell}>NOME</span>
-            <span className={styles.tableHeaderCell}>ORIGEM</span>
-            <span className={`${styles.tableHeaderCell} ${styles.cellCenter}`}>SESSÕES</span>
-            <span className={styles.tableHeaderCell}>ÚLTIMA</span>
-            <span />
-          </div>
-
-          {filteredClients.length === 0 ? (
-            <div
-              className={styles.cellText}
-              style={{ padding: "24px 0", textAlign: "center" }}
-            >
-              {clients.length === 0
-                ? "Nenhum cliente cadastrado ainda."
-                : "Nenhum cliente neste filtro."}
+          {(!kpis || kpis.upcoming.length === 0) ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>📅</div>
+              <div className={styles.emptyText}>Nenhum atendimento agendado</div>
+              <button className={styles.emptyBtn} onClick={() => onNavigate("agenda")} type="button">
+                Abrir agenda
+              </button>
             </div>
           ) : (
-            filteredClients.slice(0, 5).map((client) => (
-              <div key={client.id} className={styles.tableRow} onClick={() => onNavigate("clientes")}>
-                <div className={styles.clientCell}>
-                  <div className={styles.clientAvatar}>
-                    <span className={styles.clientInitials}>{getInitials(client.name)}</span>
+            kpis.upcoming.map((appt) => (
+              <div key={appt.id} className={styles.upcomingItem} onClick={() => onNavigate("agenda")}>
+                <div
+                  className={styles.upcomingBar}
+                  style={{ background: BORDER_COLORS[appt.type] || "#b8873a" }}
+                />
+                <div className={styles.upcomingInfo}>
+                  <div className={styles.upcomingName}>
+                    {appt.clientName || appt.title.split(" — ")[0]}
                   </div>
-                  <span className={styles.clientName}>
-                    {client.name}
-                    {client.isNew && <span className={styles.newBadge}>NOVA</span>}
-                  </span>
+                  <div className={styles.upcomingSub}>
+                    {appt.title.includes(" — ") ? appt.title.split(" — ")[0] : appt.type}
+                  </div>
                 </div>
-                <span className={styles.cellText}>{client.origin || "—"}</span>
-                <span className={`${styles.cellText} ${styles.cellCenter}`}>{client.sessions ?? 0}</span>
-                <span className={styles.cellText}>{client.lastDate || "—"}</span>
-                <span className={styles.chevron}>›</span>
+                <div className={styles.upcomingTime}>
+                  <div className={styles.upcomingDate}>{formatShortDate(appt.startTime)}</div>
+                  <div className={styles.upcomingHour}>{formatTime(appt.startTime)}</div>
+                </div>
               </div>
             ))
           )}
@@ -237,7 +318,7 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
           {/* Today schedule */}
           <div className={styles.todayCard}>
             <h2 className={styles.todayTitle}>Hoje</h2>
-            {todayEvents.slice(0, 4).map((e) => (
+            {todayEvents.slice(0, 5).map((e) => (
               <div
                 key={e.id}
                 className={styles.todayItem}
@@ -246,7 +327,9 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
                 <div className={styles.todayItemName}>
                   {e.clientName || e.title.split(" — ")[0]} · <span className={styles.todayItemTime}>{formatTime(e.startDate)}</span>
                 </div>
-                <div className={styles.todayItemSub}>{getSubtitle(e)}</div>
+                <div className={styles.todayItemSub}>
+                  {e.status === "concluido" ? "✓ Concluído" : e.status === "cancelado" ? "✗ Cancelado" : e.type}
+                </div>
               </div>
             ))}
             {todayEvents.length === 0 && (
@@ -256,32 +339,62 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
             )}
           </div>
 
-          {/* Assistant suggestion */}
-          <div className={styles.assistantCard}>
-            <div className={styles.assistantHeader}>
-              <div className={styles.assistantIcon}>✦</div>
-              <span className={styles.assistantLabel}>ASSISTENTE</span>
-            </div>
-            <p className={styles.assistantText}>
-              {freeSlot ? (
-                <>
-                  Você tem uma janela livre <span className={styles.assistantBold}>{freeSlot.start} — {freeSlot.end}</span>.
-                  {newClient ? (
-                    <> Quer que eu ofereça esse horário à {newClient.name} (nova cliente)?</>
-                  ) : (
-                    <> Quer que eu sugira um horário para um novo atendimento?</>
-                  )}
-                </>
-              ) : (
-                <>Sua agenda de hoje está completa. Quer que eu organize os próximos dias?</>
+          {/* Quick insights */}
+          {kpis && (kpis.month.cancelled > 0 || kpis.receivables.overdueCount > 0 || newClientsThisMonth > 0) && (
+            <div className={styles.insightsCard}>
+              <h3 className={styles.insightsTitle}>Insights</h3>
+              {kpis.receivables.overdueCount > 0 && (
+                <div className={styles.insightItem}>
+                  <span className={`${styles.insightDot} ${styles.insightDotDanger}`} />
+                  <span>{kpis.receivables.overdueCount} cobranças em atraso ({formatCurrency(kpis.receivables.overdue)})</span>
+                </div>
               )}
-            </p>
-            <div className={styles.assistantActions}>
-              <button className={styles.assistantBtnPrimary} onClick={() => onNavigate("assistente")}>
-                {freeSlot ? "Ofereça" : "Organizar"}
-              </button>
-              <button className={styles.assistantBtnSecondary}>Depois</button>
+              {kpis.month.cancelled > 0 && (
+                <div className={styles.insightItem}>
+                  <span className={`${styles.insightDot} ${styles.insightDotWarning}`} />
+                  <span>{kpis.month.cancelled} cancelamentos este mês</span>
+                </div>
+              )}
+              {newClientsThisMonth > 0 && (
+                <div className={styles.insightItem}>
+                  <span className={`${styles.insightDot} ${styles.insightDotSuccess}`} />
+                  <span>{newClientsThisMonth} {newClientsThisMonth === 1 ? "novo cliente" : "novos clientes"} este mês</span>
+                </div>
+              )}
+              {kpis.month.completionRate >= 80 && (
+                <div className={styles.insightItem}>
+                  <span className={`${styles.insightDot} ${styles.insightDotSuccess}`} />
+                  <span>Taxa de conclusão excelente: {kpis.month.completionRate}%</span>
+                </div>
+              )}
             </div>
+          )}
+
+          {/* Clients summary */}
+          <div className={styles.clientsSummary}>
+            <div className={styles.clientsSummaryHeader}>
+              <h3 className={styles.insightsTitle}>Clientes</h3>
+              <button className={styles.viewAllBtn} onClick={() => onNavigate("clientes")} type="button">
+                Ver todos →
+              </button>
+            </div>
+            {clients.slice(0, 4).map((c) => (
+              <div key={c.id} className={styles.clientMini} onClick={() => onNavigate("clientes")}>
+                <div className={styles.clientAvatar}>
+                  <span className={styles.clientInitials}>{getInitials(c.name)}</span>
+                </div>
+                <div className={styles.clientMiniInfo}>
+                  <div className={styles.clientName}>{c.name}</div>
+                  <div className={styles.clientMiniSub}>{c.sessions ?? 0} sessões · última {c.lastDate || "—"}</div>
+                </div>
+                {c.isNew && <span className={styles.newBadge}>NOVO</span>}
+              </div>
+            ))}
+            {clients.length === 0 && (
+              <div className={styles.todayItemSub} style={{ padding: "12px 0", textAlign: "center" }}>
+                Nenhum cliente cadastrado
+              </div>
+            )}
           </div>
         </div>
       </div>
