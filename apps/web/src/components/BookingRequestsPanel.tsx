@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./BookingRequestsPanel.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 interface BookingRequest {
   id: string;
@@ -51,9 +50,9 @@ export function BookingRequestsPanel() {
     setLoading(true);
     try {
       const [reqRes, setRes, urlRes] = await Promise.all([
-        fetch(`${API_URL}/booking/requests`, { credentials: "include" }),
-        fetch(`${API_URL}/booking/settings`, { credentials: "include" }),
-        fetch(`${API_URL}/booking/public-url`, { credentials: "include" }),
+        apiFetch("/booking/requests"),
+        apiFetch("/booking/settings"),
+        apiFetch("/booking/public-url"),
       ]);
       if (!reqRes.ok || !setRes.ok || !urlRes.ok) {
         throw new Error("load");
@@ -84,9 +83,8 @@ export function BookingRequestsPanel() {
   async function handleConfirm(id: string) {
     setBusyId(id);
     try {
-      const res = await fetch(`${API_URL}/booking/requests/${id}/confirm`, {
+      const res = await apiFetch(`/booking/requests/${id}/confirm`, {
         method: "POST",
-        credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -103,9 +101,8 @@ export function BookingRequestsPanel() {
     const reason = prompt("Motivo para o cliente (opcional):", "") ?? undefined;
     setBusyId(id);
     try {
-      const res = await fetch(`${API_URL}/booking/requests/${id}/reject`, {
+      const res = await apiFetch(`/booking/requests/${id}/reject`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
       });

@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import styles from "./DaySummary.module.css";
 import type { CalendarEvent } from "./CalendarView";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 interface DaySummaryProps {
   userId: string;
@@ -42,7 +41,7 @@ export function DaySummary({ userId, events: calendarEvents, onEventClick }: Day
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/chat/message`, {
+      const res = await apiFetch("/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

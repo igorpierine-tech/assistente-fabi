@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "./VendasView.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 type PaymentMethod =
   | "pix"
@@ -153,15 +152,15 @@ export function VendasView() {
     setLoading(true);
     try {
       const [saleRes, clientRes, catRes] = await Promise.all([
-        fetch(`${API_URL}/sales`, { credentials: "include" }),
-        fetch(`${API_URL}/clients`, { credentials: "include" }),
-        fetch(`${API_URL}/catalog`, { credentials: "include" }),
+        apiFetch("/sales"),
+        apiFetch("/clients"),
+        apiFetch("/catalog"),
       ]);
       if (saleRes.ok) setSales(await saleRes.json());
       if (clientRes.ok) setClients(await clientRes.json());
       if (catRes.ok) setCatalog(await catRes.json());
       try {
-        const zsRes = await fetch(`${API_URL}/sales/zapsign/status`, { credentials: "include" });
+        const zsRes = await apiFetch("/sales/zapsign/status");
         if (zsRes.ok) {
           const zs = await zsRes.json();
           setZapSignConfigured(zs.configured);
@@ -250,14 +249,13 @@ export function VendasView() {
       notes: form.notes.trim() || null,
     };
     try {
-      const url =
+      const path =
         editModal === "new"
-          ? `${API_URL}/sales`
-          : `${API_URL}/sales/${(editModal as Sale).id}`;
+          ? "/sales"
+          : `/sales/${(editModal as Sale).id}`;
       const method = editModal === "new" ? "POST" : "PUT";
-      const res = await fetch(url, {
+      const res = await apiFetch(path, {
         method,
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -276,10 +274,7 @@ export function VendasView() {
 
   async function handleDelete(s: Sale) {
     if (!confirm(`Excluir a venda de "${s.client_name}"?`)) return;
-    await fetch(`${API_URL}/sales/${s.id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    await apiFetch(`/sales/${s.id}`, { method: "DELETE" });
     await fetchAll();
   }
 
@@ -291,9 +286,8 @@ export function VendasView() {
     if (!confirm(`Enviar contrato de "${s.item_name}" para ${s.client_email} assinar via ZapSign?`)) return;
     setSendingSignId(s.id);
     try {
-      const res = await fetch(`${API_URL}/sales/${s.id}/send-signature`, {
+      const res = await apiFetch(`/sales/${s.id}/send-signature`, {
         method: "POST",
-        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) {
@@ -311,9 +305,7 @@ export function VendasView() {
   async function downloadContract(s: Sale) {
     setDownloadingId(s.id);
     try {
-      const res = await fetch(`${API_URL}/sales/${s.id}/contract`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/sales/${s.id}/contract`);
       if (!res.ok) {
         alert("Falha ao gerar o contrato");
         return;

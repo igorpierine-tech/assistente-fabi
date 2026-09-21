@@ -144,9 +144,9 @@
   min-height: 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .fab {
-    bottom: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     right: 16px;
     width: 56px;
     height: 56px;
@@ -156,10 +156,11 @@
     height: 40px;
   }
   .drawer {
-    bottom: 88px;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: 12px;
     width: auto;
-    height: calc(100vh - 120px);
+    height: calc(100vh - 160px);
+    border-radius: 16px;
   }
 }

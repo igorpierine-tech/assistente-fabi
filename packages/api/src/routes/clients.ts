@@ -39,7 +39,11 @@ router.post("/", (req, res) => {
   const phone = optionalString(req.body?.phone, "Telefone", 32);
   const email = optionalEmail(req.body?.email);
   const notes = optionalString(req.body?.notes, "Prontuário", 10_000);
-  const client = createClient(sharedOwnerId(req), { name, phone, email, notes });
+  const document = optionalString(req.body?.document, "Documento", 20);
+  const tipo_pessoa = optionalString(req.body?.tipo_pessoa, "Tipo de pessoa", 2);
+  const address = optionalString(req.body?.address, "Endereço", 500);
+  const inscricao_estadual = optionalString(req.body?.inscricao_estadual, "Inscrição Estadual", 20);
+  const client = createClient(sharedOwnerId(req), { name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual });
   res.status(201).json(client);
 });
 
@@ -54,7 +58,11 @@ router.put("/:id", (req, res) => {
   const phone = optionalString(req.body?.phone, "Telefone", 32);
   const email = optionalEmail(req.body?.email);
   const notes = optionalString(req.body?.notes, "Prontuário", 10_000);
-  const updated = updateClient(userId, req.params.id, { name, phone, email, notes });
+  const document = optionalString(req.body?.document, "Documento", 20);
+  const tipo_pessoa = optionalString(req.body?.tipo_pessoa, "Tipo de pessoa", 2);
+  const address = optionalString(req.body?.address, "Endereço", 500);
+  const inscricao_estadual = optionalString(req.body?.inscricao_estadual, "Inscrição Estadual", 20);
+  const updated = updateClient(userId, req.params.id, { name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual });
   res.json(updated);
 });
 

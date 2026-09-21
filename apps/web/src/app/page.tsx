@@ -14,12 +14,12 @@ import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 import { SettingsView } from "@/components/SettingsView";
 import { FinanceiroView } from "@/components/FinanceiroView";
 import { VendasView } from "@/components/VendasView";
+import { ContratosView } from "@/components/ContratosView";
 import { FloatingAssistant } from "@/components/FloatingAssistant";
 import type { CalendarEvent } from "@/components/CalendarView";
 import { isoToLocalInput, localInputToIso } from "@/lib/timezone";
 import { TenantContext, DEFAULT_TENANT_CONFIG, type TenantConfig } from "@/lib/tenant-context";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch, exchangeAuthCode, setAuthToken, clearAuthToken, API_URL } from "@/lib/api";
 
 interface AppointmentRow {
   id: string;
@@ -128,6 +128,8 @@ export default function Home() {
   const [pendingBookingCount, setPendingBookingCount] = useState(0);
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
@@ -138,7 +140,7 @@ export default function Home() {
 
   const fetchAppointments = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/appointments`, { credentials: "include" });
+      const res = await apiFetch("/appointments");
       if (res.ok) {
         const rows: AppointmentRow[] = await res.json();
         setEvents(rows.map(appointmentToEvent));
@@ -151,7 +153,7 @@ export default function Home() {
 
   const fetchClients = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/clients`, { credentials: "include" });
+      const res = await apiFetch("/clients");
       if (res.ok) {
         const rows: ClientRow[] = await res.json();
         setClientRows(rows);
@@ -163,7 +165,7 @@ export default function Home() {
 
   const fetchTenantConfig = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/tenant/config`, { credentials: "include" });
+      const res = await apiFetch("/tenant/config");
       if (res.ok) {
         setTenantConfig(await res.json());
       }
@@ -192,9 +194,7 @@ export default function Home() {
     let cancelled = false;
     async function loadCount() {
       try {
-        const res = await fetch(`${API_URL}/booking/requests/pending-count`, {
-          credentials: "include",
-        });
+        const res = await apiFetch("/booking/requests/pending-count");
         if (!res.ok) return;
         const data: { count?: number } = await res.json();
         if (!cancelled) setPendingBookingCount(data.count ?? 0);
@@ -212,15 +212,33 @@ export default function Home() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("authenticated")) {
+    const authCode = params.get("auth_code");
+    if (params.has("authenticated") || authCode) {
       window.history.replaceState({}, "", "/");
     }
-    checkAuth();
+    if (authCode) {
+      exchangeAuthCode(authCode).then((result) => {
+        if (result?.token) {
+          setAuthToken(result.token);
+          setIsAuthenticated(true);
+          setUserId(result.user.id);
+          setUserName(result.user.name || "");
+          fetchAppointments();
+          fetchClients();
+          fetchTenantConfig();
+          setLoading(false);
+        } else {
+          checkAuth();
+        }
+      });
+    } else {
+      checkAuth();
+    }
   }, []);
 
   async function checkAuth() {
     try {
-      const res = await fetch(`${API_URL}/auth/status`, { credentials: "include" });
+      const res = await apiFetch("/auth/status");
       const data = await res.json();
       setIsAuthenticated(data.authenticated);
       if (data.authenticated && data.user?.id) {
@@ -243,7 +261,8 @@ export default function Home() {
   }
 
   async function handleLogout() {
-    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
+    await apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
+    clearAuthToken();
     setUserId(null);
     setIsAuthenticated(false);
     setPendingBookingCount(0);
@@ -277,13 +296,10 @@ export default function Home() {
       status: event.status,
     };
     try {
-      const url = isNew
-        ? `${API_URL}/appointments`
-        : `${API_URL}/appointments/${event.id}`;
+      const path = isNew ? "/appointments" : `/appointments/${event.id}`;
       const method = isNew ? "POST" : "PUT";
-      const res = await fetch(url, {
+      const res = await apiFetch(path, {
         method,
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -320,9 +336,8 @@ export default function Home() {
     );
 
     try {
-      const res = await fetch(`${API_URL}/appointments/${event.id}`, {
+      const res = await apiFetch(`/appointments/${event.id}`, {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startTime: newStart,
@@ -342,9 +357,8 @@ export default function Home() {
 
   async function handleDeleteEvent(eventId: string) {
     try {
-      const res = await fetch(`${API_URL}/appointments/${eventId}`, {
+      const res = await apiFetch(`/appointments/${eventId}`, {
         method: "DELETE",
-        credentials: "include",
       });
       if (!res.ok && res.status !== 404) {
         const err = await res.json().catch(() => ({}));
@@ -434,6 +448,12 @@ export default function Home() {
             <VendasView />
           </div>
         );
+      case "contratos":
+        return (
+          <div className="main-calendar">
+            <ContratosView />
+          </div>
+        );
       case "financeiro":
         return (
           <div className="main-calendar">
@@ -452,6 +472,16 @@ export default function Home() {
   return (
     <TenantContext value={tenantConfig || DEFAULT_TENANT_CONFIG}>
       <div className="app-layout">
+        <div className="mobile-header">
+          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)} aria-label="Menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <span className="mobile-header-brand">{tenantConfig?.businessName || "Assistente"}</span>
+        </div>
         <Sidebar
           activeView={activeView}
           onChangeView={setActiveView}
@@ -459,6 +489,8 @@ export default function Home() {
           clientCount={clients.length}
           pendingBookingCount={pendingBookingCount}
           onLogout={handleLogout}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
         <main className="app-main">
           {renderContent()}

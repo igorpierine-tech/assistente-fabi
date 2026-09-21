@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "./CatalogPanel.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 type CatalogKind = "produto" | "servico";
 
@@ -60,7 +59,7 @@ export function CatalogPanel() {
 
   const fetchItems = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/catalog`, { credentials: "include" });
+      const res = await apiFetch("/catalog");
       if (res.ok) {
         setItems(await res.json());
       }
@@ -105,13 +104,10 @@ export function CatalogPanel() {
       active: form.active,
     };
     try {
-      const url = editing
-        ? `${API_URL}/catalog/${editing.id}`
-        : `${API_URL}/catalog`;
+      const path = editing ? `/catalog/${editing.id}` : "/catalog";
       const method = editing ? "PUT" : "POST";
-      const res = await fetch(url, {
+      const res = await apiFetch(path, {
         method,
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -128,10 +124,7 @@ export function CatalogPanel() {
   async function handleDelete(item: CatalogItem) {
     if (!confirm(`Excluir "${item.name}"?`)) return;
     try {
-      await fetch(`${API_URL}/catalog/${item.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      await apiFetch(`/catalog/${item.id}`, { method: "DELETE" });
       fetchItems();
     } catch {
       // silent

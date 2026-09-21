@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import styles from "./ClientsPanel.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 interface Client {
   id: string;
@@ -11,6 +10,10 @@ interface Client {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  document: string | null;
+  tipo_pessoa: string | null;
+  address: string | null;
+  inscricao_estadual: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,9 +23,13 @@ interface ClientForm {
   phone: string;
   email: string;
   notes: string;
+  document: string;
+  tipo_pessoa: string;
+  address: string;
+  inscricao_estadual: string;
 }
 
-const emptyForm: ClientForm = { name: "", phone: "", email: "", notes: "" };
+const emptyForm: ClientForm = { name: "", phone: "", email: "", notes: "", document: "", tipo_pessoa: "PF", address: "", inscricao_estadual: "" };
 
 export function ClientsPanel() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -35,7 +42,7 @@ export function ClientsPanel() {
   const fetchClients = useCallback(async () => {
     try {
       const q = search ? `?search=${encodeURIComponent(search)}` : "";
-      const res = await fetch(`${API_URL}/clients${q}`, { credentials: "include" });
+      const res = await apiFetch(`/clients${q}`);
       if (res.ok) {
         setClients(await res.json());
       }
@@ -61,6 +68,10 @@ export function ClientsPanel() {
       phone: client.phone || "",
       email: client.email || "",
       notes: client.notes || "",
+      document: client.document || "",
+      tipo_pessoa: client.tipo_pessoa || "PF",
+      address: client.address || "",
+      inscricao_estadual: client.inscricao_estadual || "",
     });
     setShowModal(true);
   }
@@ -70,17 +81,20 @@ export function ClientsPanel() {
     setSaving(true);
 
     try {
-      const url = editingClient ? `${API_URL}/clients/${editingClient.id}` : `${API_URL}/clients`;
+      const path = editingClient ? `/clients/${editingClient.id}` : "/clients";
       const method = editingClient ? "PUT" : "POST";
-      const res = await fetch(url, {
+      const res = await apiFetch(path, {
         method,
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           name: form.name.trim(),
           phone: form.phone.trim() || undefined,
           email: form.email.trim() || undefined,
           notes: form.notes.trim() || undefined,
+          document: form.document.trim() || undefined,
+          tipo_pessoa: form.tipo_pessoa || undefined,
+          address: form.address.trim() || undefined,
+          inscricao_estadual: form.inscricao_estadual.trim() || undefined,
         }),
       });
       if (res.ok) {
@@ -97,10 +111,7 @@ export function ClientsPanel() {
     if (!confirm(`Excluir o cliente "${client.name}"?`)) return;
 
     try {
-      await fetch(`${API_URL}/clients/${client.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      await apiFetch(`/clients/${client.id}`, { method: "DELETE" });
       fetchClients();
     } catch {
       // silent
@@ -143,6 +154,8 @@ export function ClientsPanel() {
                 <div className={styles.cardMeta}>
                   {client.phone && <span>📞 {client.phone}</span>}
                   {client.email && <span>✉️ {client.email}</span>}
+                  {client.document && <span>📄 {client.tipo_pessoa === "PJ" ? "CNPJ" : "CPF"}: {client.document}</span>}
+                  {client.tipo_pessoa === "PJ" && client.inscricao_estadual && <span>📋 IE: {client.inscricao_estadual}</span>}
                   {client.notes && <span>📝 {client.notes}</span>}
                 </div>
               </div>
@@ -174,12 +187,12 @@ export function ClientsPanel() {
             </div>
             <div className={styles.form}>
               <div className={styles.field}>
-                <label>Nome *</label>
+                <label>{form.tipo_pessoa === "PJ" ? "Razão Social *" : "Nome *"}</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Nome completo"
+                  placeholder={form.tipo_pessoa === "PJ" ? "Razão Social da empresa" : "Nome completo"}
                   autoFocus
                 />
               </div>
@@ -199,6 +212,47 @@ export function ClientsPanel() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="cliente@email.com"
+                />
+              </div>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label>Tipo de pessoa</label>
+                  <select
+                    value={form.tipo_pessoa}
+                    onChange={(e) => setForm({ ...form, tipo_pessoa: e.target.value })}
+                  >
+                    <option value="PF">Pessoa Física (PF)</option>
+                    <option value="PJ">Pessoa Jurídica (PJ)</option>
+                  </select>
+                </div>
+                <div className={styles.field}>
+                  <label>{form.tipo_pessoa === "PJ" ? "CNPJ" : "CPF"}</label>
+                  <input
+                    type="text"
+                    value={form.document}
+                    onChange={(e) => setForm({ ...form, document: e.target.value })}
+                    placeholder={form.tipo_pessoa === "PJ" ? "00.000.000/0000-00" : "000.000.000-00"}
+                  />
+                </div>
+              </div>
+              {form.tipo_pessoa === "PJ" && (
+                <div className={styles.field}>
+                  <label>Inscrição Estadual</label>
+                  <input
+                    type="text"
+                    value={form.inscricao_estadual}
+                    onChange={(e) => setForm({ ...form, inscricao_estadual: e.target.value })}
+                    placeholder="Inscrição Estadual ou ISENTO"
+                  />
+                </div>
+              )}
+              <div className={styles.field}>
+                <label>Endereço</label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="Rua, número, bairro, cidade — UF, CEP"
                 />
               </div>
               <div className={styles.field}>

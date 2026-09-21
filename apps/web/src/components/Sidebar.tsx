@@ -10,6 +10,7 @@ export type View =
   | "clientes"
   | "agendamentos"
   | "vendas"
+  | "contratos"
   | "financeiro"
   | "configuracoes";
 
@@ -20,6 +21,8 @@ interface SidebarProps {
   clientCount: number;
   pendingBookingCount?: number;
   onLogout?: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 
@@ -29,6 +32,7 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "clientes", label: "Clientes", icon: "people" },
   { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
   { id: "vendas", label: "Vendas", icon: "tag" },
+  { id: "contratos", label: "Contratos", icon: "contract" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
 ];
@@ -93,6 +97,15 @@ function NavIcon({ name }: { name: string }) {
           <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
         </svg>
       );
+    case "contract":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2z" />
+          <line x1="8" y1="7" x2="12" y2="7" />
+          <line x1="8" y1="10" x2="12" y2="10" />
+          <line x1="8" y1="13" x2="10" y2="13" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -105,11 +118,21 @@ export function Sidebar({
   clientCount,
   pendingBookingCount = 0,
   onLogout,
+  mobileOpen = false,
+  onMobileClose,
 }: SidebarProps) {
   const tenant = useTenant();
   const brandName = tenant.businessName;
+
+  function handleNav(view: View) {
+    onChangeView(view);
+    onMobileClose?.();
+  }
+
   return (
-    <aside className={styles.sidebar}>
+    <>
+      {mobileOpen && <div className={styles.overlay} onClick={onMobileClose} />}
+      <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`}>
       <div className={styles.brand}>
         <div className={styles.avatar}>
           <span className={styles.avatarLetter}>{brandName[0]?.toUpperCase() || "A"}</span>
@@ -125,7 +148,7 @@ export function Sidebar({
           <button
             key={item.id}
             className={`${styles.navItem} ${activeView === item.id ? styles.navItemActive : ""}`}
-            onClick={() => onChangeView(item.id)}
+            onClick={() => handleNav(item.id)}
           >
             <span className={styles.navIcon}>
               <NavIcon name={item.icon} />
@@ -151,5 +174,6 @@ export function Sidebar({
         </button>
       )}
     </aside>
+    </>
   );
 }

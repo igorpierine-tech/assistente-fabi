@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./Dashboard.module.css";
 import type { CalendarEvent } from "./CalendarView";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 interface Client {
   id: string;
@@ -120,7 +119,7 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
 
   const fetchKPIs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/dashboard/kpis`, { credentials: "include" });
+      const res = await apiFetch("/dashboard/kpis");
       if (res.ok) setKpis(await res.json());
     } catch {}
   }, []);

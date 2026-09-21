@@ -43,6 +43,11 @@ html, body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+input, textarea, select {
+  font-size: 16px;
 }
 
 h1, h2, h3, h4 {
@@ -137,9 +142,53 @@ input, textarea {
   width: 100%;
 }
 
+/* Mobile header bar */
+.mobile-header {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .app-main {
     margin-left: 0;
+    padding-top: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 16px;
+    padding-top: env(safe-area-inset-top, 0);
+    background: var(--primary);
+    color: var(--text-light);
+    z-index: 30;
+  }
+
+  .mobile-header-brand {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    color: var(--text-light);
+    flex: 1;
+  }
+
+  .hamburger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: none;
+    color: var(--gold);
+    cursor: pointer;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .main-chat {

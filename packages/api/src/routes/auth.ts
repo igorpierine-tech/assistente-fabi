@@ -109,12 +109,12 @@ router.get("/google/callback", authLimiter, async (req, res) => {
           res.status(500).send("Não foi possível salvar a sessão.");
           return;
         }
+        const code = createMobileLogin(req.sessionID, googleUser);
         if (isMobile) {
-          const code = createMobileLogin(req.sessionID, googleUser);
           res.redirect(`assistente-fabi://auth/callback?code=${encodeURIComponent(code)}`);
         } else {
           const webUrl = process.env.WEB_URL || "http://localhost:3000";
-          res.redirect(`${webUrl}/?authenticated=1`);
+          res.redirect(`${webUrl}/?auth_code=${encodeURIComponent(code)}`);
         }
       });
     });

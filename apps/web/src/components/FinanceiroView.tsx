@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./FinanceiroView.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 type PaymentMethod =
   | "pix"
@@ -147,9 +146,9 @@ export function FinanceiroView() {
     setLoading(true);
     try {
       const [listRes, sumRes, catRes] = await Promise.all([
-        fetch(`${API_URL}/receivables`, { credentials: "include" }),
-        fetch(`${API_URL}/receivables/summary`, { credentials: "include" }),
-        fetch(`${API_URL}/catalog`, { credentials: "include" }),
+        apiFetch("/receivables"),
+        apiFetch("/receivables/summary"),
+        apiFetch("/catalog"),
       ]);
       if (listRes.ok) setItems(await listRes.json());
       if (sumRes.ok) setSummary(await sumRes.json());
@@ -231,14 +230,13 @@ export function FinanceiroView() {
       notes: form.notes.trim() || null,
     };
     try {
-      const url =
+      const path =
         editModal === "new"
-          ? `${API_URL}/receivables`
-          : `${API_URL}/receivables/${(editModal as Receivable).id}`;
+          ? "/receivables"
+          : `/receivables/${(editModal as Receivable).id}`;
       const method = editModal === "new" ? "POST" : "PUT";
-      const res = await fetch(url, {
+      const res = await apiFetch(path, {
         method,
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -256,11 +254,10 @@ export function FinanceiroView() {
     if (!payingItem || !payForm.method) return;
     setSaving(true);
     try {
-      const res = await fetch(
-        `${API_URL}/receivables/${payingItem.id}/mark-paid`,
+      const res = await apiFetch(
+        `/receivables/${payingItem.id}/mark-paid`,
         {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             paymentMethod: payForm.method,
@@ -281,19 +278,13 @@ export function FinanceiroView() {
 
   async function handleReopen(r: Receivable) {
     if (!confirm("Reabrir este lançamento como pendente?")) return;
-    await fetch(`${API_URL}/receivables/${r.id}/mark-pending`, {
-      method: "POST",
-      credentials: "include",
-    });
+    await apiFetch(`/receivables/${r.id}/mark-pending`, { method: "POST" });
     await fetchAll();
   }
 
   async function handleDelete(r: Receivable) {
     if (!confirm(`Excluir o lançamento de "${r.client_name}"?`)) return;
-    await fetch(`${API_URL}/receivables/${r.id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    await apiFetch(`/receivables/${r.id}`, { method: "DELETE" });
     await fetchAll();
   }
 

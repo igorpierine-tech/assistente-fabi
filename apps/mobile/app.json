@@ -41,7 +41,9 @@
       "router": {
         "origin": false
       },
-      "eas": {}
+      "eas": {
+        "projectId": "f3756693-6ac4-47f1-829a-6592f2a8dddd"
+      }
     },
     "owner": "raizes-e-riquezas"
   }

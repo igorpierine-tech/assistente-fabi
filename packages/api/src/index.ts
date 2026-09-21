@@ -10,6 +10,7 @@ import { adminRouter } from "./routes/admin";
 import { catalogRouter } from "./routes/catalog";
 import { receivablesRouter } from "./routes/receivables";
 import { salesRouter } from "./routes/sales";
+import { contractsRouter } from "./routes/contracts";
 import { bookingRouter } from "./routes/booking";
 import { publicBookingRouter } from "./routes/public-booking";
 import { tenantRouter } from "./routes/tenant";
@@ -76,7 +77,8 @@ app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 app.use("/webhooks/zapsign", zapSignWebhookRouter);
 app.use((req, _res, next) => {
   const authorization = req.get("authorization");
-  if (!req.headers.cookie && authorization?.startsWith("Bearer ")) {
+  const hasSidCookie = (req.headers.cookie || "").includes("fabi.sid=");
+  if (!hasSidCookie && authorization?.startsWith("Bearer ")) {
     const token = authorization.slice("Bearer ".length).trim();
     if (isValidSignedSession(token, sessionSecret)) {
       req.headers.cookie = `fabi.sid=${encodeURIComponent(`s:${token}`)}`;
@@ -119,6 +121,7 @@ app.use("/public/booking", publicBookingRouter);
 app.use("/catalog", catalogRouter);
 app.use("/receivables", receivablesRouter);
 app.use("/sales", salesRouter);
+app.use("/contracts", contractsRouter);
 app.use("/tenant", tenantRouter);
 app.use("/dashboard", dashboardRouter);
 

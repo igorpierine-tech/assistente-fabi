@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./ChatPanel.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 interface Message {
   role: "user" | "assistant";
@@ -45,7 +44,7 @@ export function ChatPanel({ userId }: ChatPanelProps) {
 
   const fetchConversations = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/chat/conversations`, { credentials: "include" });
+      const res = await apiFetch("/chat/conversations");
       if (res.ok) {
         setConversations(await res.json());
       }
@@ -64,7 +63,7 @@ export function ChatPanel({ userId }: ChatPanelProps) {
 
   async function loadConversation(conv: Conversation) {
     try {
-      const res = await fetch(`${API_URL}/chat/conversations/${conv.id}`, { credentials: "include" });
+      const res = await apiFetch(`/chat/conversations/${conv.id}`);
       if (!res.ok) return;
       const data = await res.json();
       const loaded: Message[] = (data.messages || []).map((m: { role: string; content: string; created_at: string }) => ({
@@ -82,7 +81,7 @@ export function ChatPanel({ userId }: ChatPanelProps) {
 
   async function deleteConversation(id: string) {
     try {
-      await fetch(`${API_URL}/chat/conversations/${id}`, { method: "DELETE", credentials: "include" });
+      await apiFetch(`/chat/conversations/${id}`, { method: "DELETE" });
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (conversationId === id) {
         startNewChat();
@@ -107,9 +106,8 @@ export function ChatPanel({ userId }: ChatPanelProps) {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/chat/message`, {
+      const res = await apiFetch("/chat/message", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, conversationId, userId }),
       });
@@ -194,9 +192,8 @@ export function ChatPanel({ userId }: ChatPanelProps) {
     if (conversationId) formData.append("conversationId", conversationId);
 
     try {
-      const res = await fetch(`${API_URL}/chat/voice`, {
+      const res = await apiFetch("/chat/voice", {
         method: "POST",
-        credentials: "include",
         body: formData,
       });
 

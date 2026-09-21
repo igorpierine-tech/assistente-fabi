@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import styles from "./OnboardingWizard.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 const TIMEZONES = [
   { value: "America/Sao_Paulo", label: "Brasília (SP, RJ, MG, ES, BA...)" },
@@ -42,9 +41,8 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`${API_URL}/tenant/config`, {
+      const res = await apiFetch("/tenant/config", {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessName: businessName.trim(),

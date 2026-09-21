@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import styles from "./BookingRequestsPanel.module.css";
 import extraStyles from "./BookingSettingsPanel.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 type WorkHours = Record<string, [string, string][]>;
 
@@ -75,9 +74,9 @@ export function BookingSettingsPanel() {
     setLoading(true);
     try {
       const [setRes, typRes, urlRes] = await Promise.all([
-        fetch(`${API_URL}/booking/settings`, { credentials: "include" }),
-        fetch(`${API_URL}/booking/types`, { credentials: "include" }),
-        fetch(`${API_URL}/booking/public-url`, { credentials: "include" }),
+        apiFetch("/booking/settings"),
+        apiFetch("/booking/types"),
+        apiFetch("/booking/public-url"),
       ]);
       if (!setRes.ok || !typRes.ok || !urlRes.ok) {
         throw new Error("load");
@@ -100,9 +99,8 @@ export function BookingSettingsPanel() {
   }, [fetchAll]);
 
   async function saveSettings(patch: Partial<Settings>) {
-    const res = await fetch(`${API_URL}/booking/settings`, {
+    const res = await apiFetch("/booking/settings", {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });

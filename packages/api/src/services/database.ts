@@ -202,6 +202,108 @@ function initTables(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_audit_user_created ON audit_logs(user_id, created_at);
 
+    CREATE TABLE IF NOT EXISTS service_definitions (
+      code TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      family TEXT NOT NULL,
+      schema_fields TEXT NOT NULL DEFAULT '[]',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS contract_template_versions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      service_code TEXT,
+      version TEXT NOT NULL,
+      name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      schema_version TEXT NOT NULL DEFAULT '1.0',
+      status TEXT NOT NULL DEFAULT 'draft',
+      content_hash TEXT,
+      author TEXT,
+      reviewer TEXT,
+      approved_by TEXT,
+      published_at TEXT,
+      changelog TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, type, service_code, version)
+    );
+
+    CREATE TABLE IF NOT EXISTS contracts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      contract_number TEXT NOT NULL,
+      sale_id TEXT REFERENCES sales(id) ON DELETE SET NULL,
+      service_code TEXT NOT NULL,
+      client_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+      current_revision INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, contract_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS contract_revisions (
+      id TEXT PRIMARY KEY,
+      contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+      revision_number INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      snapshot TEXT NOT NULL,
+      base_version_id TEXT,
+      module_version_id TEXT,
+      policy_version_id TEXT,
+      content_hash TEXT,
+      issued_at TEXT,
+      valid_until TEXT,
+      superseded_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(contract_id, revision_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS contract_artifacts (
+      id TEXT PRIMARY KEY,
+      revision_id TEXT NOT NULL REFERENCES contract_revisions(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      content BLOB,
+      mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+      file_hash TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS contract_parties (
+      id TEXT PRIMARY KEY,
+      revision_id TEXT NOT NULL REFERENCES contract_revisions(id) ON DELETE CASCADE,
+      role TEXT NOT NULL,
+      name TEXT NOT NULL,
+      document TEXT,
+      email TEXT,
+      phone TEXT,
+      address TEXT,
+      representative_name TEXT,
+      representative_role TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS contract_audit (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      contract_id TEXT,
+      revision_id TEXT,
+      action TEXT NOT NULL,
+      details TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contracts_user ON contracts(user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_contracts_number ON contracts(user_id, contract_number);
+    CREATE INDEX IF NOT EXISTS idx_contract_revisions_contract ON contract_revisions(contract_id);
+    CREATE INDEX IF NOT EXISTS idx_contract_artifacts_revision ON contract_artifacts(revision_id);
+    CREATE INDEX IF NOT EXISTS idx_contract_audit_contract ON contract_audit(contract_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_template_versions_type ON contract_template_versions(user_id, type, status);
+
     CREATE TABLE IF NOT EXISTS tenant_config (
       user_id TEXT PRIMARY KEY,
       business_name TEXT NOT NULL DEFAULT 'Meu Negócio',
@@ -253,6 +355,9 @@ function initTables(db: Database.Database) {
 
   // One-time seed: populate the first tenant with real business data.
   seedFirstTenant(db);
+
+  // Seed contract service definitions and templates.
+  seedServiceDefinitions(db);
 }
 
 function migrateBookingRequestsFK(db: Database.Database) {
@@ -416,6 +521,24 @@ function migrateToWorkspace(db: Database.Database) {
       db.exec(`ALTER TABLE sales ADD COLUMN zapsign_sign_url TEXT`);
     }
   })();
+
+  // Contract-related columns on clients
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(clients)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has("document")) {
+      db.exec(`ALTER TABLE clients ADD COLUMN document TEXT`);
+    }
+    if (!names.has("tipo_pessoa")) {
+      db.exec(`ALTER TABLE clients ADD COLUMN tipo_pessoa TEXT DEFAULT 'PF'`);
+    }
+    if (!names.has("address")) {
+      db.exec(`ALTER TABLE clients ADD COLUMN address TEXT`);
+    }
+    if (!names.has("inscricao_estadual")) {
+      db.exec(`ALTER TABLE clients ADD COLUMN inscricao_estadual TEXT`);
+    }
+  })();
 }
 
 function seedFirstTenant(db: Database.Database) {
@@ -438,6 +561,29 @@ function seedFirstTenant(db: Database.Database) {
   }
 }
 
+function seedServiceDefinitions(db: Database.Database) {
+  const services = [
+    { code: "perfil_comportamental", name: "Análise de Perfil Comportamental", family: "Perfil e desenvolvimento individual", fields: ["instrumento","versao_instrumento","responsavel_aplicacao","formato_devolutiva","quantidade_aplicacoes","destinatarios_relatorio","finalidade_aplicacao"] },
+    { code: "coaching_pessoal", name: "Coaching Pessoal", family: "Perfil e desenvolvimento individual", fields: ["objetivos_iniciais","canal_suporte","horario_suporte","prazo_resposta_horas","materiais_inclusos"] },
+    { code: "constelacao_empresarial", name: "Constelação Empresarial", family: "Práticas reflexivas", fields: ["tema","formato_dinamica","publico","limite_participantes","responsavel_facilitacao","entrega_sintese"] },
+    { code: "constelacao_familiar", name: "Constelação Familiar", family: "Práticas reflexivas", fields: ["formato_dinamica","individual_ou_grupo","limite_participantes","responsavel_facilitacao"] },
+    { code: "equipes_diagnostico_inicial", name: "Desenvolvimento de Equipes – 1º Diagnóstico", family: "Diagnósticos organizacionais", fields: ["equipe","areas_envolvidas","metodos_coleta","amostra_prevista","periodo_observado","criterio_agregacao","formato_devolutiva"] },
+    { code: "empresa_diagnostico_inicial", name: "Diagnóstico Empresarial – 1º Diagnóstico", family: "Diagnósticos organizacionais", fields: ["areas_avaliadas","periodo_analise","documentos_requeridos","entrevistas_previstas","visitas_previstas","formato_relatorio"] },
+    { code: "diagnostico_financeiro", name: "Diagnóstico Financeiro", family: "Diagnóstico financeiro", fields: ["pessoa_ou_empresa","periodo_analise","indicadores_escopo","fontes_documentais","premissas_cenarios","formato_relatorio"] },
+    { code: "mentoria_individual_12", name: "Mentoria Individual – 12 encontros", family: "Mentorias", fields: ["temas","periodicidade","canal_suporte","horario_suporte","prazo_resposta_horas","materiais_inclusos"] },
+    { code: "mentoria_grupo", name: "Mentoria em Grupo", family: "Mentorias", fields: ["turma","temas","minimo_participantes","maximo_participantes","data_limite_formacao","politica_turma_nao_formada","alternativa_ausencia","gravacao_prevista","prazo_acesso_materiais_dias"] },
+    { code: "palestra_motivacional", name: "Palestra Motivacional", family: "Eventos e formação", fields: ["tema","palestrante","publico_alvo","publico_estimado","infraestrutura_contratante","infraestrutura_contratada","deslocamento","hospedagem","transmissao_prevista","licenca_conteudo"] },
+    { code: "workshop_lideranca", name: "Workshop de Liderança", family: "Eventos e formação", fields: ["temas","programa","carga_horaria_minutos","limite_participantes","infraestrutura","materiais","certificado_incluso","presenca_minima_percentual"] },
+  ];
+
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO service_definitions (code, name, family, schema_fields) VALUES (?, ?, ?, ?)`
+  );
+  for (const s of services) {
+    insert.run(s.code, s.name, s.family, JSON.stringify(s.fields));
+  }
+}
+
 // --- Clients ---
 
 export interface ClientRow {
@@ -447,6 +593,10 @@ export interface ClientRow {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  document: string | null;
+  tipo_pessoa: string | null;
+  address: string | null;
+  inscricao_estadual: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -469,15 +619,15 @@ export function getClientByName(userId: string, name: string): ClientRow | undef
   return getDb().prepare(`SELECT * FROM clients WHERE user_id = ? AND LOWER(name) = LOWER(?)`).get(userId, name) as ClientRow | undefined;
 }
 
-export function createClient(userId: string, data: { name: string; phone?: string; email?: string; notes?: string }): ClientRow {
+export function createClient(userId: string, data: { name: string; phone?: string; email?: string; notes?: string; document?: string; tipo_pessoa?: string; address?: string; inscricao_estadual?: string }): ClientRow {
   const id = uuidv4();
   getDb().prepare(
-    `INSERT INTO clients (id, user_id, name, phone, email, notes) VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, userId, data.name, data.phone || null, data.email || null, data.notes || null);
+    `INSERT INTO clients (id, user_id, name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, userId, data.name, data.phone || null, data.email || null, data.notes || null, data.document || null, data.tipo_pessoa || "PF", data.address || null, data.inscricao_estadual || null);
   return getClient(userId, id)!;
 }
 
-export function updateClient(userId: string, id: string, data: Partial<{ name: string; phone: string; email: string; notes: string }>): ClientRow | undefined {
+export function updateClient(userId: string, id: string, data: Partial<{ name: string; phone: string; email: string; notes: string; document: string; tipo_pessoa: string; address: string; inscricao_estadual: string }>): ClientRow | undefined {
   const fields: string[] = [];
   const values: unknown[] = [];
   for (const [key, val] of Object.entries(data)) {

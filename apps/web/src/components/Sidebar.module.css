@@ -181,7 +181,9 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: env(safe-area-inset-top, 0);
+    width: 280px;
   }
 
   .sidebarOpen {
@@ -192,7 +194,17 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 19;
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(2px);
+  }
+
+  .navItem {
+    min-height: 44px;
+  }
+
+  .logoutBtn {
+    min-height: 44px;
   }
 }

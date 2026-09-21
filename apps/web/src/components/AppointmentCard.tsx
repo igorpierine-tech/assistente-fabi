@@ -10,7 +10,7 @@ import {
   APP_TIMEZONE,
 } from "@/lib/timezone";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/lib/api";
 
 interface AppointmentCardProps {
   event: CalendarEvent | null;
@@ -110,10 +110,10 @@ export function AppointmentCard({ event, isNew, initialDate, onClose, onSave, on
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch(`${API_URL}/clients`, { credentials: "include" })
+      apiFetch("/clients")
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []),
-      fetch(`${API_URL}/catalog`, { credentials: "include" })
+      apiFetch("/catalog")
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []),
     ]).then(([c, k]: [ClientRow[], CatalogItem[]]) => {

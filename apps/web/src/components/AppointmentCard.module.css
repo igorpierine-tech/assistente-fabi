@@ -347,10 +347,15 @@
   background: var(--primary);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
   .card {
     max-height: 95vh;
-    border-radius: 12px;
+    border-radius: 14px 14px 0 0;
   }
 
   .fieldHalf {
@@ -359,10 +364,12 @@
 
   .statusBar {
     gap: 4px;
+    flex-wrap: wrap;
   }
 
   .statusBtn {
-    font-size: 0.65rem;
-    padding: 3px 8px;
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    min-height: 36px;
   }
 }

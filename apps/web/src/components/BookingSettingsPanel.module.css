@@ -110,3 +110,15 @@
   font-style: italic;
   padding: 6px 0;
 }
+
+@media (max-width: 768px) {
+  .dayRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .windowRow input[type="time"] {
+    min-width: 0;
+    flex: 1;
+  }
+}
