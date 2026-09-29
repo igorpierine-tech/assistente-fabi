@@ -377,6 +377,28 @@ function initTables(db: Database.Database) {
   // Consolidate all existing data into the shared workspace, if configured.
   migrateToWorkspace(db);
 
+  // Contract-provider columns on tenant_config (must run before seed)
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    const newCols: [string, string][] = [
+      ["razao_social", "TEXT"],
+      ["cnpj", "TEXT"],
+      ["inscricao_estadual", "TEXT"],
+      ["inscricao_municipal", "TEXT"],
+      ["endereco", "TEXT"],
+      ["cep", "TEXT"],
+      ["email_comercial", "TEXT"],
+      ["telefone_comercial", "TEXT"],
+      ["representante_qualificacao", "TEXT"],
+    ];
+    for (const [col, type] of newCols) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE tenant_config ADD COLUMN ${col} ${type}`);
+      }
+    }
+  })();
+
   // One-time seed: populate the first tenant with real business data.
   seedFirstTenant(db);
 
@@ -564,27 +586,6 @@ function migrateToWorkspace(db: Database.Database) {
     }
   })();
 
-  // Contract-provider columns on tenant_config
-  (() => {
-    const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
-    const names = new Set(cols.map((c) => c.name));
-    const newCols: [string, string][] = [
-      ["razao_social", "TEXT"],
-      ["cnpj", "TEXT"],
-      ["inscricao_estadual", "TEXT"],
-      ["inscricao_municipal", "TEXT"],
-      ["endereco", "TEXT"],
-      ["cep", "TEXT"],
-      ["email_comercial", "TEXT"],
-      ["telefone_comercial", "TEXT"],
-      ["representante_qualificacao", "TEXT"],
-    ];
-    for (const [col, type] of newCols) {
-      if (!names.has(col)) {
-        db.exec(`ALTER TABLE tenant_config ADD COLUMN ${col} ${type}`);
-      }
-    }
-  })();
 }
 
 function seedFirstTenant(db: Database.Database) {
