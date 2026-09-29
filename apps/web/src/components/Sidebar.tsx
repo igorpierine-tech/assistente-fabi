@@ -3,6 +3,8 @@
 import { useTenant } from "@/lib/tenant-context";
 import styles from "./Sidebar.module.css";
 
+export type UserRole = "admin" | "gestor" | "colaborador" | "visualizador";
+
 export type View =
   | "inicio"
   | "agenda"
@@ -12,18 +14,34 @@ export type View =
   | "vendas"
   | "contratos"
   | "financeiro"
-  | "configuracoes";
+  | "configuracoes"
+  | "usuarios";
 
 interface SidebarProps {
   activeView: View;
   onChangeView: (view: View) => void;
   userName: string;
+  userRole?: UserRole;
   clientCount: number;
   pendingBookingCount?: number;
   onLogout?: () => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin: "Administrador",
+  gestor: "Gestor",
+  colaborador: "Colaborador",
+  visualizador: "Visualizador",
+};
+
+const ROLE_NAV_ACCESS: Record<UserRole, View[]> = {
+  admin: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro", "configuracoes", "usuarios"],
+  gestor: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro"],
+  colaborador: ["inicio", "agenda", "clientes", "agendamentos"],
+  visualizador: ["inicio", "financeiro", "contratos"],
+};
 
 
 const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
@@ -34,6 +52,7 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "vendas", label: "Vendas", icon: "tag" },
   { id: "contratos", label: "Contratos", icon: "contract" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
+  { id: "usuarios", label: "Usuários", icon: "users" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
 ];
 
@@ -106,6 +125,15 @@ function NavIcon({ name }: { name: string }) {
           <line x1="8" y1="13" x2="10" y2="13" />
         </svg>
       );
+    case "users":
+      return (
+        <svg {...props} strokeLinecap="round">
+          <circle cx="7" cy="6" r="2.5" />
+          <circle cx="14" cy="7" r="2" />
+          <path d="M2 18c0-2.8 2.2-5 5-5s5 2.2 5 5" />
+          <path d="M12 18c0-2 1.5-3.5 3-3.5s2.5 1.5 2.5 3.5" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -115,6 +143,7 @@ export function Sidebar({
   activeView,
   onChangeView,
   userName,
+  userRole = "colaborador",
   clientCount,
   pendingBookingCount = 0,
   onLogout,
@@ -123,6 +152,8 @@ export function Sidebar({
 }: SidebarProps) {
   const tenant = useTenant();
   const brandName = tenant.businessName;
+  const allowedViews = ROLE_NAV_ACCESS[userRole] || ROLE_NAV_ACCESS.colaborador;
+  const visibleItems = NAV_ITEMS.filter((item) => allowedViews.includes(item.id));
 
   function handleNav(view: View) {
     onChangeView(view);
@@ -139,12 +170,12 @@ export function Sidebar({
         </div>
         <div className={styles.brandInfo}>
           <div className={styles.brandName}>{brandName}</div>
-          <div className={styles.brandSub}>{userName} · admin</div>
+          <div className={styles.brandSub}>{userName} · {ROLE_LABELS[userRole] || userRole}</div>
         </div>
       </div>
 
       <nav className={styles.nav}>
-        {NAV_ITEMS.map((item) => (
+        {visibleItems.map((item) => (
           <button
             key={item.id}
             className={`${styles.navItem} ${activeView === item.id ? styles.navItemActive : ""}`}

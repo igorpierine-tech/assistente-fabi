@@ -36,7 +36,7 @@ export function apiFetch(path: string, options: RequestInit = {}): Promise<Respo
   });
 }
 
-export async function exchangeAuthCode(code: string): Promise<{ token: string; user: { id: string; name: string; email?: string } } | null> {
+export async function exchangeAuthCode(code: string): Promise<{ token: string; user: { id: string; name: string; email?: string; appUser?: { id: string; name: string; email: string; role: string } } } | null> {
   try {
     const res = await fetch(`${API_URL}/auth/mobile/exchange`, {
       method: "POST",

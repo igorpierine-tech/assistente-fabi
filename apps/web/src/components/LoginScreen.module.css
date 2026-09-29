@@ -116,6 +116,44 @@
   border-color: rgba(217, 178, 104, 0.55);
 }
 
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.loginInput {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(217, 178, 104, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4ede0;
+  font-size: 15px;
+  font-family: var(--font-body);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.loginInput::placeholder {
+  color: #8a7f6a;
+}
+
+.loginInput:focus {
+  border-color: #d9b268;
+}
+
+.loginError {
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #f87171;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: left;
+}
+
 .footer {
   margin-top: 24px;
   font-size: 12px;

@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { consumeMobileLogin, createMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
 import { isEmailAuthorized } from "../services/auth-config";
+import { findOrCreateGoogleUser, getUserByEmail, verifyPassword } from "../services/users-db";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -41,8 +42,6 @@ router.get("/google", authLimiter, (req, res) => {
     ],
   });
 
-  // Top-level navigation from web (?redirect=1) or the mobile flow needs a redirect
-  // so the browser lands on Google and the session cookie is guaranteed first-party.
   if (platform === "mobile" || req.query.redirect === "1") {
     req.session.save(() => res.redirect(url));
     return;
@@ -72,7 +71,6 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     const userInfo = await google.oauth2({ version: "v2", auth: oauth2Client }).userinfo.get();
     const email = userInfo.data.email || undefined;
 
-    // Enforce authorized emails allowlist (when configured).
     if (!isEmailAuthorized(email)) {
       res.status(403).send(
         `Acesso não autorizado para ${email || "esta conta"}. Peça ao administrador para adicionar seu e-mail à lista de permissões.`
@@ -81,21 +79,20 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     }
 
     const googleTokens = { ...req.session.googleTokens, ...tokens };
-    // Always keep the person's real Google user id in the session.
-    // Shared vs per-user scoping is decided per-route via
-    // `sharedOwnerId` / `personalOwnerId` helpers.
     const googleUser = {
       id: userInfo.data.id || "google-user",
       name: userInfo.data.name || "",
       email,
     };
-    const isMobile = req.session.oauthPlatform === "mobile";
 
-    // Note: legacy appointments/booking_requests may still be stored with the
-    // shared workspace id (from an earlier data model). We DO NOT rewrite
-    // them here — the appointment/booking DB helpers accept either the
-    // personal id or the workspace id, so old records stay visible while new
-    // ones are scoped per user.
+    const appUser = findOrCreateGoogleUser(googleUser);
+
+    if (!appUser.active) {
+      res.status(403).send("Conta desativada. Entre em contato com o administrador.");
+      return;
+    }
+
+    const isMobile = req.session.oauthPlatform === "mobile";
 
     req.session.regenerate((regenerateError) => {
       if (regenerateError) {
@@ -104,12 +101,26 @@ router.get("/google/callback", authLimiter, async (req, res) => {
       }
       req.session.googleTokens = googleTokens;
       req.session.googleUser = googleUser;
+      req.session.appUser = {
+        id: appUser.id,
+        name: appUser.name,
+        email: appUser.email,
+        role: appUser.role,
+      };
       req.session.save((saveError) => {
         if (saveError) {
           res.status(500).send("Não foi possível salvar a sessão.");
           return;
         }
-        const code = createMobileLogin(req.sessionID, googleUser);
+        const code = createMobileLogin(req.sessionID, {
+          ...googleUser,
+          appUser: {
+            id: appUser.id,
+            name: appUser.name,
+            email: appUser.email,
+            role: appUser.role,
+          },
+        });
         if (isMobile) {
           res.redirect(`assistente-fabi://auth/callback?code=${encodeURIComponent(code)}`);
         } else {
@@ -122,6 +133,60 @@ router.get("/google/callback", authLimiter, async (req, res) => {
     console.error("Erro na autenticação Google:", error instanceof Error ? error.message : "erro desconhecido");
     res.status(500).send("Falha na autenticação Google.");
   }
+});
+
+router.post("/login", authLimiter, async (req, res) => {
+  const { email, password } = req.body || {};
+  if (typeof email !== "string" || typeof password !== "string") {
+    res.status(400).json({ error: "E-mail e senha são obrigatórios" });
+    return;
+  }
+
+  const user = getUserByEmail(email);
+  if (!user || !user.password_hash) {
+    res.status(401).json({ error: "E-mail ou senha inválidos" });
+    return;
+  }
+
+  if (!user.active) {
+    res.status(403).json({ error: "Conta desativada" });
+    return;
+  }
+
+  const valid = await verifyPassword(password, user.password_hash);
+  if (!valid) {
+    res.status(401).json({ error: "E-mail ou senha inválidos" });
+    return;
+  }
+
+  req.session.regenerate((err) => {
+    if (err) {
+      res.status(500).json({ error: "Erro ao criar sessão" });
+      return;
+    }
+    req.session.appUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        res.status(500).json({ error: "Erro ao salvar sessão" });
+        return;
+      }
+      const token = signSessionId(req.sessionID, process.env.SESSION_SECRET!);
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    });
+  });
 });
 
 router.post("/mobile/exchange", authLimiter, (req, res) => {
@@ -142,7 +207,15 @@ router.post("/mobile/exchange", authLimiter, (req, res) => {
 });
 
 router.get("/status", (req, res) => {
-  res.json({ authenticated: Boolean(req.session.googleTokens), user: req.session.googleUser ?? null });
+  const appUser = req.session.appUser;
+  const googleUser = req.session.googleUser;
+  const authenticated = Boolean(appUser || googleUser);
+  res.json({
+    authenticated,
+    user: appUser
+      ? { id: appUser.id, name: appUser.name, email: appUser.email, role: appUser.role }
+      : googleUser ?? null,
+  });
 });
 
 router.post("/logout", (req, res) => {

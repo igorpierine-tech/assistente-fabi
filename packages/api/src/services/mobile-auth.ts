@@ -3,7 +3,12 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 type PendingLogin = {
   expiresAt: number;
   sessionId: string;
-  user: { id: string; name: string; email?: string };
+  user: {
+    id: string;
+    name: string;
+    email?: string;
+    appUser?: { id: string; name: string; email: string; role: string };
+  };
 };
 
 const pendingLogins = new Map<string, PendingLogin>();

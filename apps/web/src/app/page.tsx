@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sidebar, type View } from "@/components/Sidebar";
+import { Sidebar, type View, type UserRole } from "@/components/Sidebar";
 import { Dashboard } from "@/components/Dashboard";
 import { ChatPanel } from "@/components/ChatPanel";
 import { DaySummary } from "@/components/DaySummary";
@@ -15,6 +15,7 @@ import { SettingsView } from "@/components/SettingsView";
 import { FinanceiroView } from "@/components/FinanceiroView";
 import { VendasView } from "@/components/VendasView";
 import { ContratosView } from "@/components/ContratosView";
+import { UsuariosView } from "@/components/UsuariosView";
 import { FloatingAssistant } from "@/components/FloatingAssistant";
 import type { CalendarEvent } from "@/components/CalendarView";
 import { isoToLocalInput, localInputToIso } from "@/lib/timezone";
@@ -122,6 +123,7 @@ function appointmentToEvent(row: AppointmentRow): CalendarEvent {
 export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [userRole, setUserRole] = useState<UserRole | undefined>(undefined);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<View>("inicio");
@@ -221,8 +223,10 @@ export default function Home() {
         if (result?.token) {
           setAuthToken(result.token);
           setIsAuthenticated(true);
-          setUserId(result.user.id);
-          setUserName(result.user.name || "");
+          const appUser = result.user.appUser || result.user;
+          setUserId(appUser.id);
+          setUserName(appUser.name || result.user.name || "");
+          setUserRole(((appUser as Record<string, string>).role as UserRole) || undefined);
           fetchAppointments();
           fetchClients();
           fetchTenantConfig();
@@ -244,6 +248,7 @@ export default function Home() {
       if (data.authenticated && data.user?.id) {
         setUserId(data.user.id);
         setUserName(data.user.name || "");
+        setUserRole((data.user.role as UserRole) || undefined);
         fetchAppointments();
         fetchClients();
         fetchTenantConfig();
@@ -255,15 +260,37 @@ export default function Home() {
   }
 
   function handleLogin() {
-    // Top-level navigation ensures the session cookie is first-party
-    // (avoids third-party cookie blocking in Chrome incognito).
     window.location.href = `${API_URL}/auth/google?redirect=1`;
+  }
+
+  async function handlePasswordLogin(email: string, password: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return data.error || "Erro ao fazer login";
+      setAuthToken(data.token);
+      setIsAuthenticated(true);
+      setUserId(data.user.id);
+      setUserName(data.user.name || "");
+      setUserRole((data.user.role as UserRole) || undefined);
+      fetchAppointments();
+      fetchClients();
+      fetchTenantConfig();
+      return null;
+    } catch {
+      return "Não foi possível conectar ao servidor";
+    }
   }
 
   async function handleLogout() {
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
     clearAuthToken();
     setUserId(null);
+    setUserRole(undefined);
     setIsAuthenticated(false);
     setPendingBookingCount(0);
     setActiveView("inicio");
@@ -383,7 +410,7 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return <LoginScreen onLogin={handleLogin} onPasswordLogin={handlePasswordLogin} />;
   }
 
   if (tenantConfig && !tenantConfig.onboardingCompleted) {
@@ -466,6 +493,12 @@ export default function Home() {
             <SettingsView />
           </div>
         );
+      case "usuarios":
+        return (
+          <div className="main-scrollable">
+            <UsuariosView />
+          </div>
+        );
     }
   }
 
@@ -486,6 +519,7 @@ export default function Home() {
           activeView={activeView}
           onChangeView={setActiveView}
           userName={userName}
+          userRole={userRole}
           clientCount={clients.length}
           pendingBookingCount={pendingBookingCount}
           onLogout={handleLogout}

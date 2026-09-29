@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:pdfkit --external:pdf-lib --external:uuid",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:bcryptjs --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:pdfkit --external:pdf-lib --external:uuid",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test src/services/validation.test.ts src/services/mobile-auth.test.ts"
@@ -13,6 +13,7 @@
   "dependencies": {
     "@assistente-fabi/ai": "workspace:*",
     "@assistente-fabi/shared": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -29,6 +30,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
