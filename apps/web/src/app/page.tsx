@@ -450,7 +450,7 @@ export default function Home() {
         );
       case "contratos":
         return (
-          <div className="main-calendar">
+          <div className="main-scrollable">
             <ContratosView />
           </div>
         );
