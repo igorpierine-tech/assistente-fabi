@@ -23,10 +23,14 @@ export interface ContractSnapshot {
     razao_social: string;
     nome_fantasia: string;
     cnpj: string | null;
+    inscricao_estadual: string | null;
+    inscricao_municipal: string | null;
     endereco: string | null;
+    cep: string | null;
     email: string | null;
     telefone: string | null;
     representante_nome: string | null;
+    representante_qualificacao: string | null;
     representante_cargo: string | null;
   };
   servico: {
@@ -108,11 +112,11 @@ interface ComposeInput {
 export function composeSnapshot(input: ComposeInput): ContractSnapshot {
   const { sale, client, tenant, contractNumber, revision, especifico } = input;
 
-  const providerName = process.env.CONTRACT_PROVIDER_NAME || tenant?.business_name || "Prestador de Serviços";
-  const providerDoc = process.env.CONTRACT_PROVIDER_DOCUMENT || null;
-  const providerEmail = process.env.CONTRACT_PROVIDER_EMAIL || null;
-  const providerPhone = process.env.CONTRACT_PROVIDER_PHONE || null;
-  const providerAddress = process.env.CONTRACT_PROVIDER_ADDRESS || null;
+  const providerName = tenant?.razao_social || process.env.CONTRACT_PROVIDER_NAME || tenant?.business_name || "Prestador de Serviços";
+  const providerDoc = tenant?.cnpj || process.env.CONTRACT_PROVIDER_DOCUMENT || null;
+  const providerEmail = tenant?.email_comercial || process.env.CONTRACT_PROVIDER_EMAIL || null;
+  const providerPhone = tenant?.telefone_comercial || process.env.CONTRACT_PROVIDER_PHONE || null;
+  const providerAddress = tenant?.endereco || process.env.CONTRACT_PROVIDER_ADDRESS || null;
   const providerRepName = tenant?.owner_name || null;
 
   const serviceDef = getServiceDefinition(sale.item_name) || getServiceDefinitionByName(sale.item_name);
@@ -136,10 +140,14 @@ export function composeSnapshot(input: ComposeInput): ContractSnapshot {
     razao_social: providerName,
     nome_fantasia: tenant?.business_name || "Raízes & Riquezas",
     cnpj: providerDoc,
+    inscricao_estadual: tenant?.inscricao_estadual || null,
+    inscricao_municipal: tenant?.inscricao_municipal || null,
     endereco: providerAddress,
+    cep: tenant?.cep || null,
     email: providerEmail,
     telefone: providerPhone,
     representante_nome: providerRepName,
+    representante_qualificacao: tenant?.representante_qualificacao || null,
     representante_cargo: tenant?.profession || null,
   };
 
@@ -164,9 +172,13 @@ export function composeSnapshot(input: ComposeInput): ContractSnapshot {
     "contratante.email": contratante.email || "[e-mail não informado]",
     "contratada.razao_social": contratada.razao_social,
     "contratada.cnpj": contratada.cnpj || "[CNPJ não informado]",
+    "contratada.inscricao_estadual": contratada.inscricao_estadual || "ISENTO",
+    "contratada.inscricao_municipal": contratada.inscricao_municipal || "[IM não informada]",
     "contratada.endereco": contratada.endereco || "[endereço não informado]",
+    "contratada.cep": contratada.cep || "[CEP não informado]",
     "contratada.email": contratada.email || "[e-mail não informado]",
     "contratada.representante_nome": contratada.representante_nome || "[representante não informado]",
+    "contratada.representante_qualificacao": contratada.representante_qualificacao || "",
     "contratada.representante_cargo": contratada.representante_cargo || "[cargo não informado]",
     "servico.nome": serviceName,
     "servico.modalidade": quadroResumo.modalidade,

@@ -251,10 +251,16 @@ export async function generateContractPdfFromSnapshot(snapshot: ContractSnapshot
 
       const contratadaDoc = snapshot.contratada.cnpj
         ? `inscrita no CNPJ sob nº ${snapshot.contratada.cnpj}` : "";
+      const contratadaIE = snapshot.contratada.inscricao_estadual
+        ? `, IE: ${snapshot.contratada.inscricao_estadual}` : "";
+      const contratadaIM = snapshot.contratada.inscricao_municipal
+        ? `, Inscrição Municipal nº ${snapshot.contratada.inscricao_municipal}` : "";
       const contratadaAddr = snapshot.contratada.endereco
         ? `, com sede em ${snapshot.contratada.endereco}` : "";
+      const contratadaCep = snapshot.contratada.cep
+        ? `, CEP ${snapshot.contratada.cep}` : "";
       const contratadaRep = snapshot.contratada.representante_nome
-        ? `, neste ato representada por ${snapshot.contratada.representante_nome}${snapshot.contratada.representante_cargo ? `, ${snapshot.contratada.representante_cargo}` : ""}`
+        ? `, neste ato representada por ${snapshot.contratada.representante_nome.toUpperCase()}${snapshot.contratada.representante_qualificacao ? `, ${snapshot.contratada.representante_qualificacao}` : ""}${snapshot.contratada.representante_cargo ? `, ${snapshot.contratada.representante_cargo}` : ""}`
         : "";
 
       const partiesParagraph =
@@ -268,7 +274,8 @@ export async function generateContractPdfFromSnapshot(snapshot: ContractSnapshot
         (snapshot.contratada.nome_fantasia !== snapshot.contratada.razao_social
           ? `, nome fantasia ${snapshot.contratada.nome_fantasia}` : "") +
         (contratadaDoc ? `, ${contratadaDoc}` : "") +
-        contratadaAddr +
+        contratadaIE + contratadaIM +
+        contratadaAddr + contratadaCep +
         (snapshot.contratada.email ? `, e-mail ${snapshot.contratada.email}` : "") +
         contratadaRep +
         `, doravante denominada CONTRATADA, celebram o presente contrato de prestação de serviços, que se regerá pelas cláusulas e condições a seguir:`;

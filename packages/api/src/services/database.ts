@@ -320,6 +320,15 @@ function initTables(db: Database.Database) {
       body_font TEXT NOT NULL DEFAULT '''Inter'', sans-serif',
       custom_prompt TEXT,
       onboarding_completed INTEGER NOT NULL DEFAULT 0,
+      razao_social TEXT,
+      cnpj TEXT,
+      inscricao_estadual TEXT,
+      inscricao_municipal TEXT,
+      endereco TEXT,
+      cep TEXT,
+      email_comercial TEXT,
+      telefone_comercial TEXT,
+      representante_qualificacao TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -554,13 +563,35 @@ function migrateToWorkspace(db: Database.Database) {
       db.exec(`ALTER TABLE clients ADD COLUMN inscricao_estadual TEXT`);
     }
   })();
+
+  // Contract-provider columns on tenant_config
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    const newCols: [string, string][] = [
+      ["razao_social", "TEXT"],
+      ["cnpj", "TEXT"],
+      ["inscricao_estadual", "TEXT"],
+      ["inscricao_municipal", "TEXT"],
+      ["endereco", "TEXT"],
+      ["cep", "TEXT"],
+      ["email_comercial", "TEXT"],
+      ["telefone_comercial", "TEXT"],
+      ["representante_qualificacao", "TEXT"],
+    ];
+    for (const [col, type] of newCols) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE tenant_config ADD COLUMN ${col} ${type}`);
+      }
+    }
+  })();
 }
 
 function seedFirstTenant(db: Database.Database) {
   const updated = db.prepare(`
     UPDATE tenant_config
     SET business_name = 'Raízes e Riquezas',
-        owner_name = 'Fabiana',
+        owner_name = 'Fabiana dos Santos Castro',
         profession = 'Consultora Financeira, Terapeuta e Consteladora',
         tagline = 'Agenda, clientes e assistente inteligente',
         timezone = 'America/Cuiaba',
@@ -568,6 +599,14 @@ function seedFirstTenant(db: Database.Database) {
         secondary_color = '#d9b268',
         accent_color = '#2f4a2b',
         onboarding_completed = 1,
+        razao_social = 'RAÍZES E RIQUEZAS CONSULTORIAS LTDA',
+        cnpj = '66.666.514/0001-99',
+        inscricao_estadual = 'ISENTO',
+        inscricao_municipal = '6825435',
+        endereco = 'Rua Ludovico Vieira de Camargo, 22 - Núcleo Habitacional Rio Vermelho, Rondonópolis/MT',
+        cep = '78740-291',
+        email_comercial = 'raizeseriquezas@outlook.com',
+        representante_qualificacao = 'brasileira, casada, empresária, portadora da Cédula de Identidade RG 1420009 e CPF 001.547.691-00',
         updated_at = datetime('now')
     WHERE business_name != 'Raízes e Riquezas'
   `).run();
@@ -996,6 +1035,15 @@ export interface TenantConfigRow {
   body_font: string;
   custom_prompt: string | null;
   onboarding_completed: number;
+  razao_social: string | null;
+  cnpj: string | null;
+  inscricao_estadual: string | null;
+  inscricao_municipal: string | null;
+  endereco: string | null;
+  cep: string | null;
+  email_comercial: string | null;
+  telefone_comercial: string | null;
+  representante_qualificacao: string | null;
   created_at: string;
   updated_at: string;
 }
