@@ -364,7 +364,7 @@ export function ContratosView() {
   // --- Editor view ---
   if (editingContract && snapshot) {
     const isAdesao = snapshot.service_code === "mentoria_adesao";
-    const tituloContrato = isAdesao ? "CONTRATO DE ADESÃO" : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
+    const tituloContrato = isAdesao ? "CONTRATO ÁUREA" : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
     const isDraft = editingContract.status === "draft";
 
     return (
