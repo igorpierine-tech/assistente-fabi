@@ -29,6 +29,14 @@ interface Sale {
   client_email: string | null;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  document: string | null;
+}
+
 interface Clausula {
   id: string;
   titulo: string;
@@ -113,6 +121,8 @@ export function ContratosView() {
   const [selectedService, setSelectedService] = useState("");
   const [selectedSaleId, setSelectedSaleId] = useState("");
   const [sales, setSales] = useState<Sale[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [creating, setCreating] = useState(false);
 
   const [issuingId, setIssuingId] = useState("");
@@ -152,12 +162,21 @@ export function ContratosView() {
     } catch (_) { /* ignore */ }
   }, []);
 
+  const fetchClients = useCallback(async () => {
+    try {
+      const res = await api("/clients");
+      setClients(await res.json());
+    } catch (_) { /* ignore */ }
+  }, []);
+
   const openCreate = () => {
     setShowCreate(true);
     setCreateMode("servico");
     setSelectedService(services[0]?.code || "");
     setSelectedSaleId("");
+    setSelectedClientId("");
     fetchSales();
+    fetchClients();
   };
 
   const handleCreate = async () => {
@@ -169,6 +188,9 @@ export function ContratosView() {
         body.saleId = selectedSaleId;
       } else if (selectedService) {
         body.serviceCode = selectedService;
+      }
+      if (selectedClientId) {
+        body.clientId = selectedClientId;
       }
       const res = await api("/contracts", {
         method: "POST",
@@ -747,6 +769,20 @@ export function ContratosView() {
                   </select>
                 </div>
               )}
+              <div className={styles.field}>
+                <label>Cliente (contratante)</label>
+                <select
+                  value={selectedClientId}
+                  onChange={e => setSelectedClientId(e.target.value)}
+                >
+                  <option value="">Selecione um cliente...</option>
+                  {clients.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.document ? ` — ${c.document}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className={styles.modalActions}>
