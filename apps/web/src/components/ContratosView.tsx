@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import styles from "./ContratosView.module.css";
 import { apiFetch } from "@/lib/api";
 
@@ -125,6 +125,8 @@ export function ContratosView() {
   const [editClausulas, setEditClausulas] = useState<Clausula[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingEditor, setLoadingEditor] = useState(false);
+  const [collapsedClauses, setCollapsedClauses] = useState<Set<number>>(new Set());
+  const textareaRefs = useRef<Map<number, HTMLTextAreaElement>>(new Map());
 
   const fetchAll = useCallback(async () => {
     try {
@@ -191,6 +193,7 @@ export function ContratosView() {
     setEditingContract(contract);
     setLoadingEditor(true);
     setError("");
+    setCollapsedClauses(new Set());
     try {
       const res = await api(`/contracts/${contract.id}`);
       const data = await res.json();
@@ -321,12 +324,39 @@ export function ContratosView() {
     }
   };
 
+  const autoResizeTextarea = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, []);
+
+  const toggleClause = (index: number) => {
+    setCollapsedClauses(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const collapseAll = () => {
+    setCollapsedClauses(new Set(editClausulas.map((_, i) => i)));
+  };
+
+  const expandAll = () => {
+    setCollapsedClauses(new Set());
+  };
+
   const updateClausula = (index: number, field: "titulo" | "texto", value: string) => {
     setEditClausulas(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+    if (field === "texto") {
+      const el = textareaRefs.current.get(index);
+      if (el) requestAnimationFrame(() => autoResizeTextarea(el));
+    }
   };
 
   if (loading) return <div className={styles.container}><p>Carregando...</p></div>;
@@ -507,24 +537,51 @@ export function ContratosView() {
 
             {/* Cláusulas */}
             <section className={styles.editorSection}>
-              <h3 className={styles.sectionTitle}>Cláusulas do Contrato</h3>
-              {editClausulas.map((c, i) => (
-                <div key={c.id} className={styles.clausulaCard}>
-                  <input
-                    className={styles.clausulaTitulo}
-                    value={c.titulo}
-                    onChange={e => updateClausula(i, "titulo", e.target.value)}
-                    disabled={!isDraft}
-                  />
-                  <textarea
-                    className={styles.clausulaTexto}
-                    value={c.texto}
-                    onChange={e => updateClausula(i, "texto", e.target.value)}
-                    disabled={!isDraft}
-                    rows={Math.max(4, Math.ceil(c.texto.length / 120))}
-                  />
+              <div className={styles.clausulasHeader}>
+                <h3 className={styles.sectionTitle} style={{ margin: 0, border: "none", paddingBottom: 0 }}>
+                  Cláusulas do Contrato ({editClausulas.length})
+                </h3>
+                <div className={styles.clausulasToggle}>
+                  <button type="button" className={styles.toggleAllBtn} onClick={expandAll}>Expandir todas</button>
+                  <button type="button" className={styles.toggleAllBtn} onClick={collapseAll}>Recolher todas</button>
                 </div>
-              ))}
+              </div>
+              {editClausulas.map((c, i) => {
+                const isCollapsed = collapsedClauses.has(i);
+                return (
+                  <div key={c.id} className={styles.clausulaCard}>
+                    <div
+                      className={styles.clausulaCardHeader}
+                      onClick={() => toggleClause(i)}
+                    >
+                      <span className={styles.clausulaToggleIcon}>{isCollapsed ? "▶" : "▼"}</span>
+                      <span className={styles.clausulaHeaderTitle}>{c.titulo || `Cláusula ${i + 1}`}</span>
+                    </div>
+                    {!isCollapsed && (
+                      <div className={styles.clausulaCardBody}>
+                        <input
+                          className={styles.clausulaTitulo}
+                          value={c.titulo}
+                          onChange={e => updateClausula(i, "titulo", e.target.value)}
+                          disabled={!isDraft}
+                        />
+                        <textarea
+                          className={styles.clausulaTexto}
+                          ref={el => {
+                            if (el) {
+                              textareaRefs.current.set(i, el);
+                              autoResizeTextarea(el);
+                            }
+                          }}
+                          value={c.texto}
+                          onChange={e => updateClausula(i, "texto", e.target.value)}
+                          disabled={!isDraft}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </section>
 
             {isDraft && (

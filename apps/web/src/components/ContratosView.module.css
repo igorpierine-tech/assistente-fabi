@@ -435,12 +435,79 @@
   background: #f5f3ee;
 }
 
-.clausulaCard {
+.clausulasHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
-  padding: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, rgba(184, 135, 58, 0.12));
+  flex-wrap: wrap;
+}
+
+.clausulasToggle {
+  display: flex;
+  gap: 6px;
+}
+
+.toggleAllBtn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.25));
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.toggleAllBtn:hover {
+  background: rgba(184, 135, 58, 0.08);
+}
+
+.clausulaCard {
+  margin-bottom: 8px;
   border: 1px solid var(--border, rgba(184, 135, 58, 0.12));
   border-radius: 10px;
   background: rgba(184, 135, 58, 0.02);
+  overflow: hidden;
+}
+
+.clausulaCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.clausulaCardHeader:hover {
+  background: rgba(184, 135, 58, 0.05);
+}
+
+.clausulaToggleIcon {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 12px;
+}
+
+.clausulaHeaderTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clausulaCardBody {
+  padding: 0 16px 16px;
 }
 
 .clausulaTitulo {
@@ -474,8 +541,10 @@
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   line-height: 1.6;
+  min-height: 80px;
   transition: border-color 0.15s;
 }
 
@@ -541,7 +610,16 @@
     grid-template-columns: 1fr;
   }
 
-  .clausulaCard {
-    padding: 12px;
+  .clausulaCardHeader {
+    padding: 8px 12px;
+  }
+
+  .clausulaCardBody {
+    padding: 0 12px 12px;
+  }
+
+  .clausulasHeader {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
