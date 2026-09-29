@@ -249,6 +249,13 @@ export function createRevision(contractId: string, data: {
   return getRevision(id)!;
 }
 
+export function updateRevisionSnapshot(revisionId: string, snapshot: string): void {
+  const contentHash = createHash("sha256").update(snapshot, "utf8").digest("hex");
+  getDb().prepare(
+    `UPDATE contract_revisions SET snapshot = ?, content_hash = ? WHERE id = ? AND status = 'draft'`
+  ).run(snapshot, contentHash, revisionId);
+}
+
 export function issueRevision(revisionId: string, validUntilDays?: number): void {
   const validUntil = validUntilDays
     ? `datetime('now', '+${Math.max(1, Math.min(365, validUntilDays))} days')`

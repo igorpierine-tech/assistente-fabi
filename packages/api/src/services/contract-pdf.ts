@@ -223,8 +223,10 @@ export async function generateContractPdfFromSnapshot(snapshot: ContractSnapshot
       doc.on("error", reject);
 
       // --- Título ---
+      const isAdesao = snapshot.service_code === "mentoria_adesao";
+      const tituloContrato = isAdesao ? "CONTRATO DE ADESÃO" : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
       doc.font("Helvetica-Bold").fontSize(14).fillColor(GREEN)
-        .text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", { align: "center" });
+        .text(tituloContrato, { align: "center" });
       doc.moveDown(0.15);
       doc.font("Helvetica").fontSize(9).fillColor(MUTED)
         .text(`Nº ${snapshot.contract_number}`, { align: "center" });
@@ -288,8 +290,10 @@ export async function generateContractPdfFromSnapshot(snapshot: ContractSnapshot
 
       // --- Módulo específico ---
       if (snapshot.modulo_especifico.length > 0) {
-        doc.moveTo(SIDE_MARGIN, doc.y).lineTo(SIDE_MARGIN + CONTENT_WIDTH, doc.y).strokeColor(GOLD).lineWidth(0.3).stroke();
-        doc.moveDown(0.5);
+        if (snapshot.clausulas_base.length > 0) {
+          doc.moveTo(SIDE_MARGIN, doc.y).lineTo(SIDE_MARGIN + CONTENT_WIDTH, doc.y).strokeColor(GOLD).lineWidth(0.3).stroke();
+          doc.moveDown(0.5);
+        }
 
         for (const modulo of snapshot.modulo_especifico) {
           needsPageBreak(doc, 50);

@@ -574,6 +574,7 @@ function seedServiceDefinitions(db: Database.Database) {
     { code: "mentoria_grupo", name: "Mentoria em Grupo", family: "Mentorias", fields: ["turma","temas","minimo_participantes","maximo_participantes","data_limite_formacao","politica_turma_nao_formada","alternativa_ausencia","gravacao_prevista","prazo_acesso_materiais_dias"] },
     { code: "palestra_motivacional", name: "Palestra Motivacional", family: "Eventos e formação", fields: ["tema","palestrante","publico_alvo","publico_estimado","infraestrutura_contratante","infraestrutura_contratada","deslocamento","hospedagem","transmissao_prevista","licenca_conteudo"] },
     { code: "workshop_lideranca", name: "Workshop de Liderança", family: "Eventos e formação", fields: ["temas","programa","carga_horaria_minutos","limite_participantes","infraestrutura","materiais","certificado_incluso","presenca_minima_percentual"] },
+    { code: "mentoria_adesao", name: "Mentoria – Contrato de Adesão", family: "Mentorias", fields: ["nome_programa","duracao_meses","encontros_ao_vivo","sessao_individual","comunidade","agente_ia","email_contato","foro"] },
   ];
 
   const insert = db.prepare(

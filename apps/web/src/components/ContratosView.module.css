@@ -338,6 +338,159 @@
   cursor: not-allowed;
 }
 
+/* Editor */
+.editorHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.editorHeader > div {
+  flex: 1;
+  min-width: 200px;
+}
+
+.backBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.3));
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.backBtn:hover {
+  background: rgba(184, 135, 58, 0.08);
+}
+
+.editorActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.editorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.editorSection {
+  background: var(--surface);
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.15));
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--primary);
+  margin: 0 0 16px;
+  font-weight: 400;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, rgba(184, 135, 58, 0.12));
+}
+
+.editorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.25));
+  background: #ffffff;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.field input:focus {
+  border-color: var(--secondary, #b8873a);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: #f5f3ee;
+}
+
+.clausulaCard {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.12));
+  border-radius: 10px;
+  background: rgba(184, 135, 58, 0.02);
+}
+
+.clausulaTitulo {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.2));
+  background: #ffffff;
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+
+.clausulaTitulo:focus {
+  border-color: var(--secondary, #b8873a);
+}
+
+.clausulaTexto {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(184, 135, 58, 0.2));
+  background: #ffffff;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.15s;
+}
+
+.clausulaTexto:focus {
+  border-color: var(--secondary, #b8873a);
+}
+
+.editorFooter {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 20px 0;
+  border-top: 1px solid var(--border, rgba(184, 135, 58, 0.12));
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 16px;
@@ -372,6 +525,23 @@
   }
 
   .overlay {
+    padding: 12px;
+  }
+
+  .editorHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editorActions {
+    flex-wrap: wrap;
+  }
+
+  .editorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .clausulaCard {
     padding: 12px;
   }
 }

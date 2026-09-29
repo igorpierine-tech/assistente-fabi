@@ -9,6 +9,7 @@ import {
   updateContractStatus,
   getLatestRevision,
   createRevision,
+  updateRevisionSnapshot,
   issueRevision,
   saveArtifact,
   getArtifactByType,
@@ -177,6 +178,96 @@ router.post("/", async (req, res) => {
     revision,
     snapshot,
   });
+});
+
+router.put("/:id/snapshot", (req, res) => {
+  const contract = getContract(userId(req), String(req.params.id));
+  if (!contract) {
+    res.status(404).json({ error: "Contrato não encontrado" });
+    return;
+  }
+  if (contract.status !== "draft") {
+    res.status(400).json({ error: "Somente contratos em rascunho podem ser editados" });
+    return;
+  }
+
+  const revision = getLatestRevision(contract.id);
+  if (!revision) {
+    res.status(400).json({ error: "Contrato sem revisão" });
+    return;
+  }
+
+  const b = req.body as {
+    contratante?: {
+      nome?: string;
+      documento?: string;
+      email?: string;
+      telefone?: string;
+      endereco?: string;
+      tipo_pessoa?: string;
+      inscricao_estadual?: string;
+    };
+    financeiro?: {
+      valor_total_centavos?: number;
+      forma_pagamento?: string;
+      parcelas?: number;
+    };
+    clausulas?: Array<{ id: string; titulo: string; texto: string }>;
+  } | null;
+
+  if (!b) {
+    res.status(400).json({ error: "Body inválido" });
+    return;
+  }
+
+  const snapshot = JSON.parse(revision.snapshot);
+
+  if (b.contratante) {
+    Object.assign(snapshot.contratante, b.contratante);
+    snapshot.quadro_resumo.contratante = snapshot.contratante.nome;
+  }
+
+  if (b.financeiro) {
+    if (b.financeiro.valor_total_centavos !== undefined) {
+      snapshot.financeiro.valor_total_centavos = b.financeiro.valor_total_centavos;
+      const formatBRL = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      snapshot.quadro_resumo.valor = formatBRL(b.financeiro.valor_total_centavos);
+    }
+    if (b.financeiro.forma_pagamento !== undefined) snapshot.financeiro.forma_pagamento = b.financeiro.forma_pagamento;
+    if (b.financeiro.parcelas !== undefined) snapshot.financeiro.parcelas = b.financeiro.parcelas;
+
+    const methodLabels: Record<string, string> = { pix: "PIX", dinheiro: "Dinheiro", cartao_credito: "Cartão de crédito", cartao_debito: "Cartão de débito", transferencia: "Transferência bancária", boleto: "Boleto bancário", outro: "Outro" };
+    const method = snapshot.financeiro.forma_pagamento;
+    const label = methodLabels[method] || method || "A combinar";
+    const inst = snapshot.financeiro.parcelas;
+    const formatBRL = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    snapshot.financeiro.resumo_pagamento = `${formatBRL(snapshot.financeiro.valor_total_centavos)} via ${inst > 1 ? `${label} em ${inst}x` : label}`;
+    snapshot.quadro_resumo.pagamento = snapshot.financeiro.resumo_pagamento;
+  }
+
+  if (b.clausulas) {
+    const isAdesao = snapshot.service_code === "mentoria_adesao";
+    if (isAdesao) {
+      snapshot.modulo_especifico = b.clausulas;
+    } else {
+      const baseIds = new Set(snapshot.clausulas_base.map((c: { id: string }) => c.id));
+      const updatedBase = b.clausulas.filter(c => baseIds.has(c.id));
+      const updatedModule = b.clausulas.filter(c => !baseIds.has(c.id));
+      if (updatedBase.length > 0) snapshot.clausulas_base = updatedBase;
+      if (updatedModule.length > 0) snapshot.modulo_especifico = updatedModule;
+    }
+  }
+
+  updateRevisionSnapshot(revision.id, JSON.stringify(snapshot));
+
+  logContractEvent({
+    userId: userId(req),
+    contractId: contract.id,
+    revisionId: revision.id,
+    action: "snapshot_updated",
+  });
+
+  res.json({ success: true, snapshot });
 });
 
 router.post("/:id/issue", async (req, res) => {
