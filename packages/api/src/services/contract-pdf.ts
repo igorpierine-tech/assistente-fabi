@@ -224,7 +224,7 @@ export async function generateContractPdfFromSnapshot(snapshot: ContractSnapshot
 
       // --- Título ---
       const isAdesao = snapshot.service_code === "mentoria_adesao";
-      const tituloContrato = isAdesao ? "CONTRATO DE ADESÃO" : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
+      const tituloContrato = isAdesao ? "CONTRATO ÁUREA" : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
       doc.font("Helvetica-Bold").fontSize(14).fillColor(GREEN)
         .text(tituloContrato, { align: "center" });
       doc.moveDown(0.15);

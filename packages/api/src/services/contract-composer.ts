@@ -245,6 +245,7 @@ function getServiceDefinitionByName(name: string) {
     { code: "palestra_motivacional", pattern: "palestra" },
     { code: "workshop_lideranca", pattern: "workshop" },
     { code: "mentoria_adesao", pattern: "adesão" },
+    { code: "mentoria_adesao", pattern: "áurea" },
     { code: "mentoria_adesao", pattern: "render como negócio" },
   ];
   for (const d of defs) {
