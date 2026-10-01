@@ -34,9 +34,7 @@ export function LoginScreen({ onLogin, onPasswordLogin }: LoginScreenProps) {
       <section className={styles.hero}>
         <h2 className={styles.brandName}>Raízes e Riquezas</h2>
         <p className={styles.heroDesc}>
-          Plataforma de gestão para profissionais de estética e bem-estar.
-          Organize seus agendamentos, gerencie clientes e conte com um
-          assistente inteligente — tudo num só lugar.
+          Plataforma de Gestão de Atendimentos
         </p>
         <ul className={styles.features}>
           <li>Agenda integrada ao Google Calendar</li>
