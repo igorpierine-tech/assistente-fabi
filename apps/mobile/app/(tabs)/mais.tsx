@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { clearSession } from "../../services/auth";
+import { clearSession, getStoredUser } from "../../services/auth";
 import { RR } from "../../config/theme";
 
 interface MenuItem {
@@ -9,6 +10,7 @@ interface MenuItem {
   sub: string;
   icon: string;
   route: string;
+  minRole?: number;
 }
 
 const ITEMS: MenuItem[] = [
@@ -25,6 +27,12 @@ const ITEMS: MenuItem[] = [
     route: "/(tabs)/vendas",
   },
   {
+    label: "Contratos",
+    sub: "Gestão e emissão de contratos",
+    icon: "✎",
+    route: "/(tabs)/contratos",
+  },
+  {
     label: "Financeiro",
     sub: "Contas a receber, resumo do mês",
     icon: "$",
@@ -36,9 +44,32 @@ const ITEMS: MenuItem[] = [
     icon: "◆",
     route: "/(tabs)/catalogo",
   },
+  {
+    label: "Usuários",
+    sub: "Gerenciar equipe e permissões",
+    icon: "♚",
+    route: "/(tabs)/usuarios",
+    minRole: 30,
+  },
+  {
+    label: "Configurações",
+    sub: "Dados do negócio e agendamento",
+    icon: "⚙",
+    route: "/(tabs)/configuracoes",
+    minRole: 30,
+  },
 ];
 
+const ROLE_LEVEL: Record<string, number> = { admin: 40, gestor: 30, colaborador: 20, visualizador: 10 };
+
 export default function MaisScreen() {
+  const [userLevel, setUserLevel] = useState(40);
+  useEffect(() => {
+    getStoredUser().then((u) => { if (u?.role) setUserLevel(ROLE_LEVEL[u.role] || 10); });
+  }, []);
+
+  const visibleItems = ITEMS.filter((item) => !item.minRole || userLevel >= item.minRole);
+
   function logout() {
     Alert.alert("Sair", "Deseja encerrar sua sessão?", [
       { text: "Cancelar", style: "cancel" },
@@ -60,7 +91,7 @@ export default function MaisScreen() {
         <Text style={s.title}>Mais</Text>
 
         <View style={s.grid}>
-          {ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <TouchableOpacity
               key={item.route}
               style={s.card}

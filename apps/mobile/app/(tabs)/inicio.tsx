@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { authenticatedFetch, clearSession, hasSession } from "../../services/auth";
+import { authenticatedFetch, clearSession, getStoredUser, hasSession } from "../../services/auth";
 import { RR } from "../../config/theme";
 
 type Appointment = { id: string; title: string; client_name?: string | null; start_time: string; end_time: string };
@@ -35,14 +35,27 @@ export default function InicioScreen() {
   const [events, setEvents] = useState<Appointment[]>([]);
   const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState("Usuário");
+  const [brandLetter, setBrandLetter] = useState("R");
+  const [brandName, setBrandName] = useState("Raízes e Riquezas");
 
   useEffect(() => {
     let active = true;
     async function load() {
       if (!(await hasSession())) { setLoading(false); return; }
-      const [appointments, requests] = await Promise.all([authenticatedFetch("/appointments"), authenticatedFetch("/booking/requests/pending-count")]);
+      const user = await getStoredUser();
+      if (active && user?.name) setUserName(user.name.split(" ")[0]);
+      const [appointments, requests, config] = await Promise.all([
+        authenticatedFetch("/appointments"),
+        authenticatedFetch("/booking/requests/pending-count"),
+        authenticatedFetch("/config").catch(() => null),
+      ]);
       if (active && appointments.ok) setEvents(await appointments.json());
       if (active && requests.ok) setPending((await requests.json()).count || 0);
+      if (active && config?.ok) {
+        const cfg = await config.json();
+        if (cfg.business_name) { setBrandName(cfg.business_name); setBrandLetter(cfg.business_name[0]); }
+      }
       if (active) setLoading(false);
     }
     load().catch(() => setLoading(false));
@@ -65,7 +78,7 @@ export default function InicioScreen() {
   });
 
   return <SafeAreaView style={s.root} edges={["bottom"]}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-    <View style={s.top}><View style={s.brandMark}><Text style={s.brandLetter}>R</Text></View><View style={{ flex: 1 }}><Text style={s.eyebrow}>{greeting()},</Text><Text style={s.name}>Fabiana</Text></View><TouchableOpacity style={s.bell} onPress={() => router.push("/(tabs)/agendamentos")}><Text style={s.bellIcon}>♢</Text>{pending > 0 && <View style={s.count}><Text style={s.countText}>{pending}</Text></View>}</TouchableOpacity></View>
+    <View style={s.top}><View style={s.brandMark}><Text style={s.brandLetter}>{brandLetter}</Text></View><View style={{ flex: 1 }}><Text style={s.eyebrow}>{greeting()},</Text><Text style={s.name}>{userName}</Text></View><TouchableOpacity style={s.bell} onPress={() => router.push("/(tabs)/agendamentos")}><Text style={s.bellIcon}>♢</Text>{pending > 0 && <View style={s.count}><Text style={s.countText}>{pending}</Text></View>}</TouchableOpacity></View>
     <View style={s.hero}><View style={s.orbit} /><Text style={s.heroEyebrow}>HOJE · {date.toUpperCase()}</Text>{loading ? <ActivityIndicator color={RR.goldLight} style={{ marginVertical: 28 }} /> : <><Text style={s.heroTitle}>{today.length} <Text style={s.heroGold}>{today.length === 1 ? "encontro" : "encontros"}</Text>{"\n"}agendados</Text><View style={s.nextRow}><View style={s.nextBox}><Text style={s.nextLabel}>PRÓXIMO</Text><Text style={s.nextValue}>{next ? `${time(next.start_time)} · ${next.client_name || next.title}` : "Agenda livre"}</Text></View><TouchableOpacity style={s.arrow} onPress={() => router.push("/(tabs)/calendario")}><Text style={s.arrowText}>→</Text></TouchableOpacity></View></>}</View>
     <TouchableOpacity style={s.aiCard} onPress={() => router.push("/(tabs)/assistente")}><View style={s.aiIcon}><Text style={s.spark}>✦</Text></View><View style={{ flex: 1 }}><Text style={s.aiLabel}>ASSISTENTE</Text><Text style={s.aiText}>Pergunte alguma coisa…</Text></View><Text style={s.sun}>✧</Text></TouchableOpacity>
     <Text style={s.section}>ATALHOS</Text><View style={s.shortcuts}><TouchableOpacity style={s.shortcut} onPress={() => router.push("/(tabs)/clientes")}><View style={s.shortcutIcon}><Text style={s.shortcutGlyph}>＋</Text></View><Text style={s.shortcutTitle}>Novo cliente</Text><Text style={s.shortcutSub}>Cadastro e contatos</Text></TouchableOpacity><TouchableOpacity style={s.shortcut} onPress={() => router.push("/(tabs)/calendario")}><View style={[s.shortcutIcon, { backgroundColor: "rgba(47,74,43,.1)" }]}><Text style={[s.shortcutGlyph, { color: RR.leaf }]}>□</Text></View><Text style={s.shortcutTitle}>Ver agenda</Text><Text style={s.shortcutSub}>Compromissos reais</Text></TouchableOpacity></View>

@@ -128,6 +128,9 @@ export default function TabsLayout() {
       <Tabs.Screen name="vendas" options={{ href: null }} />
       <Tabs.Screen name="financeiro" options={{ href: null }} />
       <Tabs.Screen name="catalogo" options={{ href: null }} />
+      <Tabs.Screen name="usuarios" options={{ href: null }} />
+      <Tabs.Screen name="contratos" options={{ href: null }} />
+      <Tabs.Screen name="configuracoes" options={{ href: null }} />
     </Tabs>
     <FloatingAssistant hidden={hideFab} />
     </>
