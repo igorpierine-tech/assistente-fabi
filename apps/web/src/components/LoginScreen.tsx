@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import styles from "./LoginScreen.module.css";
+import { API_URL } from "@/lib/api";
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -103,6 +104,16 @@ export function LoginScreen({ onLogin, onPasswordLogin }: LoginScreenProps) {
             ? "Conecte sua conta Google para acessar seu Calendar."
             : "Use as credenciais fornecidas pelo administrador."}
         </p>
+
+        <nav className={styles.legalLinks}>
+          <a href={`${API_URL}/privacidade`} target="_blank" rel="noopener noreferrer">
+            Política de Privacidade
+          </a>
+          <span className={styles.legalSep}>|</span>
+          <a href={`${API_URL}/termos`} target="_blank" rel="noopener noreferrer">
+            Termos de Serviço
+          </a>
+        </nav>
       </div>
     </div>
   );

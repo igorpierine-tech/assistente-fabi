@@ -161,6 +161,30 @@
   color: #8a7f6a;
 }
 
+.legalLinks {
+  margin-top: 16px;
+  font-size: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.legalLinks a {
+  color: #8a7f6a;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.legalLinks a:hover {
+  color: #d9b268;
+  text-decoration: underline;
+}
+
+.legalSep {
+  color: #5a5244;
+}
+
 @media (max-width: 480px) {
   .card {
     padding: 40px 24px 32px;
