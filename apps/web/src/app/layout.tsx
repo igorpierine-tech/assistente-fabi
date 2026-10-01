@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Assistente de Agenda",
-  description: "Agenda, clientes e assistente inteligente",
+  title: "Raízes e Riquezas — Assistente de Agenda",
+  description: "Gestão de agendamentos, clientes e assistente inteligente para profissionais de estética e bem-estar.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

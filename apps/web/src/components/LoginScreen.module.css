@@ -2,9 +2,11 @@
   min-height: 100vh;
   background: radial-gradient(circle at 50% 40%, #1a2e18 0%, #12160f 100%);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 24px;
+  gap: 32px;
   position: relative;
   overflow: hidden;
 }
@@ -16,6 +18,50 @@
   background: radial-gradient(circle at 20% 20%, rgba(184, 135, 58, 0.15), transparent 40%),
     radial-gradient(circle at 80% 80%, rgba(217, 178, 104, 0.08), transparent 45%);
   pointer-events: none;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.brandName {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: 28px;
+  color: #d9b268;
+  margin: 0 0 12px;
+  letter-spacing: 0.02em;
+}
+
+.heroDesc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #c8bfae;
+  margin: 0 0 20px;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+}
+
+.features li {
+  font-size: 13px;
+  color: #a89e8a;
+  padding: 4px 12px;
+  border: 1px solid rgba(217, 178, 104, 0.15);
+  border-radius: 20px;
+  white-space: nowrap;
 }
 
 .card {
@@ -195,5 +241,11 @@
   }
   .logo {
     width: 150px;
+  }
+  .brandName {
+    font-size: 22px;
+  }
+  .features li {
+    font-size: 12px;
   }
 }
