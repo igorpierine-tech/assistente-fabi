@@ -47,6 +47,9 @@ export interface Contract {
   client_id: string | null;
   current_revision: number;
   status: ContractStatus;
+  zapsign_doc_token: string | null;
+  zapsign_status: string | null;
+  zapsign_sign_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -193,6 +196,12 @@ export function getContract(userId: string, id: string): Contract | undefined {
     .get(userId, id) as Contract | undefined;
 }
 
+export function getContractBySaleId(userId: string, saleId: string): Contract | undefined {
+  return getDb()
+    .prepare(`SELECT * FROM contracts WHERE user_id = ? AND sale_id = ?`)
+    .get(userId, saleId) as Contract | undefined;
+}
+
 export function createContract(userId: string, data: {
   saleId?: string;
   serviceCode: string;
@@ -211,6 +220,40 @@ export function updateContractStatus(userId: string, id: string, status: Contrac
   getDb().prepare(
     `UPDATE contracts SET status = ?, updated_at = datetime('now') WHERE user_id = ? AND id = ?`
   ).run(status, userId, id);
+}
+
+export function deleteContract(userId: string, id: string): boolean {
+  const result = getDb().prepare(
+    `DELETE FROM contracts WHERE user_id = ? AND id = ?`
+  ).run(userId, id);
+  return result.changes > 0;
+}
+
+export function deleteContractsByNumbers(userId: string, numbers: string[]): number {
+  const placeholders = numbers.map(() => "?").join(", ");
+  const result = getDb().prepare(
+    `DELETE FROM contracts WHERE user_id = ? AND contract_number IN (${placeholders})`
+  ).run(userId, ...numbers);
+  return result.changes;
+}
+
+export function updateContractZapSign(
+  userId: string,
+  id: string,
+  docToken: string,
+  status: string,
+  signUrl: string | null
+): void {
+  getDb().prepare(
+    `UPDATE contracts SET zapsign_doc_token = ?, zapsign_status = ?, zapsign_sign_url = ?,
+     updated_at = datetime('now') WHERE user_id = ? AND id = ?`
+  ).run(docToken, status, signUrl, userId, id);
+}
+
+export function getContractByZapSignToken(docToken: string): Contract | undefined {
+  return getDb()
+    .prepare(`SELECT * FROM contracts WHERE zapsign_doc_token = ?`)
+    .get(docToken) as Contract | undefined;
 }
 
 // --- Contract revisions ---

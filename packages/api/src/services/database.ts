@@ -568,6 +568,21 @@ function migrateToWorkspace(db: Database.Database) {
     }
   })();
 
+  // ZapSign columns on contracts
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(contracts)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has("zapsign_doc_token")) {
+      db.exec(`ALTER TABLE contracts ADD COLUMN zapsign_doc_token TEXT`);
+    }
+    if (!names.has("zapsign_status")) {
+      db.exec(`ALTER TABLE contracts ADD COLUMN zapsign_status TEXT`);
+    }
+    if (!names.has("zapsign_sign_url")) {
+      db.exec(`ALTER TABLE contracts ADD COLUMN zapsign_sign_url TEXT`);
+    }
+  })();
+
   // Contract-related columns on clients
   (() => {
     const cols = db.prepare("PRAGMA table_info(clients)").all() as Array<{ name: string }>;
@@ -583,6 +598,19 @@ function migrateToWorkspace(db: Database.Database) {
     }
     if (!names.has("inscricao_estadual")) {
       db.exec(`ALTER TABLE clients ADD COLUMN inscricao_estadual TEXT`);
+    }
+  })();
+
+  // One-time cleanup: remove test contracts 2026/0001 through 2026/0009
+  (() => {
+    const numbers = [];
+    for (let i = 1; i <= 9; i++) {
+      numbers.push(`2026/${String(i).padStart(4, "0")}`);
+    }
+    const placeholders = numbers.map(() => "?").join(", ");
+    const result = db.prepare(`DELETE FROM contracts WHERE contract_number IN (${placeholders})`).run(...numbers);
+    if (result.changes > 0) {
+      console.log(`[migration] Removed ${result.changes} test contract(s)`);
     }
   })();
 
@@ -625,11 +653,12 @@ function seedServiceDefinitions(db: Database.Database) {
     { code: "equipes_diagnostico_inicial", name: "Desenvolvimento de Equipes – 1º Diagnóstico", family: "Diagnósticos organizacionais", fields: ["equipe","areas_envolvidas","metodos_coleta","amostra_prevista","periodo_observado","criterio_agregacao","formato_devolutiva"] },
     { code: "empresa_diagnostico_inicial", name: "Diagnóstico Empresarial – 1º Diagnóstico", family: "Diagnósticos organizacionais", fields: ["areas_avaliadas","periodo_analise","documentos_requeridos","entrevistas_previstas","visitas_previstas","formato_relatorio"] },
     { code: "diagnostico_financeiro", name: "Diagnóstico Financeiro", family: "Diagnóstico financeiro", fields: ["pessoa_ou_empresa","periodo_analise","indicadores_escopo","fontes_documentais","premissas_cenarios","formato_relatorio"] },
-    { code: "mentoria_individual_12", name: "Mentoria Individual – 12 encontros", family: "Mentorias", fields: ["temas","periodicidade","canal_suporte","horario_suporte","prazo_resposta_horas","materiais_inclusos"] },
+    { code: "mentoria_individual_12", name: "Mentoria Individual", family: "Mentorias", fields: ["duracao_meses","foro"] },
     { code: "mentoria_grupo", name: "Mentoria em Grupo", family: "Mentorias", fields: ["turma","temas","minimo_participantes","maximo_participantes","data_limite_formacao","politica_turma_nao_formada","alternativa_ausencia","gravacao_prevista","prazo_acesso_materiais_dias"] },
     { code: "palestra_motivacional", name: "Palestra Motivacional", family: "Eventos e formação", fields: ["tema","palestrante","publico_alvo","publico_estimado","infraestrutura_contratante","infraestrutura_contratada","deslocamento","hospedagem","transmissao_prevista","licenca_conteudo"] },
     { code: "workshop_lideranca", name: "Workshop de Liderança", family: "Eventos e formação", fields: ["temas","programa","carga_horaria_minutos","limite_participantes","infraestrutura","materiais","certificado_incluso","presenca_minima_percentual"] },
     { code: "mentoria_adesao", name: "Mentoria – Contrato Áurea", family: "Mentorias", fields: ["nome_programa","duracao_meses","encontros_ao_vivo","sessao_individual","comunidade","agente_ia","email_contato","foro"] },
+    { code: "consultoria_financeira", name: "Consultoria Financeira", family: "Consultoria", fields: ["duracao_meses","email_contato","foro"] },
   ];
 
   const insert = db.prepare(
@@ -641,6 +670,9 @@ function seedServiceDefinitions(db: Database.Database) {
 
   db.prepare(`UPDATE service_definitions SET name = ? WHERE code = ? AND name != ?`)
     .run("Mentoria – Contrato Áurea", "mentoria_adesao", "Mentoria – Contrato Áurea");
+
+  db.prepare(`UPDATE service_definitions SET name = ?, schema_fields = ? WHERE code = ?`)
+    .run("Mentoria Individual", JSON.stringify(["duracao_meses","foro"]), "mentoria_individual_12");
 }
 
 // --- Clients ---

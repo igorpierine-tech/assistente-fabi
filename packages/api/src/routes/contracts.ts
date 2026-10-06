@@ -6,7 +6,9 @@ import {
   listContractsWithDetails,
   getContract,
   createContract,
+  deleteContract,
   updateContractStatus,
+  updateContractZapSign,
   getLatestRevision,
   createRevision,
   updateRevisionSnapshot,
@@ -22,6 +24,11 @@ import { getSale } from "../services/sales-db";
 import { getClient, getTenantConfig } from "../services/database";
 import { composeSnapshot } from "../services/contract-composer";
 import { generateContractPdfFromSnapshot } from "../services/contract-pdf";
+import {
+  createDocumentFromPdf,
+  getDocumentStatus,
+  isConfigured as isZapSignConfigured,
+} from "../services/zapsign";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -30,6 +37,10 @@ router.use(requireUser);
 function userId(req: Request): string {
   return sharedOwnerId(req);
 }
+
+router.get("/zapsign/status", (_req, res) => {
+  res.json({ configured: isZapSignConfigured() });
+});
 
 router.get("/services", (_req, res) => {
   res.json(listServiceDefinitions());
@@ -358,6 +369,131 @@ router.get("/:id/pdf", async (req, res) => {
   }
 });
 
+router.post("/:id/send-signature", async (req, res) => {
+  const contract = getContract(userId(req), String(req.params.id));
+  if (!contract) {
+    res.status(404).json({ error: "Contrato não encontrado" });
+    return;
+  }
+  if (!isZapSignConfigured()) {
+    res.status(400).json({ error: "ZapSign não configurado. Defina ZAPSIGN_API_TOKEN nas variáveis de ambiente." });
+    return;
+  }
+  if (contract.status !== "issued") {
+    res.status(400).json({ error: "O contrato precisa estar emitido para enviar para assinatura." });
+    return;
+  }
+  if (contract.zapsign_doc_token && contract.zapsign_status !== "cancelled") {
+    res.status(400).json({ error: "Este contrato já foi enviado para assinatura." });
+    return;
+  }
+
+  const revision = getLatestRevision(contract.id);
+  if (!revision) {
+    res.status(400).json({ error: "Contrato sem revisão" });
+    return;
+  }
+
+  const snapshot = JSON.parse(revision.snapshot);
+  const parties = listParties(revision.id);
+  const contratante = parties.find(p => p.role === "contratante");
+
+  if (!contratante?.email) {
+    res.status(400).json({ error: "O contratante precisa ter um e-mail cadastrado para receber o contrato." });
+    return;
+  }
+
+  try {
+    const artifact = getArtifactByType(revision.id, "original_pdf");
+    let pdf: Buffer;
+    if (artifact?.content) {
+      pdf = artifact.content;
+    } else {
+      pdf = await generateContractPdfFromSnapshot(snapshot);
+      saveArtifact(revision.id, "original_pdf", pdf);
+    }
+
+    const providerName = process.env.CONTRACT_PROVIDER_NAME || "Prestador de Serviços";
+    const providerEmail = process.env.CONTRACT_PROVIDER_EMAIL || "";
+
+    const signers = [
+      { name: contratante.name, email: contratante.email, phone: contratante.phone || undefined },
+    ];
+    if (providerEmail) {
+      signers.push({ name: providerName, email: providerEmail, phone: undefined });
+    }
+
+    const docName = `Contrato ${contract.contract_number} - ${contratante.name}`;
+    const result = await createDocumentFromPdf(pdf, docName, signers);
+
+    const clientSigner = result.signers[0];
+    updateContractZapSign(userId(req), contract.id, result.token, "pending", clientSigner?.sign_url || null);
+    updateContractStatus(userId(req), contract.id, "awaiting_signature");
+
+    logContractEvent({
+      userId: userId(req),
+      contractId: contract.id,
+      revisionId: revision.id,
+      action: "sent_to_zapsign",
+      details: { docToken: result.token },
+    });
+
+    res.json({
+      success: true,
+      docToken: result.token,
+      status: "pending",
+      signUrl: clientSigner?.sign_url || null,
+      signers: result.signers.map(s => ({
+        name: s.name,
+        email: s.email,
+        signUrl: s.sign_url,
+      })),
+    });
+  } catch (err) {
+    console.error("Falha ao enviar contrato para ZapSign:", err);
+    res.status(500).json({ error: "Não foi possível enviar o contrato para assinatura." });
+  }
+});
+
+router.get("/:id/signature-status", async (req, res) => {
+  const contract = getContract(userId(req), String(req.params.id));
+  if (!contract) {
+    res.status(404).json({ error: "Contrato não encontrado" });
+    return;
+  }
+  if (!contract.zapsign_doc_token) {
+    res.status(400).json({ error: "Contrato não enviado para assinatura." });
+    return;
+  }
+
+  try {
+    const doc = await getDocumentStatus(contract.zapsign_doc_token);
+    const newStatus = doc.status === "signed" ? "signed" : doc.status === "cancelled" ? "cancelled" : "pending";
+
+    if (newStatus !== contract.zapsign_status) {
+      updateContractZapSign(userId(req), contract.id, contract.zapsign_doc_token, newStatus, contract.zapsign_sign_url);
+      if (newStatus === "signed") {
+        updateContractStatus(userId(req), contract.id, "completed");
+      }
+    }
+
+    res.json({
+      status: newStatus,
+      signers: doc.signers.map(s => ({
+        name: s.name,
+        email: s.email,
+        status: s.status,
+        signed: s.signed,
+        signUrl: s.sign_url,
+      })),
+      signedFile: doc.signed_file || null,
+    });
+  } catch (err) {
+    console.error("Falha ao consultar status ZapSign:", err);
+    res.status(500).json({ error: "Não foi possível consultar o status da assinatura." });
+  }
+});
+
 router.post("/:id/void", (req, res) => {
   const contract = getContract(userId(req), String(req.params.id));
   if (!contract) {
@@ -375,6 +511,25 @@ router.post("/:id/void", (req, res) => {
     action: "contract_voided",
   });
   res.json({ success: true, status: "voided" });
+});
+
+router.delete("/:id", (req, res) => {
+  const contract = getContract(userId(req), String(req.params.id));
+  if (!contract) {
+    res.status(404).json({ error: "Contrato não encontrado" });
+    return;
+  }
+  if (contract.status === "completed" || contract.status === "awaiting_signature") {
+    res.status(400).json({ error: "Contrato em assinatura ou concluído não pode ser excluído" });
+    return;
+  }
+  deleteContract(userId(req), contract.id);
+  logContractEvent({
+    userId: userId(req),
+    contractId: contract.id,
+    action: "contract_deleted",
+  });
+  res.json({ success: true });
 });
 
 export { router as contractsRouter };

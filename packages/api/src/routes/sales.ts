@@ -9,14 +9,29 @@ import {
   updateZapSignStatus,
   getSaleByZapSignToken,
 } from "../services/sales-db";
-import { generateContractPdf } from "../services/contract-pdf";
+import { generateContractPdfFromSnapshot } from "../services/contract-pdf";
 import {
   createDocumentFromPdf,
   getDocumentStatus,
   isConfigured as isZapSignConfigured,
 } from "../services/zapsign";
 import { requireUser, sharedOwnerId } from "../middleware/auth";
-import { createClient, getClient } from "../services/database";
+import { createClient, getClient, getTenantConfig } from "../services/database";
+import {
+  createContract,
+  getContractBySaleId,
+  getLatestRevision,
+  createRevision,
+  issueRevision,
+  saveArtifact,
+  getArtifactByType,
+  saveParty,
+  updateContractStatus,
+  updateContractZapSign,
+  logContractEvent,
+  listServiceDefinitions,
+} from "../services/contracts-db";
+import { composeSnapshot } from "../services/contract-composer";
 import "../session-types";
 import type { PaymentMethod } from "../services/receivables-db";
 
@@ -177,13 +192,69 @@ router.get("/:id/contract", async (req, res) => {
     return;
   }
   try {
-    const pdf = await generateContractPdf(sale);
+    const defs = listServiceDefinitions();
+    const match = defs.find(d => sale.item_name.toLowerCase().includes(d.name.toLowerCase().split(" ")[0].toLowerCase()));
+    const serviceCode = match?.code || defs[0]?.code || "generico";
+
+    const client = sale.client_id ? getClient(userId(req), sale.client_id) : null;
+    const tenant = getTenantConfig(userId(req));
+
+    const contract = createContract(userId(req), {
+      saleId: sale.id,
+      serviceCode,
+      clientId: sale.client_id || undefined,
+    });
+
+    const snapshot = composeSnapshot({
+      sale,
+      client,
+      tenant,
+      contractNumber: contract.contract_number,
+      revision: 1,
+    });
+
+    const revision = createRevision(contract.id, {
+      revisionNumber: 1,
+      snapshot: JSON.stringify(snapshot),
+    });
+
+    saveParty(revision.id, {
+      role: "contratante",
+      name: snapshot.contratante.nome,
+      document: snapshot.contratante.documento || undefined,
+      email: snapshot.contratante.email || undefined,
+      phone: snapshot.contratante.telefone || undefined,
+    });
+
+    saveParty(revision.id, {
+      role: "contratada",
+      name: snapshot.contratada.razao_social,
+      document: snapshot.contratada.cnpj || undefined,
+      email: snapshot.contratada.email || undefined,
+      address: snapshot.contratada.endereco || undefined,
+      representativeName: snapshot.contratada.representante_nome || undefined,
+      representativeRole: snapshot.contratada.representante_cargo || undefined,
+    });
+
+    const pdf = await generateContractPdfFromSnapshot(snapshot);
+    saveArtifact(revision.id, "original_pdf", pdf);
+    issueRevision(revision.id, 30);
+    updateContractStatus(userId(req), contract.id, "issued");
     markContractGenerated(userId(req), id);
+
+    logContractEvent({
+      userId: userId(req),
+      contractId: contract.id,
+      revisionId: revision.id,
+      action: "contract_created_from_sale",
+      details: { saleId: sale.id },
+    });
+
     const safeName = sale.client_name.replace(/[^a-zA-Z0-9\-_ ]/g, "").slice(0, 40) || "contrato";
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="Contrato-${safeName}.pdf"`
+      `attachment; filename="Contrato-${contract.contract_number.replace("/", "-")}-${safeName}.pdf"`
     );
     res.setHeader("Content-Length", String(pdf.length));
     res.end(pdf);
@@ -218,8 +289,75 @@ router.post("/:id/send-signature", async (req, res) => {
   }
 
   try {
-    const pdf = await generateContractPdf(sale);
+    let existingContract = getContractBySaleId(userId(req), id);
+
+    if (!existingContract) {
+      const defs = listServiceDefinitions();
+      const match = defs.find(d => sale.item_name.toLowerCase().includes(d.name.toLowerCase().split(" ")[0].toLowerCase()));
+      const serviceCode = match?.code || defs[0]?.code || "generico";
+      const client = sale.client_id ? getClient(userId(req), sale.client_id) : null;
+      const tenant = getTenantConfig(userId(req));
+
+      existingContract = createContract(userId(req), {
+        saleId: sale.id,
+        serviceCode,
+        clientId: sale.client_id || undefined,
+      });
+
+      const snapshot = composeSnapshot({
+        sale,
+        client,
+        tenant,
+        contractNumber: existingContract.contract_number,
+        revision: 1,
+      });
+
+      const rev = createRevision(existingContract.id, {
+        revisionNumber: 1,
+        snapshot: JSON.stringify(snapshot),
+      });
+
+      saveParty(rev.id, {
+        role: "contratante",
+        name: snapshot.contratante.nome,
+        document: snapshot.contratante.documento || undefined,
+        email: snapshot.contratante.email || undefined,
+        phone: snapshot.contratante.telefone || undefined,
+      });
+
+      saveParty(rev.id, {
+        role: "contratada",
+        name: snapshot.contratada.razao_social,
+        document: snapshot.contratada.cnpj || undefined,
+        email: snapshot.contratada.email || undefined,
+        address: snapshot.contratada.endereco || undefined,
+        representativeName: snapshot.contratada.representante_nome || undefined,
+        representativeRole: snapshot.contratada.representante_cargo || undefined,
+      });
+
+      const pdf = await generateContractPdfFromSnapshot(snapshot);
+      saveArtifact(rev.id, "original_pdf", pdf);
+      issueRevision(rev.id, 30);
+      updateContractStatus(userId(req), existingContract.id, "issued");
+    }
+
     markContractGenerated(userId(req), id);
+
+    const revision = getLatestRevision(existingContract.id);
+    let pdf: Buffer;
+    const existingArtifact = revision ? getArtifactByType(revision.id, "original_pdf") : null;
+    if (existingArtifact?.content) {
+      pdf = existingArtifact.content;
+    } else {
+      const fallbackSnapshot = revision ? JSON.parse(revision.snapshot) : composeSnapshot({
+        sale,
+        client: sale.client_id ? getClient(userId(req), sale.client_id) : null,
+        tenant: getTenantConfig(userId(req)),
+        contractNumber: existingContract.contract_number,
+        revision: 1,
+      });
+      pdf = await generateContractPdfFromSnapshot(fallbackSnapshot);
+    }
 
     const providerName = process.env.CONTRACT_PROVIDER_NAME || "Prestador de Serviços";
     const providerEmail = process.env.CONTRACT_PROVIDER_EMAIL || "";
@@ -231,11 +369,20 @@ router.post("/:id/send-signature", async (req, res) => {
       signers.push({ name: providerName, email: providerEmail, phone: undefined });
     }
 
-    const docName = `Contrato - ${sale.client_name} - ${sale.item_name}`;
+    const docName = `Contrato ${existingContract.contract_number} - ${sale.client_name}`;
     const result = await createDocumentFromPdf(pdf, docName, signers);
 
     const clientSigner = result.signers[0];
     updateZapSignStatus(userId(req), id, result.token, "pending", clientSigner?.sign_url || null);
+    updateContractZapSign(userId(req), existingContract.id, result.token, "pending", clientSigner?.sign_url || null);
+    updateContractStatus(userId(req), existingContract.id, "awaiting_signature");
+
+    logContractEvent({
+      userId: userId(req),
+      contractId: existingContract.id,
+      action: "sent_to_zapsign",
+      details: { saleId: sale.id, docToken: result.token },
+    });
 
     res.json({
       success: true,
@@ -271,6 +418,13 @@ router.get("/:id/signature-status", async (req, res) => {
     const newStatus = doc.status === "signed" ? "signed" : doc.status === "cancelled" ? "cancelled" : "pending";
     if (newStatus !== sale.zapsign_status) {
       updateZapSignStatus(userId(req), id, sale.zapsign_doc_token, newStatus, sale.zapsign_sign_url);
+      const linkedContract = getContractBySaleId(userId(req), id);
+      if (linkedContract?.zapsign_doc_token === sale.zapsign_doc_token) {
+        updateContractZapSign(userId(req), linkedContract.id, sale.zapsign_doc_token, newStatus, linkedContract.zapsign_sign_url);
+        if (newStatus === "signed") {
+          updateContractStatus(userId(req), linkedContract.id, "completed");
+        }
+      }
     }
     res.json({
       status: newStatus,
@@ -305,6 +459,15 @@ webhookRouter.post("/", (req, res) => {
   }
   const newStatus = body.status === "signed" ? "signed" : body.status === "cancelled" ? "cancelled" : "pending";
   updateZapSignStatus(sale.user_id, sale.id, sale.zapsign_doc_token!, newStatus, sale.zapsign_sign_url);
+
+  const linkedContract = getContractBySaleId(sale.user_id, sale.id);
+  if (linkedContract?.zapsign_doc_token === body.doc_token) {
+    updateContractZapSign(sale.user_id, linkedContract.id, body.doc_token, newStatus, linkedContract.zapsign_sign_url);
+    if (newStatus === "signed") {
+      updateContractStatus(sale.user_id, linkedContract.id, "completed");
+    }
+  }
+
   res.json({ ok: true });
 });
 

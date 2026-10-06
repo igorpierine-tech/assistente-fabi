@@ -193,8 +193,8 @@ export function composeSnapshot(input: ComposeInput): ContractSnapshot {
     });
   };
 
-  const isAdesao = serviceCode === "mentoria_adesao";
-  const clausulasBase = isAdesao ? [] : buildBaseClauses(resolve);
+  const isStandalone = serviceCode === "mentoria_adesao" || serviceCode === "consultoria_financeira" || serviceCode === "mentoria_individual_12";
+  const clausulasBase = isStandalone ? [] : buildBaseClauses(resolve);
   const moduloEspecifico = buildModuleClauses(serviceCode, resolve, especifico || {});
 
   return {
@@ -247,6 +247,7 @@ function getServiceDefinitionByName(name: string) {
     { code: "mentoria_adesao", pattern: "adesão" },
     { code: "mentoria_adesao", pattern: "áurea" },
     { code: "mentoria_adesao", pattern: "render como negócio" },
+    { code: "consultoria_financeira", pattern: "consultoria financeira" },
   ];
   for (const d of defs) {
     if (normalized.includes(d.pattern)) {
@@ -359,11 +360,7 @@ function buildModuleClauses(serviceCode: string, resolve: (t: string) => string,
       titulo: "Módulo — Diagnóstico Financeiro",
       texto: resolve(`O serviço compreende análise gerencial das informações financeiras de ${esp("periodo_analise")}, incluindo ${esp("indicadores_escopo")}, e apresentação dos entregáveis contratados. Não inclui auditoria contábil, escrituração, parecer tributário, intermediação ou gestão de carteira. Projeções serão identificadas como cenários sujeitos a premissas, sem garantia de lucro, economia ou solvência.`),
     }],
-    mentoria_individual_12: () => [{
-      id: "mod_mentoria_ind",
-      titulo: "Módulo — Mentoria Individual – 12 encontros",
-      texto: resolve(`O programa compreende 12 encontros individuais, com duração, periodicidade e prazo de utilização definidos no quadro-resumo, sobre ${esp("temas")}. Inclui orientação baseada na experiência do mentor, discussão de alternativas e acompanhamento do plano acordado, sem execução de atividades em nome do participante nem garantia de resultado. Encontros realizados, reposições e saldo serão demonstráveis.`),
-    }],
+    mentoria_individual_12: () => buildMentoriaIndividualClauses(resolve, esp),
     mentoria_grupo: () => [{
       id: "mod_mentoria_grp",
       titulo: "Módulo — Mentoria em Grupo",
@@ -380,6 +377,7 @@ function buildModuleClauses(serviceCode: string, resolve: (t: string) => string,
       texto: resolve(`O serviço compreende atividade formativa sobre ${esp("temas")}, com carga horária de ${esp("carga_horaria_minutos")} minutos, combinando exposição e exercícios descritos no programa. A participação em exercícios pessoais será voluntária. Certificado, quando incluído, observará os critérios de presença informados e não conferirá habilitação profissional.`),
     }],
     mentoria_adesao: () => buildMentoriaAdesaoClauses(resolve, esp),
+    consultoria_financeira: () => buildConsultoriaFinanceiraClauses(resolve, esp),
   };
 
   const builder = modules[serviceCode];
@@ -391,6 +389,133 @@ function buildModuleClauses(serviceCode: string, resolve: (t: string) => string,
   }];
 }
 
+function buildMentoriaIndividualClauses(resolve: (t: string) => string, esp: (key: string) => string): ClausulaResolvida[] {
+  const foro = esp("foro");
+  const duracaoMeses = esp("duracao_meses");
+
+  return [
+    {
+      id: "mi_clausula_1",
+      titulo: "Cláusula Primeira — Do Objeto",
+      texto: resolve(`Este contrato tem por objeto a prestação do serviço de Mentoria Individual, que será prestada pela CONTRATADA para o(a) CONTRATANTE, na modalidade online/presencial/híbrida, a contar da data de assinatura do presente contrato.\n\nParágrafo Primeiro: A atividade de Mentoria prevista neste contrato consiste na realização de diagnóstico, criação de plano de ação e acompanhamento individualizado para indicar, orientar, aconselhar e sugerir ações para o direcionamento do(a) CONTRATANTE.\n\nParágrafo Terceiro: A CONTRATADA se reserva o direito de, por motivos de força maior, realizar as modificações necessárias no calendário da mentoria, para evitar prejuízo, informando as alterações para o(a) CONTRATANTE com a maior antecedência possível.\n\nParágrafo Quarto: O(A) CONTRATANTE declara ter ciência que não há garantia de resultado na mentoria contratada, já que os resultados satisfatórios variam de acordo com o empenho, dedicação, capacidade de assimilação dos conteúdos e aplicação da metodologia pelo(a) CONTRATANTE, sendo a prestação de serviços oferecida atividade de meio.`),
+    },
+    {
+      id: "mi_clausula_2",
+      titulo: "Cláusula Segunda — Do Valor da Prestação de Serviços",
+      texto: resolve(`A CONTRATADA receberá, pela prestação da mentoria em questão, a importância de {{financeiro.resumo_pagamento}}.\n\nParágrafo Primeiro: A CONTRATADA indica os seguintes dados para que seja realizado o seu pagamento: Boleto bancário ou Pix (CNPJ da CONTRATADA), como beneficiário {{contratada.razao_social}}.\n\nParágrafo Quarto: O atraso no pagamento de qualquer parcela poderá acarretar a interrupção da prestação dos serviços de mentoria, na aplicação de multa no valor de 10% (dez por cento) sobre o valor devido, correção monetária pelo IGPM e juros de mora de 1% (um por cento) ao mês, no protesto e na cobrança judicial do valor devido.`),
+    },
+    {
+      id: "mi_clausula_3",
+      titulo: "Cláusula Terceira — Das Obrigações do(a) Contratante",
+      texto: resolve(`O objetivo deste contrato é o desenvolvimento do(a) CONTRATANTE, mediante sua dedicação em usar e aplicar as informações, técnicas e ensinamentos disponibilizadas na mentoria. Para tanto, compromete-se a:\na) Possuir e configurar adequadamente os equipamentos de informática e os periféricos necessários para que o objeto deste Contrato possa ser prestado.\nb) Realizar o pagamento previsto na Cláusula Segunda pontualmente.\nc) Responder fielmente aos questionários de anamnese enviados pela CONTRATADA, a fim de possibilitar a realização dos seus serviços.\nd) Dispor de seus esforços para responder possíveis questionários para possibilitar a execução dos serviços pela CONTRATADA.\ne) Fornecer à CONTRATADA, de acordo com a necessidade, todas as informações, ideias, dados e materiais necessários para a efetividade dos serviços.\nf) Cumprir o cronograma dos encontros passado pela CONTRATADA.`),
+    },
+    {
+      id: "mi_clausula_4",
+      titulo: "Cláusula Quarta — Das Obrigações da Contratada",
+      texto: resolve(`Compete à CONTRATADA, sem prejuízo das obrigações previstas na legislação e das demais obrigações previstas neste Contrato:\na) Cumprir com os prazos constantes em cronograma estabelecido pelas partes, que passa a fazer parte integrante deste contrato.\nb) Dispor de todo seu conhecimento para apoiar, auxiliar e oferecer as melhores soluções para dirigir o projeto ao seu resultado, assegurando a qualidade do serviço.\nc) Cumprir fielmente com as métricas ofertadas na proposta comercial.\nd) Dedicar-se a conhecer o(a) CONTRATANTE, de maneira a prestar um serviço direcionado.\ne) Comunicar o quanto antes, para o(a) CONTRATANTE, a ocorrência de qualquer imprevisto, para que eventuais prejuízos sejam minimizados.\n\nParágrafo Único: Caso ocorra algum problema saúde pública, de infraestrutura ou fato alheio à vontade das partes, que interfira no objeto da prestação do serviço, este será compreendido como caso fortuito ou de força maior, salvaguardando a CONTRATADA/CONTRATANTE, que poderá repetir o procedimento após a situação ser estabilizada, sempre avisando previamente o(a) CONTRATANTE acerca de eventuais alterações no cronograma.`),
+    },
+    {
+      id: "mi_clausula_5",
+      titulo: "Cláusula Quinta — Da Vigência e Rescisão",
+      texto: resolve(`Este contrato é firmado para viger por até ${duracaoMeses} meses, a contar da data de assinatura do presente instrumento, sendo que, após o decurso do tempo, eventual prorrogação deverá ser objeto de novo acordo escrito entre as partes.\n\nParágrafo Primeiro: A rescisão antecipada imotivada pelo(a) CONTRATANTE implicará na retenção dos valores porventura já recebidos, acrescida do pagamento de uma multa contratual no valor de 50% (cinquenta por cento) do valor total do contrato, a título de indenização pelo serviço já prestado (elaboração de projeto, mobilização de equipe, contatos, estudo de caso).\n\nParágrafo Segundo: A rescisão antecipada imotivada pela CONTRATADA implicará na obrigatoriedade de entregar todo o material já produzido no decorrer do projeto para o(a) CONTRATANTE, gratuitamente.\n\nParágrafo Terceiro: O presente contrato será extinto no caso de extinção da personalidade jurídica, falência, insolvência, ou decretação de recuperação judicial ou extrajudicial de alguma das partes.`),
+    },
+    {
+      id: "mi_clausula_6",
+      titulo: "Cláusula Sexta — Da Confidencialidade",
+      texto: resolve(`As partes se obrigam a tomar todas as medidas necessárias para garantir o sigilo de todas as informações e dados coletados e armazenados no decorrer da mentoria, sendo expressamente vedado seu uso, tanto para a venda quanto para a divulgação.\n\nParágrafo Primeiro: Compreende-se como informações confidenciais para os fins deste contrato: logins e senhas, e-mails, relatórios, números de telefone, nomes de usuários das redes sociais, endereços pessoais e profissionais, documentos de identidade, contratos, negociações, propostas comerciais, documentos internos da empresa, entre outras que poderão ser coletados durante a prestação do serviço.\n\nParágrafo Segundo: O descumprimento da obrigação de sigilo importará na rescisão do contrato, se ainda estiver vigente à época do descumprimento, sem prejuízo das perdas e danos e demais sanções cabíveis por força da lei.\n\nParágrafo Terceiro: As obrigações previstas nesta Cláusula continuarão em vigor por um período de 05 (cinco) anos após o término deste contrato.`),
+    },
+    {
+      id: "mi_clausula_7",
+      titulo: "Cláusula Sétima — Da Proteção de Dados",
+      texto: resolve(`As partes se obrigam a atuar em conformidade com a Legislação vigente sobre Proteção de Dados Pessoais e as determinações de órgãos reguladores/fiscalizadores sobre a matéria, em especial a Lei 13.709/2018 (Lei Geral de Proteção de Dados).\n\nParágrafo Primeiro: A CONTRATADA se compromete a não revelar nenhum dado pessoal a que tenha acesso em decorrência da prestação dos seus serviços, direta ou indiretamente, sob nenhuma hipótese, salvo autorização expressa do(a) CONTRATANTE.\n\nParágrafo Segundo: Caso a CONTRATADA tome conhecimento de qualquer descumprimento ou suspeita de descumprimento das disposições legais ou contratuais relativas à proteção de dados pessoais, ou de qualquer violação de segurança no âmbito de suas atividades, informará o(a) CONTRATANTE para que tome as medidas que julgar necessárias.`),
+    },
+    {
+      id: "mi_clausula_8",
+      titulo: "Cláusula Oitava — Do Direito de Imagem e Propriedade Intelectual",
+      texto: resolve(`O(A) CONTRATANTE reconhece que toda a metodologia e seus materiais decorrentes, disponibilizados durante a mentoria, são de autoria e propriedade única e exclusiva da CONTRATADA, podendo ser utilizado pelo(a) CONTRATANTE, porém jamais compartilhado com terceiros, exceto quando autorizado prévia e formalmente pela CONTRATADA.\n\nParágrafo Único: Caso o(a) CONTRATANTE conceda à CONTRATADA um depoimento, feedback positivo ou qualquer outro material, em qualquer formato, seja escrito, audiovisual, por voz ou vídeo, acerca de seu desempenho ou do serviço prestado, automaticamente autoriza seu uso e divulgação pela CONTRATADA, pelo período de 10 (dez) anos.`),
+    },
+    {
+      id: "mi_clausula_9",
+      titulo: "Cláusula Nona — Da Multa por Descumprimento de Obrigações",
+      texto: resolve(`Caso as obrigações de cada parte não sejam cumpridas sem justo motivo, a parte infratora poderá sofrer as seguintes sanções:\na) Arcar com o ressarcimento de todos os prejuízos motivados pelo atraso ou infração contratual; e\nb) Pagar multa equivalente a 20% (vinte por cento) do valor total do contrato previsto na Cláusula Segunda.`),
+    },
+    {
+      id: "mi_clausula_10",
+      titulo: "Cláusula Décima — Das Condições Gerais",
+      texto: resolve(`A mentoria é reputada como uma obrigação de meio, não garantindo ao(à) CONTRATANTE qualquer tipo de ascensão intelectual, profissional, financeira ou pessoal. A CONTRATADA responsabiliza apenas em repassar seu conhecimento para que o(a) CONTRATANTE possa alcançar o resultado pretendido, sem, no entanto, se responsabilizar por ele.\n\nParágrafo Primeiro: Esse contrato é vinculante em relação às partes e seus sucessores, não podendo ser transferido, com os direitos e obrigações decorrentes, a terceira pessoa, sem consentimento.\n\nParágrafo Segundo: Se qualquer parte deste contrato for considerada inválida, tal trecho deve ser interpretado de forma consistente com a lei aplicável, permanecendo as demais disposições em vigor.\n\nParágrafo Terceiro: Alterações do presente contrato só serão consideradas válidas se celebradas por escrito e assinadas pelos representantes legais de todas as partes.\n\nParágrafo Quarto: A tolerância das partes quanto a alguma demora, atraso ou omissão da outra parte, não implica no cancelamento das penalidades aqui previstas, nem em modificação ou revogação de qualquer disposição deste contrato.\n\nParágrafo Quinto: A prestação de serviços objeto deste contrato não implica em nenhum tipo de relação de emprego ou vínculo empregatício. Ambas as partes permanecem independentes, sem subordinação ou hierarquia entre elas.`),
+    },
+    {
+      id: "mi_clausula_11",
+      titulo: "Cláusula Décima Primeira — Foro de Eleição",
+      texto: resolve(`Fica eleito o foro da Comarca de ${foro} para conhecer de qualquer demanda oriunda deste contrato, com expressa renúncia de qualquer outro, por mais privilegiado que seja.`),
+    },
+  ];
+}
+
+function buildConsultoriaFinanceiraClauses(resolve: (t: string) => string, esp: (key: string) => string): ClausulaResolvida[] {
+  const emailContato = esp("email_contato");
+  const foro = esp("foro");
+  const duracaoMeses = esp("duracao_meses");
+
+  return [
+    {
+      id: "cf_clausula_1",
+      titulo: "Cláusula Primeira — Do Objeto",
+      texto: resolve(`Este contrato tem por objeto a prestação do serviço de Consultoria Financeira, que será prestada pela CONTRATADA para a CONTRATANTE, na modalidade online/presencial/híbrida, a contar da data de assinatura do presente contrato.\n\nParágrafo Primeiro: A atividade de Consultoria prevista neste contrato consiste na realização de diagnóstico financeiro e criação de plano de ação para indicar, orientar, aconselhar e sugerir ações para o direcionamento financeiro da CONTRATANTE.\n\nA. Consultoria Financeira\n• Diagnóstico financeiro e identificação de oportunidades de melhoria\n• Estruturação e controle do fluxo de caixa\n• Projeções financeiras e análises de cenários\n• Relatórios gerenciais para apoio à tomada de decisão\n• Assessoria para captação de recursos e crédito\n• Avaliação de resultados e métricas financeiras\n\nB. Mentoria\n• 1 sessão: Análise Comportamental\n• 1 sessão: Constelação individual\n• 4 encontros Método R&R\n• Análise de contratos vigentes, cartões e contas bancárias\n• Disponibilidade de ferramentas para gestão\n• Plano estratégico de acordo com o cenário identificado\n\nEntregáveis:\n• Relatório diagnóstico inicial com plano de ação\n• Relatórios de fluxo de caixa e projeções financeiras\n• Pareceres e simulações de planejamento tributário\n• Relatórios gerenciais para suporte estratégico\n• Reuniões periódicas de acompanhamento, primeiro mês semanal, após o segundo mês a cada 15 dias\n\nParágrafo Terceiro: A CONTRATADA se reserva o direito de, por motivos de força maior, realizar as modificações necessárias no calendário da consultoria, para evitar prejuízo, informando as alterações para a CONTRATANTE com a maior antecedência possível.\n\nParágrafo Quarto: A CONTRATANTE declara ter ciência que não há garantia de resultado na consultoria contratada, já que os resultados satisfatórios variam de acordo com o empenho, dedicação, capacidade de assimilação dos conteúdos e aplicação da metodologia pela CONTRATANTE, sendo a prestação de serviços oferecida atividade de meio. Declara também estar de acordo, com as práticas terapêuticas exclusiva do método Raízes&Riquezas.`),
+    },
+    {
+      id: "cf_clausula_2",
+      titulo: "Cláusula Segunda — Do Valor da Prestação de Serviços",
+      texto: resolve(`Valor dos serviços: {{financeiro.resumo_pagamento}}.\n\nForma de pagamento (no ato da assinatura): PIX, Cartão de Débito, Cartão de Crédito (parcelado c/ taxas da operadora) ou Boleto.\n\nParágrafo Primeiro: A CONTRATADA indica os seguintes dados para que seja realizado o seu pagamento: Boleto bancário ou Pix (CNPJ da CONTRATADA), como beneficiário {{contratada.razao_social}}.\n\nParágrafo Quarto: O atraso no pagamento de qualquer parcela poderá acarretar a interrupção da prestação dos serviços de consultoria, na aplicação de multa no valor de 10% (dez por cento) sobre o valor devido, correção monetária pelo IGPM e juros de mora de 1% (um por cento) ao mês, no protesto e na cobrança judicial do valor devido.`),
+    },
+    {
+      id: "cf_clausula_3",
+      titulo: "Cláusula Terceira — Das Obrigações da Contratante",
+      texto: resolve(`O objetivo deste contrato é a estruturação do setor financeiro da CONTRATANTE, mediante sua dedicação em usar e aplicar as informações, técnicas e ensinamentos disponibilizadas na consultoria. Para tanto, compromete-se a:\na) Possuir e configurar adequadamente os equipamentos de informática e os periféricos necessários para que o objeto deste Contrato possa ser prestado.\nb) Realizar o pagamento previsto na Cláusula Segunda pontualmente.\nc) Responder fielmente aos questionários de anamnese enviados pela CONTRATADA, a fim de possibilitar a realização dos seus serviços.\nd) Dispor de seus esforços para responder possíveis questionários para possibilitar a execução dos serviços pela CONTRATADA.\ne) Fornecer à CONTRATADA, de acordo com a necessidade, todas as informações, ideias, dados e materiais necessários para a efetividade dos serviços.\nf) Cumprir o cronograma dos encontros passado pela CONTRATADA.`),
+    },
+    {
+      id: "cf_clausula_4",
+      titulo: "Cláusula Quarta — Das Obrigações da Contratada",
+      texto: resolve(`Compete à CONTRATADA, sem prejuízo das obrigações previstas na legislação e das demais obrigações previstas neste Contrato:\na) Cumprir com os prazos constantes em cronograma estabelecido pelas partes, que passa a fazer parte integrante deste contrato.\nb) Dispor de todo seu conhecimento para apoiar, auxiliar e oferecer as melhores soluções para dirigir o projeto ao seu resultado, assegurando a qualidade do serviço.\nc) Cumprir fielmente com as métricas ofertadas na proposta comercial.\nd) Dedicar-se a conhecer a CONTRATANTE, de maneira a prestar um serviço direcionado.\ne) Comunicar o quanto antes, para a CONTRATANTE, a ocorrência de qualquer imprevisto, para que eventuais prejuízos sejam minimizados.\nf) Utilizar das terapias integrativas, que julgar necessário para melhor atendimento e resultados.\n\nParágrafo Único: Caso ocorra algum problema saúde pública, de infraestrutura ou fato alheio à vontade das partes, que interfira no objeto da prestação do serviço, este será compreendido como caso fortuito ou de força maior, salvaguardando a CONTRATADA/CONTRATANTE, que poderá repetir o procedimento após a situação ser estabilizada, sempre avisando previamente a CONTRATANTE acerca de eventuais alterações no cronograma.`),
+    },
+    {
+      id: "cf_clausula_5",
+      titulo: "Cláusula Quinta — Da Vigência e Rescisão",
+      texto: resolve(`Este contrato é firmado para viger por até ${duracaoMeses} meses, a contar da data de assinatura do presente instrumento, sendo que, após o decurso do tempo, eventual prorrogação deverá ser objeto de novo acordo escrito entre as partes.\n\nParágrafo Primeiro: A rescisão antecipada imotivada pela CONTRATANTE implicará na retenção dos valores porventura já recebidos, acrescida do pagamento de uma multa contratual no valor de 50% (cinquenta por cento) do valor total do contrato, a título de indenização pelo serviço já prestado (elaboração de projeto, mobilização de equipe, contatos, estudo de caso).\n\nParágrafo Segundo: A rescisão antecipada imotivada pela CONTRATADA implicará na obrigatoriedade de entregar todo o material já produzido no decorrer do projeto para a CONTRATANTE, gratuitamente.\n\nParágrafo Terceiro: O presente contrato será extinto no caso de extinção da personalidade jurídica, falência, insolvência, ou decretação de recuperação judicial ou extrajudicial de alguma das partes.`),
+    },
+    {
+      id: "cf_clausula_6",
+      titulo: "Cláusula Sexta — Da Confidencialidade",
+      texto: resolve(`As partes se obrigam a tomar todas as medidas necessárias para garantir o sigilo de todas as informações e dados coletados e armazenados no decorrer da consultoria, sendo expressamente vedado seu uso, tanto para a venda quanto para a divulgação.\n\nParágrafo Primeiro: Compreende-se como informações confidenciais para os fins deste contrato: logins e senhas, e-mails, relatórios, números de telefone, nomes de usuários das redes sociais, endereços pessoais e profissionais, documentos de identidade, contratos, negociações, propostas comerciais, documentos internos da empresa, entre outras que poderão ser coletados durante a prestação do serviço.\n\nParágrafo Segundo: O descumprimento da obrigação de sigilo importará na rescisão do contrato, se ainda estiver vigente à época do descumprimento, sem prejuízo das perdas e danos e demais sanções cabíveis por força da lei.\n\nParágrafo Terceiro: As obrigações previstas nesta Cláusula continuarão em vigor por um período de 05 (cinco) anos após o término deste contrato.`),
+    },
+    {
+      id: "cf_clausula_7",
+      titulo: "Cláusula Sétima — Da Proteção de Dados",
+      texto: resolve(`As partes se obrigam a atuar em conformidade com a Legislação vigente sobre Proteção de Dados Pessoais e as determinações de órgãos reguladores/fiscalizadores sobre a matéria, em especial a Lei 13.709/2018 (Lei Geral de Proteção de Dados).\n\nParágrafo Primeiro: A CONTRATADA se compromete a não revelar nenhum dado pessoal a que tenha acesso em decorrência da prestação dos seus serviços, direta ou indiretamente, sob nenhuma hipótese, salvo autorização expressa da CONTRATANTE.\n\nParágrafo Segundo: Caso a CONTRATADA tome conhecimento de qualquer descumprimento ou suspeita de descumprimento das disposições legais ou contratuais relativas à proteção de dados pessoais, ou de qualquer violação de segurança no âmbito de suas atividades, informará a CONTRATANTE para que ela tome as medidas que julgar necessárias.`),
+    },
+    {
+      id: "cf_clausula_8",
+      titulo: "Cláusula Oitava — Do Direito de Imagem e Propriedade Intelectual",
+      texto: resolve(`A CONTRATANTE reconhece que toda a metodologia e seus materiais decorrentes, disponibilizados durante a consultoria, são de autoria e propriedade única e exclusiva da CONTRATADA, podendo ser utilizado pela CONTRATANTE, porém jamais compartilhado com terceiros, exceto quando autorizado prévia e formalmente pela CONTRATADA.\n\nParágrafo Único: Caso a CONTRATANTE conceda à CONTRATADA um depoimento, feedback positivo ou qualquer outro material, em qualquer formato, seja escrito, audiovisual, por voz ou vídeo, acerca de seu desempenho ou do serviço prestado, automaticamente autoriza seu uso e divulgação pela CONTRATADA, pelo período de 10 (dez) anos.`),
+    },
+    {
+      id: "cf_clausula_9",
+      titulo: "Cláusula Nona — Da Multa por Descumprimento de Obrigações",
+      texto: resolve(`Caso as obrigações de cada parte não sejam cumpridas sem justo motivo, a parte infratora poderá sofrer as seguintes sanções:\na) Arcar com o ressarcimento de todos os prejuízos motivados pelo atraso ou infração contratual; e\nb) Pagar multa equivalente a 20% (vinte por cento) do valor total do contrato previsto na Cláusula Segunda.`),
+    },
+    {
+      id: "cf_clausula_10",
+      titulo: "Cláusula Décima — Das Condições Gerais",
+      texto: resolve(`A consultoria é reputada como uma obrigação de meio, não garantindo à CONTRATANTE qualquer tipo de ascensão intelectual, profissional, financeira ou pessoal. A CONTRATADA responsabiliza apenas em repassar seu conhecimento para que a CONTRATANTE possa alcançar o resultado pretendido, sem, no entanto, se responsabilizar por ele.\n\nParágrafo Primeiro: Esse contrato é vinculante em relação às partes e seus sucessores, não podendo ser transferido, com os direitos e obrigações decorrentes, a terceira pessoa, sem consentimento.\n\nParágrafo Segundo: Se qualquer parte deste contrato for considerada inválida, tal trecho deve ser interpretado de forma consistente com a lei aplicável, permanecendo as demais disposições em vigor.\n\nParágrafo Terceiro: Alterações do presente contrato só serão consideradas válidas se celebradas por escrito e assinadas pelos representantes legais de todas as partes.\n\nParágrafo Quarto: A tolerância das partes quanto a alguma demora, atraso ou omissão da outra parte, não implica no cancelamento das penalidades aqui previstas, nem em modificação ou revogação de qualquer disposição deste contrato.\n\nParágrafo Quinto: A prestação de serviços objeto deste contrato não implica em nenhum tipo de relação de emprego ou vínculo empregatício. Ambas as partes permanecem independentes, sem subordinação ou hierarquia entre elas.`),
+    },
+    {
+      id: "cf_clausula_11",
+      titulo: "Cláusula Décima Primeira — Foro de Eleição",
+      texto: resolve(`Fica eleito o foro da Comarca de ${foro} para conhecer de qualquer demanda oriunda deste contrato, com expressa renúncia de qualquer outro, por mais privilegiado que seja.`),
+    },
+  ];
+}
+
 function buildMentoriaAdesaoClauses(resolve: (t: string) => string, esp: (key: string) => string): ClausulaResolvida[] {
   const nomeProg = esp("nome_programa");
   const emailContato = esp("email_contato");
@@ -400,7 +525,7 @@ function buildMentoriaAdesaoClauses(resolve: (t: string) => string, esp: (key: s
     {
       id: "ma_clausula_1",
       titulo: "Cláusula 1ª — Do Objeto do Contrato",
-      texto: resolve(`1.1. O(A) CONTRATANTE adquire um Infoproduto no formato de curso livre e o licenciamento temporário de videoaulas, encontros ao vivo, materiais gravados, materiais didáticos e demais conteúdos complementares disponibilizados pela CONTRATADA, nos termos do art. 42 da Lei nº 9.394/1996, denominado "${nomeProg}", composto por entregas específicas, personalizadas e de execução concentrada, não se caracterizando como prestação de trato sucessivo ou assinatura mensal. Suas entregas incluem:\na) Mentoria em Grupo: ${esp("duracao_meses")} meses de mentoria em grupo, com conteúdo voltado a Mentalidade, Posicionamento, Atração e Captação de clientes.\nb) Mentorias ao vivo: Serão, ao todo, ${esp("encontros_ao_vivo")} encontros quinzenais ao vivo e online, com duração média a ser definida pela CONTRATADA, através de plataforma de videoconferência (Zoom ou similar), em dia e horário definidos pela CONTRATADA, ocorrendo de forma coletiva com o respectivo grupo ao qual o(a) CONTRATANTE pertencer.\nc) Sessão Individual Extra: O(A) CONTRATANTE terá direito a ${esp("sessao_individual")} sessão(ões) individual(is) (1:1) com a CONTRATADA, cuja data será agendada conforme disponibilidade de agenda da CONTRATADA.\nd) Aulas Gravadas: Durante a vigência da MENTORIA, o(a) CONTRATANTE terá acesso às aulas gravadas disponibilizadas pela CONTRATADA, de forma gradativa, conforme cronograma próprio.\ne) Arquivos para Portfólio: O(A) CONTRATANTE terá acesso a arquivos e materiais de apoio destinados ao desenvolvimento de portfólio, conforme disponibilizado na plataforma.\nf) Encontros com Convidados: Poderão ocorrer, ao longo da vigência, encontros com convidados especialistas do mercado, conforme cronograma e critério exclusivo da CONTRATADA.\ng) ${esp("agente_ia")}: O(A) CONTRATANTE terá acesso, pelo período de ${esp("duracao_meses")} meses, ao agente de inteligência artificial treinado no método da CONTRATADA, disponibilizado como ferramenta de apoio.\nh) Comunidade Exclusiva: O(A) CONTRATANTE terá acesso a uma ${esp("comunidade")} de alunos em transformação, para fins de networking e trocas de experiência, devendo observar as regras de boa convivência.\ni) Scripts e Templates: O(A) CONTRATANTE terá acesso a scripts e templates de prospecção e vendas validados pela CONTRATADA.\nj) Correções de Portfólio: O(A) CONTRATANTE terá direito a correções de portfólio e feedback contínuo por parte da CONTRATADA e/ou de sua equipe, mediante solicitação.\n\n1.2. O(A) CONTRATANTE reconhece que o serviço envolve acesso imediato a conteúdo, metodologia aplicada, direcionamento estratégico e interação direta, de modo que sua execução tem início desde a respectiva disponibilização, independentemente da realização de todos os encontros ou da utilização integral das plataformas e grupos fornecidos.\n\n1.3. O cronograma das atividades será disponibilizado por meio do grupo de interações e poderá ocorrer em qualquer dia e horário, inclusive em finais de semana e feriados e/ou em horário comercial, podendo haver alteração prévia, a critério da CONTRATADA, mediante comunicação prévia.\n\n1.3.1. Eventual impossibilidade de comparecimento do(a) CONTRATANTE nos encontros ao vivo não importará em falha na prestação do serviço pela CONTRATADA ou obrigação de reagendamento, ficando ciente o(a) CONTRATANTE de que as mentorias ao vivo serão gravadas e disponibilizadas posteriormente na plataforma, podendo ser assistidas conforme sua disponibilidade.`),
+      texto: resolve(`1.1. O(A) CONTRATANTE adquire um Infoproduto no formato de curso livre e o licenciamento temporário de videoaulas, encontros ao vivo, materiais gravados, materiais didáticos e demais conteúdos complementares disponibilizados pela CONTRATADA, nos termos do art. 42 da Lei nº 9.394/1996, denominado "${nomeProg}", composto por entregas específicas, personalizadas e de execução concentrada, não se caracterizando como prestação de trato sucessivo ou assinatura mensal. Suas entregas incluem:\na) Mentoria em Grupo: ${esp("duracao_meses")} meses de mentoria em grupo, com conteúdo voltado a Mentalidade, Posicionamento, Atração e Captação de clientes.\nb) Mentorias ao vivo: Serão, ao todo, ${esp("encontros_ao_vivo")} encontros quinzenais ao vivo e online, com duração média a ser definida pela CONTRATADA, através de plataforma de videoconferência (Zoom ou similar), em dia e horário definidos pela CONTRATADA, ocorrendo de forma coletiva com o respectivo grupo ao qual o(a) CONTRATANTE pertencer.\nc) Sessão Individual Extra: O(A) CONTRATANTE não terá direito a sessão(ões) individual(is) (1:1) com a CONTRATADA, cuja data será agendada conforme disponibilidade de agenda da CONTRATADA.\nd) Aulas Gravadas: Durante a vigência da MENTORIA, o(a) CONTRATANTE terá acesso às aulas gravadas disponibilizadas pela CONTRATADA, de forma gradativa, conforme cronograma próprio.\ne) Arquivos para Portfólio: O(A) CONTRATANTE terá acesso a arquivos e materiais de apoio destinados ao desenvolvimento de portfólio, conforme disponibilizado na plataforma.\nf) Encontros com Convidados: Poderão ocorrer, ao longo da vigência, encontros com convidados especialistas do mercado, conforme cronograma e critério exclusivo da CONTRATADA.\ng) Comunidade Exclusiva: O(A) CONTRATANTE terá acesso a uma ${esp("comunidade")} de alunos em transformação, para fins de networking e trocas de experiência, devendo observar as regras de boa convivência.\nh) Scripts e Templates: O(A) CONTRATANTE terá acesso a scripts e templates de prospecção e vendas validados pela CONTRATADA.\ni) Correções de Portfólio: O(A) CONTRATANTE terá direito a correções de portfólio e feedback contínuo por parte da CONTRATADA e/ou de sua equipe, mediante solicitação.\n\n1.2. O(A) CONTRATANTE reconhece que o serviço envolve acesso imediato a conteúdo, metodologia aplicada, direcionamento estratégico e interação direta, de modo que sua execução tem início desde a respectiva disponibilização, independentemente da realização de todos os encontros ou da utilização integral das plataformas e grupos fornecidos.\n\n1.3. O cronograma das atividades será disponibilizado por meio do grupo de interações e poderá ocorrer em qualquer dia e horário, inclusive em finais de semana e feriados e/ou em horário comercial, podendo haver alteração prévia, a critério da CONTRATADA, mediante comunicação prévia.\n\n1.3.1. Eventual impossibilidade de comparecimento do(a) CONTRATANTE nos encontros ao vivo não importará em falha na prestação do serviço pela CONTRATADA ou obrigação de reagendamento, ficando ciente o(a) CONTRATANTE de que as mentorias ao vivo serão gravadas e disponibilizadas posteriormente na plataforma, podendo ser assistidas conforme sua disponibilidade.`),
     },
     {
       id: "ma_clausula_2",
@@ -460,7 +585,7 @@ function buildMentoriaAdesaoClauses(resolve: (t: string) => string, esp: (key: s
     {
       id: "ma_clausula_13",
       titulo: "Cláusula 13ª — Da Garantia Condicional",
-      texto: resolve(`13.1. Se, após 06 (seis) meses de PARTICIPAÇÃO OSTENSIVA na mentoria objeto deste Contrato, a contar da data de aquisição, o(a) CONTRATANTE comprovar que não obteve nenhuma evolução em seu negócio/portfólio, DESDE QUE COMPROVADOS CUMULATIVAMENTE os requisitos abaixo, fará jus ao reembolso integral do valor pago à CONTRATADA, conforme oferta vigente à época:\n(i) assistir a todas as aulas e entregar todas as atividades relacionadas no prazo previsto;\n(ii) participar, ao menos, de 2 (duas) mentorias ao vivo por mês;\n(iii) utilizar a Sessão Individual Extra (1:1) disponibilizada;\n(iv) submeter o portfólio para correção e aplicar o feedback recebido;\n(v) estar com os pagamentos em dia;\n(vi) comprovar, no mínimo, 06 (seis) meses de participação ostensiva;\n(vii) comprovar ao menos 03 (três) ações efetivas de prospecção/vendas;\n(viii) não ter obtido nenhum resultado/avanço comercial no período de 06 (seis) meses.\n\n13.2. Desde que o(a) CONTRATANTE comprove rigorosamente o cumprimento dos requisitos dispostos neste instrumento, fará jus ao reembolso do valor pago pelo infoproduto, em até 30 (trinta) dias. A solicitação deverá ser feita via e-mail e a CONTRATADA terá o prazo de até 30 (trinta) dias corridos para avaliar a solicitação.\n\n13.3. O(A) CONTRATANTE deverá comprovar o preenchimento dos requisitos da garantia condicional no prazo de 30 (trinta) dias, contados a partir da solicitação de garantia. Caso não o faça neste período, perderá o direito, e eventual cancelamento seguirá as regras de rescisão previstas na Cláusula Décima Segunda.\n\n13.4. O prazo previsto para pagamento somente passará a correr a partir da data da confirmação/anuência da CONTRATADA quanto à solicitação, mediante resposta ao contato enviado.`),
+      texto: resolve(`13.1. Se, até 30 dias de PARTICIPAÇÃO OSTENSIVA na mentoria objeto deste Contrato, a contar da data de aquisição, o(a) CONTRATANTE comprovar que não obteve nenhuma evolução em seu negócio/portfólio, DESDE QUE COMPROVADOS CUMULATIVAMENTE os requisitos abaixo, fará jus ao reembolso integral do valor pago à CONTRATADA, conforme oferta vigente à época:\n(i) assistir a todas as aulas e entregar todas as atividades relacionadas no prazo previsto;\n(ii) participar, ao menos, de 2 (duas) mentorias ao vivo por mês;\n(iii) submeter o portfólio para correção e aplicar o feedback recebido;\n(iv) estar com os pagamentos em dia;\n(v) comprovar ao menos 03 (três) ações efetivas de prospecção/vendas;\n\n13.2. Desde que o(a) CONTRATANTE comprove rigorosamente o cumprimento dos requisitos dispostos neste instrumento, fará jus ao reembolso do valor pago pelo infoproduto, em até 30 (trinta) dias. A solicitação deverá ser feita via e-mail e a CONTRATADA terá o prazo de até 30 (trinta) dias corridos para avaliar a solicitação.\n\n13.3. O(A) CONTRATANTE deverá comprovar o preenchimento dos requisitos da garantia condicional no prazo de 30 (trinta) dias, contados a partir da solicitação de garantia. Caso não o faça neste período, perderá o direito, e eventual cancelamento seguirá as regras de rescisão previstas na Cláusula Décima Segunda.\n\n13.4. O prazo previsto para pagamento somente passará a correr a partir da data da confirmação/anuência da CONTRATADA quanto à solicitação, mediante resposta ao contato enviado.`),
     },
     {
       id: "ma_clausula_14",

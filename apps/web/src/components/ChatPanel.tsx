@@ -39,6 +39,7 @@ export function ChatPanel({ userId }: ChatPanelProps) {
   const [showHistory, setShowHistory] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -103,6 +104,7 @@ export function ChatPanel({ userId }: ChatPanelProps) {
     const userMsg: Message = { role: "user", content: text, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setIsLoading(true);
 
     try {
@@ -355,13 +357,20 @@ export function ChatPanel({ userId }: ChatPanelProps) {
             </svg>
           )}
         </button>
-        <input
+        <textarea
+          ref={textareaRef}
           className={styles.input}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            const el = e.target;
+            el.style.height = "auto";
+            el.style.height = Math.min(el.scrollHeight, 150) + "px";
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Digite sua mensagem ou use o microfone..."
           disabled={isLoading || isRecording}
+          rows={1}
         />
         <button
           className={styles.sendBtn}

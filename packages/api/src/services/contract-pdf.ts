@@ -223,8 +223,13 @@ export async function generateContractPdfFromSnapshot(snapshot: ContractSnapshot
       doc.on("error", reject);
 
       // --- Título ---
+      const titleMap: Record<string, string> = {
+        mentoria_adesao: "CONTRATO ÁUREA",
+        consultoria_financeira: "CONTRATO DE CONSULTORIA FINANCEIRA",
+        mentoria_individual_12: "CONTRATO DE MENTORIA INDIVIDUAL",
+      };
       const isAdesao = snapshot.service_code === "mentoria_adesao";
-      const tituloContrato = isAdesao ? "CONTRATO ÁUREA" : "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
+      const tituloContrato = titleMap[snapshot.service_code] || "CONTRATO DE PRESTAÇÃO DE SERVIÇOS";
       doc.font("Helvetica-Bold").fontSize(14).fillColor(GREEN)
         .text(tituloContrato, { align: "center" });
       doc.moveDown(0.15);
