@@ -614,6 +614,13 @@ function migrateToWorkspace(db: Database.Database) {
     }
   })();
 
+  try {
+    db.exec(`ALTER TABLE receivables ADD COLUMN sale_id TEXT REFERENCES sales(id) ON DELETE CASCADE`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_receivables_sale ON receivables(sale_id) WHERE sale_id IS NOT NULL`);
+    db.exec(`ALTER TABLE receivables ADD COLUMN installment_number INTEGER`);
+    db.exec(`ALTER TABLE receivables ADD COLUMN total_installments INTEGER`);
+  } catch { /* columns already exist */ }
+
 }
 
 function seedFirstTenant(db: Database.Database) {

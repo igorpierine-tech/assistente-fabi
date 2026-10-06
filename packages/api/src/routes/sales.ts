@@ -34,6 +34,10 @@ import {
 import { composeSnapshot } from "../services/contract-composer";
 import "../session-types";
 import type { PaymentMethod } from "../services/receivables-db";
+import {
+  createReceivablesFromSale,
+  deleteReceivablesBySaleId,
+} from "../services/receivables-db";
 
 const router: ExpressRouter = Router();
 router.use(requireUser);
@@ -124,7 +128,7 @@ router.post("/", (req, res) => {
     if (!existing) clientId = null;
   }
 
-  const sale = createSale(userId(req), {
+  const saleData = {
     client_id: clientId,
     client_name: b.clientName.trim().slice(0, 160),
     client_document: b.clientDocument ? String(b.clientDocument).slice(0, 32) : null,
@@ -137,7 +141,22 @@ router.post("/", (req, res) => {
     installments: Math.max(1, Math.min(60, Number(b.installments) || 1)),
     sale_date: b.saleDate || new Date().toISOString(),
     notes: b.notes ? String(b.notes).slice(0, 2000) : null,
-  });
+  };
+  const sale = createSale(userId(req), saleData);
+
+  try {
+    createReceivablesFromSale(userId(req), {
+      id: sale.id,
+      client_id: sale.client_id,
+      client_name: sale.client_name,
+      item_name: sale.item_name,
+      amount_cents: sale.amount_cents,
+      payment_method: sale.payment_method as PaymentMethod | null,
+      installments: sale.installments,
+      sale_date: sale.sale_date,
+    });
+  } catch (_) { /* receivable generation should not block sale creation */ }
+
   res.status(201).json(sale);
 });
 
@@ -172,11 +191,38 @@ router.put("/:id", (req, res) => {
     patch.installments = Math.max(1, Math.min(60, Number(b.installments) || 1));
   if (typeof b.saleDate === "string") patch.sale_date = b.saleDate;
   if (b.notes !== undefined) patch.notes = b.notes ? String(b.notes).slice(0, 2000) : null;
-  res.json(updateSale(userId(req), id, patch));
+
+  const needsRecalc =
+    patch.amount_cents !== undefined ||
+    patch.installments !== undefined ||
+    patch.payment_method !== undefined ||
+    patch.sale_date !== undefined;
+
+  const updated = updateSale(userId(req), id, patch);
+
+  if (needsRecalc && updated) {
+    try {
+      deleteReceivablesBySaleId(userId(req), id);
+      createReceivablesFromSale(userId(req), {
+        id: updated.id,
+        client_id: updated.client_id,
+        client_name: updated.client_name,
+        item_name: updated.item_name,
+        amount_cents: updated.amount_cents,
+        payment_method: updated.payment_method as PaymentMethod | null,
+        installments: updated.installments,
+        sale_date: updated.sale_date,
+      });
+    } catch (_) { /* should not block sale update */ }
+  }
+
+  res.json(updated);
 });
 
 router.delete("/:id", (req, res) => {
-  const ok = deleteSale(userId(req), String(req.params.id));
+  const id = String(req.params.id);
+  deleteReceivablesBySaleId(userId(req), id);
+  const ok = deleteSale(userId(req), id);
   if (!ok) {
     res.status(404).json({ error: "Venda não encontrada" });
     return;

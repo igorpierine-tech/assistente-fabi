@@ -16,6 +16,7 @@ export interface Receivable {
   id: string;
   user_id: string;
   appointment_id: string | null;
+  sale_id: string | null;
   catalog_item_id: string | null;
   client_id: string | null;
   client_name: string;
@@ -26,6 +27,8 @@ export interface Receivable {
   paid_at: string | null;
   payment_method: PaymentMethod | null;
   status: ReceivableStatus;
+  installment_number: number | null;
+  total_installments: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -74,6 +77,7 @@ export function createReceivable(
   userId: string,
   data: {
     appointment_id?: string | null;
+    sale_id?: string | null;
     catalog_item_id?: string | null;
     client_id?: string | null;
     client_name: string;
@@ -84,6 +88,8 @@ export function createReceivable(
     payment_method?: PaymentMethod | null;
     status?: ReceivableStatus;
     paid_at?: string | null;
+    installment_number?: number | null;
+    total_installments?: number | null;
     notes?: string | null;
   }
 ): Receivable {
@@ -92,14 +98,16 @@ export function createReceivable(
   getDb()
     .prepare(
       `INSERT INTO receivables
-        (id, user_id, appointment_id, catalog_item_id, client_id, client_name,
-         item_name, amount_cents, service_date, due_date, paid_at, payment_method, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (id, user_id, appointment_id, sale_id, catalog_item_id, client_id, client_name,
+         item_name, amount_cents, service_date, due_date, paid_at, payment_method, status,
+         installment_number, total_installments, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id,
       userId,
       data.appointment_id ?? null,
+      data.sale_id ?? null,
       data.catalog_item_id ?? null,
       data.client_id ?? null,
       data.client_name,
@@ -110,6 +118,8 @@ export function createReceivable(
       data.paid_at ?? null,
       data.payment_method ?? null,
       data.status ?? "pendente",
+      data.installment_number ?? null,
+      data.total_installments ?? null,
       data.notes ?? null
     );
   return getReceivable(userId, id)!;
@@ -203,6 +213,74 @@ export function getReceivablesSummary(userId: string): ReceivableSummary {
     a_receber_count: pending.n,
     em_atraso_count: overdue.n,
   };
+}
+
+export function getReceivablesBySaleId(
+  userId: string,
+  saleId: string
+): Receivable[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM receivables WHERE user_id = ? AND sale_id = ? ORDER BY installment_number ASC`
+    )
+    .all(userId, saleId) as Receivable[];
+}
+
+export function deleteReceivablesBySaleId(
+  userId: string,
+  saleId: string
+): number {
+  const result = getDb()
+    .prepare(`DELETE FROM receivables WHERE user_id = ? AND sale_id = ?`)
+    .run(userId, saleId);
+  return result.changes;
+}
+
+export function createReceivablesFromSale(
+  userId: string,
+  sale: {
+    id: string;
+    client_id: string | null;
+    client_name: string;
+    item_name: string;
+    amount_cents: number;
+    payment_method: PaymentMethod | null;
+    installments: number;
+    sale_date: string;
+  }
+): Receivable[] {
+  const n = Math.max(1, sale.installments);
+  const base = Math.floor(sale.amount_cents / n);
+  const remainder = sale.amount_cents - base * n;
+  const saleDate = new Date(sale.sale_date);
+  const results: Receivable[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const amount = i === 0 ? base + remainder : base;
+    const dueDate = new Date(saleDate);
+    dueDate.setMonth(dueDate.getMonth() + i);
+    const dueDateStr = dueDate.toISOString().slice(0, 10);
+
+    results.push(
+      createReceivable(userId, {
+        sale_id: sale.id,
+        client_id: sale.client_id,
+        client_name: sale.client_name,
+        item_name:
+          n > 1
+            ? `${sale.item_name} (${i + 1}/${n})`
+            : sale.item_name,
+        amount_cents: amount,
+        service_date: sale.sale_date,
+        due_date: dueDateStr,
+        payment_method: sale.payment_method,
+        installment_number: i + 1,
+        total_installments: n,
+      })
+    );
+  }
+
+  return results;
 }
 
 /**
