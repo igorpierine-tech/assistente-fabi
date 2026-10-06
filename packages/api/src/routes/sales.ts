@@ -442,8 +442,9 @@ router.post("/:id/send-signature", async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error("Falha ao enviar para ZapSign:", err);
-    res.status(500).json({ error: "Não foi possível enviar o contrato para assinatura." });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Falha ao enviar para ZapSign:", msg, err);
+    res.status(500).json({ error: `Não foi possível enviar o contrato para assinatura. Detalhe: ${msg}` });
   }
 });
 
