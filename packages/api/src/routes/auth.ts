@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import { Router, type Router as ExpressRouter } from "express";
 import { google } from "googleapis";
 import { consumeMobileLogin, signSessionId } from "../services/mobile-auth";
@@ -18,11 +18,27 @@ function getOAuth2Client(redirectUri?: string) {
   );
 }
 
-function validState(expected: string | undefined, received: unknown): boolean {
-  if (!expected || typeof received !== "string") return false;
-  const left = Buffer.from(expected);
-  const right = Buffer.from(received);
-  return left.length === right.length && timingSafeEqual(left, right);
+function signCalendarState(userId: string): string {
+  const nonce = randomBytes(16).toString("hex");
+  const payload = `${userId}.${nonce}`;
+  const hmac = createHmac("sha256", process.env.SESSION_SECRET!)
+    .update(payload)
+    .digest("hex");
+  return `${payload}.${hmac}`;
+}
+
+function verifyCalendarState(state: unknown): string | null {
+  if (typeof state !== "string") return null;
+  const parts = state.split(".");
+  if (parts.length !== 3) return null;
+  const [userId, nonce, hmac] = parts;
+  const expected = createHmac("sha256", process.env.SESSION_SECRET!)
+    .update(`${userId}.${nonce}`)
+    .digest("hex");
+  const a = Buffer.from(hmac);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return userId;
 }
 
 // --- Email/password login ---
@@ -127,8 +143,7 @@ router.get("/google-calendar", authLimiter, (req, res) => {
     res.status(401).json({ error: "Faça login primeiro" });
     return;
   }
-  const state = randomBytes(32).toString("base64url");
-  req.session.calendarOauthState = state;
+  const state = signCalendarState(req.session.appUser.id);
   const oauth2 = getOAuth2Client(CALENDAR_REDIRECT_URI);
   const url = oauth2.generateAuthUrl({
     access_type: "offline",
@@ -136,26 +151,17 @@ router.get("/google-calendar", authLimiter, (req, res) => {
     state,
     scope: ["https://www.googleapis.com/auth/calendar"],
   });
-  req.session.save(() => {
-    if (req.query.redirect === "1") {
-      res.redirect(url);
-    } else {
-      res.json({ url });
-    }
-  });
+  res.json({ url });
 });
 
 router.get("/google-calendar/callback", authLimiter, async (req, res) => {
-  if (!validState(req.session.calendarOauthState, req.query.state)) {
+  const userId = verifyCalendarState(req.query.state);
+  if (!userId) {
     res.status(400).send("Estado OAuth inválido. Reinicie a conexão.");
     return;
   }
   if (typeof req.query.code !== "string") {
     res.status(400).send("Código de autorização não encontrado.");
-    return;
-  }
-  if (!req.session.appUser) {
-    res.status(401).send("Sessão expirada. Faça login novamente.");
     return;
   }
 
@@ -176,12 +182,9 @@ router.get("/google-calendar/callback", authLimiter, async (req, res) => {
       // email is optional metadata
     }
 
-    saveGoogleTokens(req.session.appUser.id, tokens, googleEmail);
-    delete req.session.calendarOauthState;
-    req.session.save(() => {
-      const webUrl = process.env.WEB_URL || "http://localhost:3000";
-      res.redirect(`${webUrl}/?calendar_connected=1`);
-    });
+    saveGoogleTokens(userId, tokens, googleEmail);
+    const webUrl = process.env.WEB_URL || "http://localhost:3000";
+    res.redirect(`${webUrl}/?calendar_connected=1`);
   } catch (error) {
     console.error("Erro ao conectar Google Calendar:", error instanceof Error ? error.message : "erro desconhecido");
     res.status(500).send("Falha ao conectar Google Calendar.");

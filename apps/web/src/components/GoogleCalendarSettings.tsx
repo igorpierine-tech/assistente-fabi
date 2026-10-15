@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import styles from "./GoogleCalendarSettings.module.css";
 
 export function GoogleCalendarSettings() {
@@ -38,8 +38,16 @@ export function GoogleCalendarSettings() {
     setDisconnecting(false);
   }
 
-  function handleConnect() {
-    window.location.href = `${API_URL}/auth/google-calendar?redirect=1`;
+  async function handleConnect() {
+    try {
+      const res = await apiFetch("/auth/google-calendar");
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      // ignore
+    }
   }
 
   if (loading) return <div className={styles.wrap}><p className={styles.loading}>Carregando...</p></div>;
