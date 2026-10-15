@@ -10,7 +10,7 @@ router.use(requireUser);
 
 router.get("/kpis", (req, res) => {
   const shared = sharedOwnerId(req);
-  const personal = req.session.googleUser!.id;
+  const personal = req.session.appUser!.id;
   const now = new Date();
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

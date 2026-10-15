@@ -1,0 +1,101 @@
+.wrap {
+  padding: 32px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text, #f4ede0);
+  margin: 0 0 8px;
+}
+
+.desc {
+  color: var(--text-muted, #8a7f6a);
+  font-size: 0.9rem;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.loading {
+  color: var(--text-muted, #8a7f6a);
+  font-size: 0.9rem;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.connectedBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text, #f4ede0);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.email {
+  color: var(--text-muted, #8a7f6a);
+  font-weight: 400;
+}
+
+.connectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: var(--primary, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.connectBtn:hover {
+  opacity: 0.9;
+}
+
+.disconnectBtn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(217, 178, 104, 0.25);
+  color: var(--text-muted, #8a7f6a);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.disconnectBtn:hover {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+.disconnectBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .wrap {
+    padding: 20px 16px;
+  }
+
+  .statusRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

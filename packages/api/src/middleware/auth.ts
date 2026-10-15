@@ -1,9 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import { getWorkspaceId } from "../services/auth-config";
+import { getGoogleTokens } from "../services/google-tokens-db";
 import type { UserRole } from "../services/users-db";
 
 export function requireUser(req: Request, res: Response, next: NextFunction): void {
-  if (!req.session.appUser && !req.session.googleUser) {
+  if (!req.session.appUser) {
     res.status(401).json({ error: "Não autenticado" });
     return;
   }
@@ -52,20 +53,17 @@ export function requireMinRole(minRole: UserRole) {
 export function sharedOwnerId(req: Request): string {
   const workspaceId = getWorkspaceId();
   if (workspaceId) return workspaceId;
-  return req.session.appUser?.id || req.session.googleUser!.id;
+  return req.session.appUser!.id;
 }
 
-/**
- * Returns the id to use for PER-USER resources — currently only
- * appointments — so each Google account keeps its own calendar in sync.
- */
 export function personalOwnerId(req: Request): string {
-  return req.session.googleUser?.id || req.session.appUser?.id || "";
+  return req.session.appUser?.id || "";
 }
 
 export function requireGoogleCalendar(req: Request, res: Response, next: NextFunction): void {
-  if (!req.session.googleTokens) {
-    res.status(401).json({ error: "Google Calendar não conectado" });
+  const userId = req.session.appUser?.id;
+  if (!userId || !getGoogleTokens(userId)) {
+    res.status(401).json({ error: "Google Calendar não conectado", connectUrl: "/auth/google-calendar" });
     return;
   }
   next();

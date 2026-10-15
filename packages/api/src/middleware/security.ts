@@ -18,7 +18,7 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
 
 export function rateLimit(options: { windowMs: number; max: number; prefix: string }): RequestHandler {
   return (req, res, next) => {
-    const identity = req.session?.googleUser?.id || req.ip || req.socket.remoteAddress || "unknown";
+    const identity = req.session?.appUser?.id || req.ip || req.socket.remoteAddress || "unknown";
     const key = `${options.prefix}:${identity}`;
     const now = Date.now();
     let bucket = buckets.get(key);

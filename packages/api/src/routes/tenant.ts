@@ -42,7 +42,7 @@ router.get("/config", (req, res) => {
   const row = getTenantConfig(ownerId);
   if (!row) {
     const defaults = upsertTenantConfig(ownerId, {
-      owner_name: req.session.googleUser!.name || "",
+      owner_name: req.session.appUser!.name || "",
     });
     res.json(toPublicConfig(defaults));
     return;

@@ -9,6 +9,7 @@ import {
   getClientByName,
 } from "../services/database";
 import { GoogleCalendarService } from "../services/google-calendar";
+import { getGoogleTokens, updateGoogleTokens } from "../services/google-tokens-db";
 import { createReceivableFromAppointment } from "../services/receivables-db";
 import { listCatalogItems } from "../services/catalog-db";
 import "../session-types";
@@ -47,14 +48,17 @@ function optionalStatus(value: unknown): string | undefined {
 }
 
 function calendarForSession(req: Request): GoogleCalendarService | null {
-  if (!req.session.googleTokens) return null;
-  return new GoogleCalendarService(req.session.googleTokens, (tokens) => {
-    req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
+  const userId = req.session.appUser?.id;
+  if (!userId) return null;
+  const tokens = getGoogleTokens(userId);
+  if (!tokens) return null;
+  return new GoogleCalendarService(tokens, (refreshed) => {
+    updateGoogleTokens(userId, refreshed);
   });
 }
 
 router.get("/", async (req, res) => {
-  const userId = req.session.googleUser!.id;
+  const userId = req.session.appUser!.id;
   const startDate = req.query.startDate === undefined ? undefined : requiredIsoDate(req.query.startDate, "Data inicial");
   const endDate = req.query.endDate === undefined ? undefined : requiredIsoDate(req.query.endDate, "Data final");
   const clientId = optionalId(req.query.clientId, "ID do cliente");
@@ -101,7 +105,7 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", (req, res) => {
-  const appointment = getAppointment(req.session.googleUser!.id, req.params.id);
+  const appointment = getAppointment(req.session.appUser!.id, req.params.id);
   if (!appointment) {
     res.status(404).json({ error: "Agendamento não encontrado" });
     return;
@@ -118,7 +122,7 @@ router.post("/", async (req, res) => {
     const endTime = requiredIsoDate(req.body?.endTime, "Fim");
     const notes = optionalString(req.body?.notes, "Observações", 10_000);
     const status = optionalStatus(req.body?.status);
-    const userId = req.session.googleUser!.id;
+    const userId = req.session.appUser!.id;
 
     if (Date.parse(endTime) <= Date.parse(startTime)) throw new ValidationError("Fim deve ser posterior ao início");
 
@@ -159,7 +163,7 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const userId = req.session.googleUser!.id;
+    const userId = req.session.appUser!.id;
     const existing = getAppointment(userId, req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Agendamento não encontrado" });
@@ -237,7 +241,7 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const userId = req.session.googleUser!.id;
+    const userId = req.session.appUser!.id;
     const existing = getAppointment(userId, req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Agendamento não encontrado" });
@@ -268,7 +272,7 @@ router.post("/sync-from-google", async (req, res) => {
       res.status(400).json({ error: "Sessão do Google Calendar não disponível" });
       return;
     }
-    const userId = req.session.googleUser!.id;
+    const userId = req.session.appUser!.id;
 
     const now = new Date();
     const sixMonthsAgo = new Date(now);

@@ -3,7 +3,7 @@ import { writeAuditLog } from "../services/database";
 
 export function auditRequests(req: Request, res: Response, next: NextFunction): void {
   res.on("finish", () => {
-    const userId = req.session?.googleUser?.id;
+    const userId = req.session?.appUser?.id;
     if (!userId) return;
     const route = req.route?.path ? `${req.baseUrl}${req.route.path}` : req.path;
     const shouldAudit = req.method !== "GET" || route.includes("/:id") || route.includes("/privacy/export");

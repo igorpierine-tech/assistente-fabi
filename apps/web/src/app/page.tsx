@@ -259,10 +259,6 @@ export default function Home() {
     setLoading(false);
   }
 
-  function handleLogin() {
-    window.location.href = `${API_URL}/auth/google?redirect=1`;
-  }
-
   async function handlePasswordLogin(email: string, password: string): Promise<string | null> {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
@@ -410,7 +406,7 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} onPasswordLogin={handlePasswordLogin} />;
+    return <LoginScreen onPasswordLogin={handlePasswordLogin} />;
   }
 
   if (tenantConfig && !tenantConfig.onboardingCompleted) {

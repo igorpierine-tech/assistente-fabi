@@ -347,6 +347,17 @@ function initTables(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+
+    CREATE TABLE IF NOT EXISTS google_tokens (
+      user_id       TEXT PRIMARY KEY REFERENCES users(id),
+      access_token  TEXT NOT NULL,
+      refresh_token TEXT NOT NULL,
+      expiry_date   INTEGER,
+      scope         TEXT,
+      google_email  TEXT,
+      connected_at  TEXT DEFAULT (datetime('now')),
+      updated_at    TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Existing databases predate multi-tenancy. Legacy rows are deliberately
@@ -1055,6 +1066,7 @@ export function deleteUserData(userId: string): void {
     database.prepare(`DELETE FROM booking_session_types WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM booking_settings WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM privacy_consents WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM google_tokens WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM audit_logs WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM tenant_config WHERE user_id = ?`).run(userId);
   })();

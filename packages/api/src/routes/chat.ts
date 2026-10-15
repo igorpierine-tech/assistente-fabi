@@ -2,6 +2,7 @@ import { Router, type Request, type Router as ExpressRouter } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { FabiAgent, type AgentConfig } from "@assistente-fabi/ai";
 import { GoogleCalendarService, GoogleAuthError } from "../services/google-calendar";
+import { getGoogleTokens, updateGoogleTokens } from "../services/google-tokens-db";
 import { SyncedCalendarService } from "../services/synced-calendar";
 import { TranscriptionService } from "../services/transcription";
 import { buildWorkspaceService } from "../services/workspace-service";
@@ -57,7 +58,7 @@ function getTranscription(): TranscriptionService {
 }
 
 function getUserFromSession(req: Request) {
-  const user = req.session.googleUser!;
+  const user = req.session.appUser!;
   return {
     id: user.id,
     name: user.name,
@@ -122,9 +123,12 @@ function getAgentConfig(req: Request): AgentConfig {
 }
 
 function createGcal(req: Request): GoogleCalendarService {
+  const userId = req.session.appUser!.id;
+  const tokens = getGoogleTokens(userId);
+  if (!tokens) throw new Error("Google Calendar não conectado");
   return new GoogleCalendarService(
-    req.session.googleTokens!,
-    (tokens) => { req.session.googleTokens = { ...req.session.googleTokens, ...tokens }; },
+    tokens,
+    (refreshed) => { updateGoogleTokens(userId, refreshed); },
     getTenantTimezone(req),
   );
 }
@@ -132,7 +136,7 @@ function createGcal(req: Request): GoogleCalendarService {
 function calendarForSession(req: Request): SyncedCalendarService {
   return new SyncedCalendarService(
     createGcal(req),
-    req.session.googleUser!.id,
+    req.session.appUser!.id,
     sharedOwnerId(req)
   );
 }
@@ -157,7 +161,7 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
     await gcal.ensureValidTokens();
     const calendar = new SyncedCalendarService(
       gcal,
-      req.session.googleUser!.id,
+      req.session.appUser!.id,
       sharedOwnerId(req)
     );
 
@@ -223,7 +227,7 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
     await gcalVoice.ensureValidTokens();
     const calendar = new SyncedCalendarService(
       gcalVoice,
-      req.session.googleUser!.id,
+      req.session.appUser!.id,
       sharedOwnerId(req)
     );
     const workspace = buildWorkspaceService(sharedOwnerId(req));

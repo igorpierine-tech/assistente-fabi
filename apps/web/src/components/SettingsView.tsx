@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { CatalogPanel } from "./CatalogPanel";
 import { BookingSettingsPanel } from "./BookingSettingsPanel";
+import { GoogleCalendarSettings } from "./GoogleCalendarSettings";
 import styles from "./SettingsView.module.css";
 
-type Section = "catalog" | "booking";
+type Section = "catalog" | "booking" | "calendar";
 
 export function SettingsView() {
   const [section, setSection] = useState<Section>("catalog");
@@ -27,10 +28,19 @@ export function SettingsView() {
         >
           Página de agendamento
         </button>
+        <button
+          type="button"
+          className={`${styles.tab} ${section === "calendar" ? styles.tabActive : ""}`}
+          onClick={() => setSection("calendar")}
+        >
+          Google Calendar
+        </button>
       </nav>
 
       <div className={styles.content}>
-        {section === "catalog" ? <CatalogPanel /> : <BookingSettingsPanel />}
+        {section === "catalog" && <CatalogPanel />}
+        {section === "booking" && <BookingSettingsPanel />}
+        {section === "calendar" && <GoogleCalendarSettings />}
       </div>
     </div>
   );

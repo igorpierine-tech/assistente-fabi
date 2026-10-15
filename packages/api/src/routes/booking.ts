@@ -1,6 +1,7 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import { DateTime } from "luxon";
 import { GoogleCalendarService } from "../services/google-calendar";
+import { getGoogleTokens, updateGoogleTokens } from "../services/google-tokens-db";
 import { SyncedCalendarService } from "../services/synced-calendar";
 import { requireGoogleCalendar, requireUser, sharedOwnerId, personalOwnerId } from "../middleware/auth";
 import {
@@ -127,12 +128,15 @@ router.post("/requests/:id/confirm", requireGoogleCalendar, async (req, res) => 
   }
 
   try {
-    const gcal = new GoogleCalendarService(
-      req.session.googleTokens!,
-      (tokens) => {
-        req.session.googleTokens = { ...req.session.googleTokens, ...tokens };
-      }
-    );
+    const gcalUserId = req.session.appUser!.id;
+    const gcalTokens = getGoogleTokens(gcalUserId);
+    if (!gcalTokens) {
+      res.status(401).json({ error: "Google Calendar não conectado" });
+      return;
+    }
+    const gcal = new GoogleCalendarService(gcalTokens, (refreshed) => {
+      updateGoogleTokens(gcalUserId, refreshed);
+    });
     // Appointment stored on the confirmer's personal calendar,
     // but client lookup uses the shared workspace.
     const calendar = new SyncedCalendarService(
