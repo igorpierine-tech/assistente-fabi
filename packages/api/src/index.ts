@@ -78,11 +78,17 @@ app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 app.use("/webhooks/zapsign", zapSignWebhookRouter);
 app.use((req, _res, next) => {
   const authorization = req.get("authorization");
-  const hasSidCookie = (req.headers.cookie || "").includes("fabi.sid=");
-  if (!hasSidCookie && authorization?.startsWith("Bearer ")) {
+  if (authorization?.startsWith("Bearer ")) {
     const token = authorization.slice("Bearer ".length).trim();
     if (isValidSignedSession(token, sessionSecret)) {
-      req.headers.cookie = `fabi.sid=${encodeURIComponent(`s:${token}`)}`;
+      const signedCookie = `fabi.sid=${encodeURIComponent(`s:${token}`)}`;
+      const existing = req.headers.cookie || "";
+      const otherCookies = existing
+        .split(";")
+        .map((c) => c.trim())
+        .filter((c) => !c.startsWith("fabi.sid="))
+        .join("; ");
+      req.headers.cookie = otherCookies ? `${signedCookie}; ${otherCookies}` : signedCookie;
     }
   }
   next();
