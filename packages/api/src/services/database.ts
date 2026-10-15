@@ -710,8 +710,16 @@ export interface ClientRow {
   updated_at: string;
 }
 
-export function listClients(userId: string, search?: string): ClientRow[] {
+export function listClients(userId: string | null, search?: string): ClientRow[] {
   const d = getDb();
+  if (userId === null) {
+    if (search) {
+      return d.prepare(
+        `SELECT * FROM clients WHERE name LIKE ? OR phone LIKE ? OR email LIKE ? ORDER BY name`
+      ).all(`%${search}%`, `%${search}%`, `%${search}%`) as ClientRow[];
+    }
+    return d.prepare(`SELECT * FROM clients ORDER BY name`).all() as ClientRow[];
+  }
   if (search) {
     return d.prepare(
       `SELECT * FROM clients WHERE user_id = ? AND (name LIKE ? OR phone LIKE ? OR email LIKE ?) ORDER BY name`
@@ -720,11 +728,17 @@ export function listClients(userId: string, search?: string): ClientRow[] {
   return d.prepare(`SELECT * FROM clients WHERE user_id = ? ORDER BY name`).all(userId) as ClientRow[];
 }
 
-export function getClient(userId: string, id: string): ClientRow | undefined {
+export function getClient(userId: string | null, id: string): ClientRow | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM clients WHERE id = ?`).get(id) as ClientRow | undefined;
+  }
   return getDb().prepare(`SELECT * FROM clients WHERE user_id = ? AND id = ?`).get(userId, id) as ClientRow | undefined;
 }
 
-export function getClientByName(userId: string, name: string): ClientRow | undefined {
+export function getClientByName(userId: string | null, name: string): ClientRow | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM clients WHERE LOWER(name) = LOWER(?)`).get(name) as ClientRow | undefined;
+  }
   return getDb().prepare(`SELECT * FROM clients WHERE user_id = ? AND LOWER(name) = LOWER(?)`).get(userId, name) as ClientRow | undefined;
 }
 
@@ -783,7 +797,8 @@ export interface AppointmentRow {
  * WRITE operations still use only the personal id — we never change the
  * owner of legacy rows.
  */
-function appointmentOwnerIds(personalUserId: string): string[] {
+function appointmentOwnerIds(personalUserId: string | null): string[] | null {
+  if (personalUserId === null) return null;
   const workspaceId = process.env.WORKSPACE_ID?.trim();
   if (workspaceId && workspaceId !== personalUserId) {
     return [personalUserId, workspaceId];
@@ -791,11 +806,16 @@ function appointmentOwnerIds(personalUserId: string): string[] {
   return [personalUserId];
 }
 
-export function listAppointments(userId: string, filters?: { startDate?: string; endDate?: string; clientId?: string; status?: string }): AppointmentRow[] {
+export function listAppointments(userId: string | null, filters?: { startDate?: string; endDate?: string; clientId?: string; status?: string }): AppointmentRow[] {
   const ids = appointmentOwnerIds(userId);
-  const placeholders = ids.map(() => "?").join(", ");
-  const conditions: string[] = [`user_id IN (${placeholders})`];
-  const params: unknown[] = [...ids];
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (ids) {
+    const placeholders = ids.map(() => "?").join(", ");
+    conditions.push(`user_id IN (${placeholders})`);
+    params.push(...ids);
+  }
 
   if (filters?.startDate) {
     conditions.push(`start_time >= ?`);
@@ -818,8 +838,11 @@ export function listAppointments(userId: string, filters?: { startDate?: string;
   return getDb().prepare(`SELECT * FROM appointments ${where} ORDER BY start_time`).all(...params) as AppointmentRow[];
 }
 
-export function getAppointment(userId: string, id: string): AppointmentRow | undefined {
-  const ids = appointmentOwnerIds(userId);
+export function getAppointment(userId: string | null, id: string): AppointmentRow | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM appointments WHERE id = ?`).get(id) as AppointmentRow | undefined;
+  }
+  const ids = appointmentOwnerIds(userId)!;
   const placeholders = ids.map(() => "?").join(", ");
   return getDb()
     .prepare(`SELECT * FROM appointments WHERE user_id IN (${placeholders}) AND id = ?`)
@@ -917,8 +940,13 @@ export function deleteAppointment(userId: string, id: string): boolean {
   return result.changes > 0;
 }
 
-export function getClientAppointments(userId: string, clientId: string): AppointmentRow[] {
-  const ids = appointmentOwnerIds(userId);
+export function getClientAppointments(userId: string | null, clientId: string): AppointmentRow[] {
+  if (userId === null) {
+    return getDb()
+      .prepare(`SELECT * FROM appointments WHERE client_id = ? ORDER BY start_time DESC`)
+      .all(clientId) as AppointmentRow[];
+  }
+  const ids = appointmentOwnerIds(userId)!;
   const placeholders = ids.map(() => "?").join(", ");
   return getDb()
     .prepare(
@@ -947,13 +975,21 @@ export interface MessageRow {
   created_at: string;
 }
 
-export function listConversations(userId: string, limit = 50): ConversationRow[] {
+export function listConversations(userId: string | null, limit = 50): ConversationRow[] {
+  if (userId === null) {
+    return getDb().prepare(
+      `SELECT * FROM conversations ORDER BY updated_at DESC LIMIT ?`
+    ).all(limit) as ConversationRow[];
+  }
   return getDb().prepare(
     `SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?`
   ).all(userId, limit) as ConversationRow[];
 }
 
-export function getConversation(userId: string, id: string): ConversationRow | undefined {
+export function getConversation(userId: string | null, id: string): ConversationRow | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM conversations WHERE id = ?`).get(id) as ConversationRow | undefined;
+  }
   return getDb().prepare(`SELECT * FROM conversations WHERE user_id = ? AND id = ?`).get(userId, id) as ConversationRow | undefined;
 }
 
@@ -987,7 +1023,14 @@ export function deleteConversation(userId: string, id: string): boolean {
   return result.changes > 0;
 }
 
-export function getMessages(userId: string, conversationId: string): MessageRow[] {
+export function getMessages(userId: string | null, conversationId: string): MessageRow[] {
+  if (userId === null) {
+    return getDb().prepare(
+      `SELECT messages.* FROM messages
+       WHERE messages.conversation_id = ?
+       ORDER BY messages.created_at ASC`
+    ).all(conversationId) as MessageRow[];
+  }
   return getDb().prepare(
     `SELECT messages.* FROM messages
      INNER JOIN conversations ON conversations.id = messages.conversation_id

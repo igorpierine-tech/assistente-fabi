@@ -9,7 +9,7 @@ import {
   type PaymentMethod,
   type ReceivableStatus,
 } from "../services/receivables-db";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, sharedOwnerId, readOwnerId } from "../middleware/auth";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -63,11 +63,11 @@ function parseAmount(value: unknown): number {
 
 router.get("/", (req, res) => {
   const status = parseStatus(req.query.status);
-  res.json(listReceivables(userId(req), status ? { status } : undefined));
+  res.json(listReceivables(readOwnerId(req), status ? { status } : undefined));
 });
 
 router.get("/summary", (req, res) => {
-  res.json(getReceivablesSummary(userId(req)));
+  res.json(getReceivablesSummary(readOwnerId(req)));
 });
 
 router.post("/", (req, res) => {

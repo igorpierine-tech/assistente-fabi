@@ -60,6 +60,20 @@ export function personalOwnerId(req: Request): string {
   return req.session.appUser?.id || "";
 }
 
+/**
+ * Admin-aware read scope: returns null for admin (= all data), otherwise
+ * delegates to sharedOwnerId. Use for READ operations only.
+ */
+export function readOwnerId(req: Request): string | null {
+  if (req.session.appUser?.role === "admin") return null;
+  return sharedOwnerId(req);
+}
+
+export function personalReadOwnerId(req: Request): string | null {
+  if (req.session.appUser?.role === "admin") return null;
+  return req.session.appUser?.id || "";
+}
+
 export function requireGoogleCalendar(req: Request, res: Response, next: NextFunction): void {
   const userId = req.session.appUser?.id;
   if (!userId || !getGoogleTokens(userId)) {

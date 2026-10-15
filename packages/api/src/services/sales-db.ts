@@ -25,7 +25,10 @@ export interface Sale {
   updated_at: string;
 }
 
-export function listSales(userId: string): Sale[] {
+export function listSales(userId: string | null): Sale[] {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM sales ORDER BY sale_date DESC, created_at DESC`).all() as Sale[];
+  }
   return getDb()
     .prepare(
       `SELECT * FROM sales WHERE user_id = ? ORDER BY sale_date DESC, created_at DESC`
@@ -33,7 +36,10 @@ export function listSales(userId: string): Sale[] {
     .all(userId) as Sale[];
 }
 
-export function getSale(userId: string, id: string): Sale | undefined {
+export function getSale(userId: string | null, id: string): Sale | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM sales WHERE id = ?`).get(id) as Sale | undefined;
+  }
   return getDb()
     .prepare(`SELECT * FROM sales WHERE user_id = ? AND id = ?`)
     .get(userId, id) as Sale | undefined;

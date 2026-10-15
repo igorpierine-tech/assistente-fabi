@@ -8,7 +8,7 @@ import {
   getClientAppointments,
 } from "../services/database";
 import "../session-types";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, sharedOwnerId, readOwnerId } from "../middleware/auth";
 import { optionalEmail, optionalId, optionalString, requiredString } from "../services/validation";
 
 const router: ExpressRouter = Router();
@@ -19,14 +19,14 @@ router.param("id", (req, _res, next, value) => {
 });
 
 router.get("/", (req, res) => {
-  const userId = sharedOwnerId(req);
+  const userId = readOwnerId(req);
   const search = optionalString(req.query.search, "Busca", 100);
   const clients = listClients(userId, search);
   res.json(clients);
 });
 
 router.get("/:id", (req, res) => {
-  const client = getClient(sharedOwnerId(req), req.params.id);
+  const client = getClient(readOwnerId(req), req.params.id);
   if (!client) {
     res.status(404).json({ error: "Cliente não encontrado" });
     return;
@@ -76,7 +76,7 @@ router.delete("/:id", (req, res) => {
 });
 
 router.get("/:id/appointments", (req, res) => {
-  const userId = sharedOwnerId(req);
+  const userId = readOwnerId(req);
   const client = getClient(userId, req.params.id);
   if (!client) {
     res.status(404).json({ error: "Cliente não encontrado" });

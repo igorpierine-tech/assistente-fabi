@@ -81,7 +81,11 @@ function randomSlug(): string {
   return `ag-${randomBytes(3).toString("hex")}`;
 }
 
-export function getSettingsForUser(userId: string): BookingSettings | null {
+export function getSettingsForUser(userId: string | null): BookingSettings | null {
+  if (userId === null) {
+    const row = getDb().prepare(`SELECT * FROM booking_settings LIMIT 1`).get() as BookingSettingsRow | undefined;
+    return parseSettings(row);
+  }
   const row = getDb()
     .prepare(`SELECT * FROM booking_settings WHERE user_id = ?`)
     .get(userId) as BookingSettingsRow | undefined;
@@ -139,7 +143,11 @@ export function updateSettings(
   return getSettingsForUser(userId)!;
 }
 
-export function listSessionTypes(userId: string, onlyActive = false): BookingSessionType[] {
+export function listSessionTypes(userId: string | null, onlyActive = false): BookingSessionType[] {
+  if (userId === null) {
+    const where = onlyActive ? "WHERE active = 1" : "";
+    return getDb().prepare(`SELECT * FROM booking_session_types ${where} ORDER BY sort_order ASC, name ASC`).all() as BookingSessionType[];
+  }
   const where = onlyActive ? "WHERE user_id = ? AND active = 1" : "WHERE user_id = ?";
   return getDb()
     .prepare(
@@ -246,16 +254,19 @@ export function slugifyCatalog(name: string): string {
  * The catalog is the single source of truth for what shows up on the public
  * booking page and in the admin's "Types" list.
  */
-export function listCatalogSessionTypes(userId: string): BookingSessionType[] {
+export function listCatalogSessionTypes(userId: string | null): BookingSessionType[] {
+  const condition = userId !== null ? "WHERE user_id = ? AND kind = 'servico' AND active = 1" : "WHERE kind = 'servico' AND active = 1";
+  const params = userId !== null ? [userId] : [];
   const rows = getDb()
     .prepare(
-      `SELECT id, name, description, price_cents, duration_minutes, active, sort_order
+      `SELECT id, user_id, name, description, price_cents, duration_minutes, active, sort_order
        FROM catalog_items
-       WHERE user_id = ? AND kind = 'servico' AND active = 1
+       ${condition}
        ORDER BY sort_order ASC, name ASC`
     )
-    .all(userId) as Array<{
+    .all(...params) as Array<{
     id: string;
+    user_id: string;
     name: string;
     description: string | null;
     price_cents: number;
@@ -267,7 +278,7 @@ export function listCatalogSessionTypes(userId: string): BookingSessionType[] {
     .filter((r) => (r.duration_minutes ?? 0) > 0)
     .map((r) => ({
       id: r.id,
-      user_id: userId,
+      user_id: r.user_id,
       slug: slugifyCatalog(r.name),
       name: r.name,
       description: r.description,
@@ -333,23 +344,16 @@ export function createBookingRequest(input: CreateBookingRequestInput): BookingR
 }
 
 export function listBookingRequests(
-  userId: string,
+  userId: string | null,
   status?: BookingRequestStatus
 ): BookingRequest[] {
-  if (status) {
-    return getDb()
-      .prepare(
-        `SELECT * FROM booking_requests WHERE user_id = ? AND status = ?
-         ORDER BY requested_start ASC`
-      )
-      .all(userId, status) as BookingRequest[];
-  }
-  return getDb()
-    .prepare(
-      `SELECT * FROM booking_requests WHERE user_id = ?
-       ORDER BY status ASC, requested_start ASC`
-    )
-    .all(userId) as BookingRequest[];
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (userId !== null) { conditions.push(`user_id = ?`); params.push(userId); }
+  if (status) { conditions.push(`status = ?`); params.push(status); }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const order = status ? "ORDER BY requested_start ASC" : "ORDER BY status ASC, requested_start ASC";
+  return getDb().prepare(`SELECT * FROM booking_requests ${where} ${order}`).all(...params) as BookingRequest[];
 }
 
 export function getBookingRequestById(id: string): BookingRequest | null {
@@ -383,7 +387,11 @@ export function markBookingRequest(
     .run(status, extras.googleEventId ?? null, extras.reason ?? null, id);
 }
 
-export function countPendingRequests(userId: string): number {
+export function countPendingRequests(userId: string | null): number {
+  if (userId === null) {
+    const row = getDb().prepare(`SELECT COUNT(*) as c FROM booking_requests WHERE status = 'pending'`).get() as { c: number };
+    return row?.c ?? 0;
+  }
   const row = getDb()
     .prepare(
       `SELECT COUNT(*) as c FROM booking_requests WHERE user_id = ? AND status = 'pending'`

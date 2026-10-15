@@ -43,20 +43,27 @@ export interface ReceivableSummary {
 }
 
 export function listReceivables(
-  userId: string,
+  userId: string | null,
   filter?: { status?: ReceivableStatus }
 ): Receivable[] {
-  const params: unknown[] = [userId];
-  let sql = `SELECT * FROM receivables WHERE user_id = ?`;
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (userId !== null) {
+    conditions.push(`user_id = ?`);
+    params.push(userId);
+  }
   if (filter?.status) {
-    sql += ` AND status = ?`;
+    conditions.push(`status = ?`);
     params.push(filter.status);
   }
-  sql += ` ORDER BY due_date DESC, created_at DESC`;
-  return getDb().prepare(sql).all(...params) as Receivable[];
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  return getDb().prepare(`SELECT * FROM receivables ${where} ORDER BY due_date DESC, created_at DESC`).all(...params) as Receivable[];
 }
 
-export function getReceivable(userId: string, id: string): Receivable | undefined {
+export function getReceivable(userId: string | null, id: string): Receivable | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM receivables WHERE id = ?`).get(id) as Receivable | undefined;
+  }
   return getDb()
     .prepare(`SELECT * FROM receivables WHERE user_id = ? AND id = ?`)
     .get(userId, id) as Receivable | undefined;
@@ -178,33 +185,35 @@ export function deleteReceivable(userId: string, id: string): boolean {
   return info.changes > 0;
 }
 
-export function getReceivablesSummary(userId: string): ReceivableSummary {
+export function getReceivablesSummary(userId: string | null): ReceivableSummary {
   const now = new Date().toISOString();
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
   const startIso = startOfMonth.toISOString();
+  const uf = userId !== null ? "user_id = ? AND " : "";
+  const up: unknown[] = userId !== null ? [userId] : [];
 
   const pending = getDb()
     .prepare(
       `SELECT COALESCE(SUM(amount_cents), 0) AS total, COUNT(*) AS n
-       FROM receivables WHERE user_id = ? AND status = 'pendente'`
+       FROM receivables WHERE ${uf}status = 'pendente'`
     )
-    .get(userId) as { total: number; n: number };
+    .get(...up) as { total: number; n: number };
 
   const overdue = getDb()
     .prepare(
       `SELECT COALESCE(SUM(amount_cents), 0) AS total, COUNT(*) AS n
-       FROM receivables WHERE user_id = ? AND status = 'pendente' AND due_date < ?`
+       FROM receivables WHERE ${uf}status = 'pendente' AND due_date < ?`
     )
-    .get(userId, now.slice(0, 10)) as { total: number; n: number };
+    .get(...up, now.slice(0, 10)) as { total: number; n: number };
 
   const paidMonth = getDb()
     .prepare(
       `SELECT COALESCE(SUM(amount_cents), 0) AS total
-       FROM receivables WHERE user_id = ? AND status = 'pago' AND paid_at IS NOT NULL AND paid_at >= ?`
+       FROM receivables WHERE ${uf}status = 'pago' AND paid_at IS NOT NULL AND paid_at >= ?`
     )
-    .get(userId, startIso) as { total: number };
+    .get(...up, startIso) as { total: number };
 
   return {
     a_receber_cents: pending.total,

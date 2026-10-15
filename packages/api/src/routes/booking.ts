@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { GoogleCalendarService } from "../services/google-calendar";
 import { getGoogleTokens, updateGoogleTokens } from "../services/google-tokens-db";
 import { SyncedCalendarService } from "../services/synced-calendar";
-import { requireGoogleCalendar, requireUser, sharedOwnerId, personalOwnerId } from "../middleware/auth";
+import { requireGoogleCalendar, requireUser, sharedOwnerId, personalOwnerId, readOwnerId } from "../middleware/auth";
 import {
   ensureSettings,
   updateSettings,
@@ -79,7 +79,7 @@ router.put("/settings", (req, res) => {
 // active services with a defined duration appear as bookable types.
 
 router.get("/types", (req, res) => {
-  res.json(listCatalogSessionTypes(userId(req)));
+  res.json(listCatalogSessionTypes(readOwnerId(req)));
 });
 
 // Types are now managed via the catalog (Configurações → Produtos e serviços).
@@ -109,11 +109,11 @@ router.get("/requests", (req, res) => {
   const filter = allowed.includes(status as BookingRequestStatus)
     ? (status as BookingRequestStatus)
     : undefined;
-  res.json(listBookingRequests(userId(req), filter));
+  res.json(listBookingRequests(readOwnerId(req), filter));
 });
 
 router.get("/requests/pending-count", (req, res) => {
-  res.json({ count: countPendingRequests(userId(req)) });
+  res.json({ count: countPendingRequests(readOwnerId(req)) });
 });
 
 router.post("/requests/:id/confirm", requireGoogleCalendar, async (req, res) => {

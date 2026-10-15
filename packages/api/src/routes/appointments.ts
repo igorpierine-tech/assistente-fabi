@@ -13,7 +13,7 @@ import { getGoogleTokens, updateGoogleTokens } from "../services/google-tokens-d
 import { createReceivableFromAppointment } from "../services/receivables-db";
 import { listCatalogItems } from "../services/catalog-db";
 import "../session-types";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, sharedOwnerId, readOwnerId, personalReadOwnerId } from "../middleware/auth";
 import { optionalId, optionalString, requiredIsoDate, requiredString, ValidationError } from "../services/validation";
 
 function findMatchingCatalogItem(userId: string, title: string) {
@@ -58,7 +58,7 @@ function calendarForSession(req: Request): GoogleCalendarService | null {
 }
 
 router.get("/", async (req, res) => {
-  const userId = req.session.appUser!.id;
+  const userId = personalReadOwnerId(req);
   const startDate = req.query.startDate === undefined ? undefined : requiredIsoDate(req.query.startDate, "Data inicial");
   const endDate = req.query.endDate === undefined ? undefined : requiredIsoDate(req.query.endDate, "Data final");
   const clientId = optionalId(req.query.clientId, "ID do cliente");
@@ -66,7 +66,8 @@ router.get("/", async (req, res) => {
 
   let appointments = listAppointments(userId, { startDate, endDate, clientId, status });
 
-  if (appointments.length === 0 && !startDate && !endDate) {
+  const personalId = req.session.appUser!.id;
+  if (appointments.length === 0 && !startDate && !endDate && userId !== null) {
     const calendar = calendarForSession(req);
     if (calendar) {
       try {
@@ -79,8 +80,8 @@ router.get("/", async (req, res) => {
         let imported = 0;
         for (const event of events) {
           if (!event.id || !event.start || !event.end) continue;
-          if (getAppointmentByGoogleId(userId, event.id)) continue;
-          createAppointment(userId, {
+          if (getAppointmentByGoogleId(personalId, event.id)) continue;
+          createAppointment(personalId, {
             title: event.title || "Sem título",
             type: "outro",
             startTime: event.start,
@@ -105,7 +106,7 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", (req, res) => {
-  const appointment = getAppointment(req.session.appUser!.id, req.params.id);
+  const appointment = getAppointment(personalReadOwnerId(req), req.params.id);
   if (!appointment) {
     res.status(404).json({ error: "Agendamento não encontrado" });
     return;

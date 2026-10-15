@@ -1,5 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, readOwnerId, personalReadOwnerId } from "../middleware/auth";
 import { listAppointments } from "../services/database";
 import { getReceivablesSummary } from "../services/receivables-db";
 import { listSales } from "../services/sales-db";
@@ -9,8 +9,8 @@ const router: ExpressRouter = Router();
 router.use(requireUser);
 
 router.get("/kpis", (req, res) => {
-  const shared = sharedOwnerId(req);
-  const personal = req.session.appUser!.id;
+  const shared = readOwnerId(req);
+  const personal = personalReadOwnerId(req);
   const now = new Date();
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

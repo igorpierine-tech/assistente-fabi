@@ -19,7 +19,7 @@ import {
 } from "../services/database";
 import multer from "multer";
 import "../session-types";
-import { requireGoogleCalendar, requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireGoogleCalendar, requireUser, sharedOwnerId, personalReadOwnerId } from "../middleware/auth";
 import { rateLimit } from "../middleware/security";
 import { optionalId, requiredString, ValidationError } from "../services/validation";
 
@@ -262,21 +262,21 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
 // --- Conversation history endpoints ---
 
 router.get("/conversations", (req, res) => {
-  const user = getUserFromSession(req);
+  const readId = personalReadOwnerId(req);
   const requestedLimit = Number(req.query.limit ?? 50);
   const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 200) : 50;
-  const conversations = listConversations(user.id, limit);
+  const conversations = listConversations(readId, limit);
   res.json(conversations);
 });
 
 router.get("/conversations/:id", (req, res) => {
-  const user = getUserFromSession(req);
-  const conv = getConversation(user.id, req.params.id);
+  const readId = personalReadOwnerId(req);
+  const conv = getConversation(readId, req.params.id);
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
     return;
   }
-  const messages = getMessages(user.id, req.params.id);
+  const messages = getMessages(readId, req.params.id);
   res.json({ ...conv, messages });
 });
 

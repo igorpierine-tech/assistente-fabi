@@ -15,7 +15,7 @@ import {
   getDocumentStatus,
   isConfigured as isZapSignConfigured,
 } from "../services/zapsign";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, sharedOwnerId, readOwnerId } from "../middleware/auth";
 import { createClient, getClient, getTenantConfig } from "../services/database";
 import {
   createContract,
@@ -78,11 +78,11 @@ function parseAmount(value: unknown): number {
 }
 
 router.get("/", (req, res) => {
-  res.json(listSales(userId(req)));
+  res.json(listSales(readOwnerId(req)));
 });
 
 router.get("/:id", (req, res) => {
-  const sale = getSale(userId(req), String(req.params.id));
+  const sale = getSale(readOwnerId(req), String(req.params.id));
   if (!sale) {
     res.status(404).json({ error: "Venda não encontrada" });
     return;
@@ -232,7 +232,7 @@ router.delete("/:id", (req, res) => {
 
 router.get("/:id/contract", async (req, res) => {
   const id = String(req.params.id);
-  const sale = getSale(userId(req), id);
+  const sale = getSale(readOwnerId(req), id);
   if (!sale) {
     res.status(404).json({ error: "Venda não encontrada" });
     return;
@@ -450,7 +450,7 @@ router.post("/:id/send-signature", async (req, res) => {
 
 router.get("/:id/signature-status", async (req, res) => {
   const id = String(req.params.id);
-  const sale = getSale(userId(req), id);
+  const sale = getSale(readOwnerId(req), id);
   if (!sale) {
     res.status(404).json({ error: "Venda não encontrada" });
     return;

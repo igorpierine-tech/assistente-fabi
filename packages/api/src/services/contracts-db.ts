@@ -110,13 +110,14 @@ export function getServiceDefinition(code: string): ServiceDefinition | undefine
 
 // --- Template versions ---
 
-export function listTemplateVersions(userId: string, type?: TemplateType, status?: TemplateStatus): ContractTemplateVersion[] {
-  let sql = `SELECT * FROM contract_template_versions WHERE user_id = ?`;
-  const params: unknown[] = [userId];
-  if (type) { sql += ` AND type = ?`; params.push(type); }
-  if (status) { sql += ` AND status = ?`; params.push(status); }
-  sql += ` ORDER BY type, service_code, version DESC`;
-  return getDb().prepare(sql).all(...params) as ContractTemplateVersion[];
+export function listTemplateVersions(userId: string | null, type?: TemplateType, status?: TemplateStatus): ContractTemplateVersion[] {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (userId !== null) { conditions.push(`user_id = ?`); params.push(userId); }
+  if (type) { conditions.push(`type = ?`); params.push(type); }
+  if (status) { conditions.push(`status = ?`); params.push(status); }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  return getDb().prepare(`SELECT * FROM contract_template_versions ${where} ORDER BY type, service_code, version DESC`).all(...params) as ContractTemplateVersion[];
 }
 
 export function getTemplateVersion(id: string): ContractTemplateVersion | undefined {
@@ -181,16 +182,20 @@ export function nextContractNumber(userId: string): string {
   return `${year}/${String(num).padStart(4, "0")}`;
 }
 
-export function listContracts(userId: string, filters?: { status?: string; serviceCode?: string }): Contract[] {
-  let sql = `SELECT * FROM contracts WHERE user_id = ?`;
-  const params: unknown[] = [userId];
-  if (filters?.status) { sql += ` AND status = ?`; params.push(filters.status); }
-  if (filters?.serviceCode) { sql += ` AND service_code = ?`; params.push(filters.serviceCode); }
-  sql += ` ORDER BY created_at DESC`;
-  return getDb().prepare(sql).all(...params) as Contract[];
+export function listContracts(userId: string | null, filters?: { status?: string; serviceCode?: string }): Contract[] {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (userId !== null) { conditions.push(`user_id = ?`); params.push(userId); }
+  if (filters?.status) { conditions.push(`status = ?`); params.push(filters.status); }
+  if (filters?.serviceCode) { conditions.push(`service_code = ?`); params.push(filters.serviceCode); }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  return getDb().prepare(`SELECT * FROM contracts ${where} ORDER BY created_at DESC`).all(...params) as Contract[];
 }
 
-export function getContract(userId: string, id: string): Contract | undefined {
+export function getContract(userId: string | null, id: string): Contract | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM contracts WHERE id = ?`).get(id) as Contract | undefined;
+  }
   return getDb()
     .prepare(`SELECT * FROM contracts WHERE user_id = ? AND id = ?`)
     .get(userId, id) as Contract | undefined;
@@ -380,8 +385,14 @@ export interface ContractWithDetails extends Contract {
   latest_revision_status: string | null;
 }
 
-export function listContractsWithDetails(userId: string, filters?: { status?: string; serviceCode?: string }): ContractWithDetails[] {
-  let sql = `
+export function listContractsWithDetails(userId: string | null, filters?: { status?: string; serviceCode?: string }): ContractWithDetails[] {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (userId !== null) { conditions.push(`c.user_id = ?`); params.push(userId); }
+  if (filters?.status) { conditions.push(`c.status = ?`); params.push(filters.status); }
+  if (filters?.serviceCode) { conditions.push(`c.service_code = ?`); params.push(filters.serviceCode); }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const sql = `
     SELECT c.*,
            sd.name as service_name,
            cl.name as client_name,
@@ -390,10 +401,6 @@ export function listContractsWithDetails(userId: string, filters?: { status?: st
     LEFT JOIN service_definitions sd ON sd.code = c.service_code
     LEFT JOIN clients cl ON cl.id = c.client_id
     LEFT JOIN contract_revisions cr ON cr.contract_id = c.id AND cr.revision_number = c.current_revision
-    WHERE c.user_id = ?`;
-  const params: unknown[] = [userId];
-  if (filters?.status) { sql += ` AND c.status = ?`; params.push(filters.status); }
-  if (filters?.serviceCode) { sql += ` AND c.service_code = ?`; params.push(filters.serviceCode); }
-  sql += ` ORDER BY c.created_at DESC`;
+    ${where} ORDER BY c.created_at DESC`;
   return getDb().prepare(sql).all(...params) as ContractWithDetails[];
 }

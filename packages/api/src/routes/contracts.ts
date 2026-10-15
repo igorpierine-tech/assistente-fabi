@@ -1,5 +1,5 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, sharedOwnerId, readOwnerId } from "../middleware/auth";
 import {
   listServiceDefinitions,
   getServiceDefinition,
@@ -59,11 +59,11 @@ router.get("/", (req, res) => {
   const filters: { status?: string; serviceCode?: string } = {};
   if (typeof req.query.status === "string") filters.status = req.query.status;
   if (typeof req.query.serviceCode === "string") filters.serviceCode = req.query.serviceCode;
-  res.json(listContractsWithDetails(userId(req), filters));
+  res.json(listContractsWithDetails(readOwnerId(req), filters));
 });
 
 router.get("/:id", (req, res) => {
-  const contract = getContract(userId(req), String(req.params.id));
+  const contract = getContract(readOwnerId(req), String(req.params.id));
   if (!contract) {
     res.status(404).json({ error: "Contrato não encontrado" });
     return;
@@ -332,7 +332,7 @@ router.post("/:id/issue", async (req, res) => {
 });
 
 router.get("/:id/pdf", async (req, res) => {
-  const contract = getContract(userId(req), String(req.params.id));
+  const contract = getContract(readOwnerId(req), String(req.params.id));
   if (!contract) {
     res.status(404).json({ error: "Contrato não encontrado" });
     return;
@@ -456,7 +456,7 @@ router.post("/:id/send-signature", async (req, res) => {
 });
 
 router.get("/:id/signature-status", async (req, res) => {
-  const contract = getContract(userId(req), String(req.params.id));
+  const contract = getContract(readOwnerId(req), String(req.params.id));
   if (!contract) {
     res.status(404).json({ error: "Contrato não encontrado" });
     return;

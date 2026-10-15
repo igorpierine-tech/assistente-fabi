@@ -17,7 +17,10 @@ export interface CatalogItem {
   updated_at: string;
 }
 
-export function listCatalogItems(userId: string): CatalogItem[] {
+export function listCatalogItems(userId: string | null): CatalogItem[] {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM catalog_items ORDER BY sort_order ASC, name ASC`).all() as CatalogItem[];
+  }
   return getDb()
     .prepare(
       `SELECT * FROM catalog_items WHERE user_id = ? ORDER BY sort_order ASC, name ASC`
@@ -25,7 +28,10 @@ export function listCatalogItems(userId: string): CatalogItem[] {
     .all(userId) as CatalogItem[];
 }
 
-export function getCatalogItem(userId: string, id: string): CatalogItem | undefined {
+export function getCatalogItem(userId: string | null, id: string): CatalogItem | undefined {
+  if (userId === null) {
+    return getDb().prepare(`SELECT * FROM catalog_items WHERE id = ?`).get(id) as CatalogItem | undefined;
+  }
   return getDb()
     .prepare(`SELECT * FROM catalog_items WHERE user_id = ? AND id = ?`)
     .get(userId, id) as CatalogItem | undefined;

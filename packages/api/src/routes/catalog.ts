@@ -7,7 +7,7 @@ import {
   deleteCatalogItem,
   type CatalogKind,
 } from "../services/catalog-db";
-import { requireUser, sharedOwnerId } from "../middleware/auth";
+import { requireUser, sharedOwnerId, readOwnerId } from "../middleware/auth";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -46,7 +46,7 @@ function parseDuration(value: unknown): number | null {
 }
 
 router.get("/", (req, res) => {
-  res.json(listCatalogItems(userId(req)));
+  res.json(listCatalogItems(readOwnerId(req)));
 });
 
 router.post("/", (req, res) => {
