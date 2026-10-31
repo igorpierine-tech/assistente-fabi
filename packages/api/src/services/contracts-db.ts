@@ -174,12 +174,16 @@ export function updateTemplateStatus(id: string, status: TemplateStatus, actor?:
 // --- Contracts ---
 
 export function nextContractNumber(userId: string): string {
-  const row = getDb()
-    .prepare(`SELECT COUNT(*) as cnt FROM contracts WHERE user_id = ?`)
-    .get(userId) as { cnt: number };
-  const num = (row.cnt || 0) + 1;
   const year = new Date().getFullYear();
-  return `${year}/${String(num).padStart(4, "0")}`;
+  const prefix = `${year}/`;
+  const row = getDb()
+    .prepare(
+      `SELECT MAX(CAST(SUBSTR(contract_number, LENGTH(?) + 1) AS INTEGER)) as max_num
+       FROM contracts WHERE user_id = ? AND contract_number LIKE ?`
+    )
+    .get(prefix, userId, `${prefix}%`) as { max_num: number | null };
+  const num = (row.max_num || 0) + 1;
+  return `${prefix}${String(num).padStart(4, "0")}`;
 }
 
 export function listContracts(userId: string | null, filters?: { status?: string; serviceCode?: string }): Contract[] {
