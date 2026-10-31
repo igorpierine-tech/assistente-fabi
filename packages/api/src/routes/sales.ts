@@ -63,18 +63,27 @@ function parsePaymentMethod(value: unknown): PaymentMethod | null {
     : null;
 }
 
-function parsePaymentMethods(value: unknown): string | null {
-  if (Array.isArray(value)) {
-    const valid = value
-      .filter((v): v is string => typeof v === "string")
-      .filter((v) => VALID_METHODS.includes(v as PaymentMethod));
-    return valid.length > 0 ? valid.join(",") : null;
+interface PaymentEntry {
+  method: PaymentMethod;
+  amount_cents: number;
+  installments: number;
+}
+
+function parsePaymentEntries(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const entries: PaymentEntry[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const obj = item as Record<string, unknown>;
+    const method = parsePaymentMethod(obj.method);
+    if (!method) continue;
+    entries.push({
+      method,
+      amount_cents: parseAmount(obj.amountCents ?? obj.amount_cents ?? obj.amount),
+      installments: Math.max(1, Math.min(60, Number(obj.installments) || 1)),
+    });
   }
-  if (typeof value === "string") {
-    const methods = value.split(",").map((s) => s.trim()).filter((v) => VALID_METHODS.includes(v as PaymentMethod));
-    return methods.length > 0 ? methods.join(",") : null;
-  }
-  return null;
+  return entries.length > 0 ? JSON.stringify(entries) : null;
 }
 
 function parseAmount(value: unknown): number {
@@ -144,7 +153,7 @@ router.post("/", (req, res) => {
   }
 
   const paymentMethodValue = b.paymentMethods
-    ? parsePaymentMethods(b.paymentMethods)
+    ? parsePaymentEntries(b.paymentMethods)
     : parsePaymentMethod(b.paymentMethod);
 
   const saleData = {
@@ -206,7 +215,7 @@ router.put("/:id", (req, res) => {
     patch.amount_cents = parseAmount(b.amountCents ?? b.amount);
   }
   if ((b as Record<string, unknown>).paymentMethods !== undefined) {
-    patch.payment_method = parsePaymentMethods((b as Record<string, unknown>).paymentMethods);
+    patch.payment_method = parsePaymentEntries((b as Record<string, unknown>).paymentMethods);
   } else if (b.paymentMethod !== undefined) {
     patch.payment_method = parsePaymentMethod(b.paymentMethod);
   }

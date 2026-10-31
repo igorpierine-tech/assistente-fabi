@@ -245,6 +245,26 @@ export function deleteReceivablesBySaleId(
   return result.changes;
 }
 
+interface PaymentEntry {
+  method: PaymentMethod;
+  amount_cents: number;
+  installments: number;
+}
+
+function tryParsePaymentEntries(raw: string | null): PaymentEntry[] | null {
+  if (!raw || !raw.startsWith("[")) return null;
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return null;
+    return arr.filter(
+      (e: unknown): e is PaymentEntry =>
+        typeof e === "object" && e !== null && typeof (e as Record<string, unknown>).method === "string"
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function createReceivablesFromSale(
   userId: string,
   sale: {
@@ -258,15 +278,60 @@ export function createReceivablesFromSale(
     sale_date: string;
   }
 ): Receivable[] {
-  const n = Math.max(1, sale.installments);
-  const base = Math.floor(sale.amount_cents / n);
-  const remainder = sale.amount_cents - base * n;
+  const entries = tryParsePaymentEntries(sale.payment_method);
+
+  if (entries && entries.length > 0) {
+    return createReceivablesFromMultiPayment(userId, sale, entries);
+  }
+
+  const singleMethod = sale.payment_method as PaymentMethod | null;
+  return createReceivablesForSingleMethod(userId, sale, singleMethod, sale.amount_cents, sale.installments);
+}
+
+function createReceivablesFromMultiPayment(
+  userId: string,
+  sale: { id: string; client_id: string | null; client_name: string; item_name: string; sale_date: string },
+  entries: PaymentEntry[]
+): Receivable[] {
+  const results: Receivable[] = [];
+  const multiLabel = entries.length > 1;
+
+  for (const entry of entries) {
+    const suffix = multiLabel ? ` [${METHOD_LABELS[entry.method] || entry.method}]` : "";
+    const recs = createReceivablesForSingleMethod(
+      userId,
+      { ...sale, item_name: sale.item_name + suffix },
+      entry.method,
+      entry.amount_cents,
+      entry.installments
+    );
+    results.push(...recs);
+  }
+  return results;
+}
+
+const METHOD_LABELS: Record<string, string> = {
+  pix: "PIX",
+  dinheiro: "Dinheiro",
+  cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito",
+  transferencia: "Transferência",
+  boleto: "Boleto",
+  outro: "Outro",
+};
+
+function createReceivablesForSingleMethod(
+  userId: string,
+  sale: { id: string; client_id: string | null; client_name: string; item_name: string; sale_date: string },
+  method: PaymentMethod | null,
+  amountCents: number,
+  installments: number
+): Receivable[] {
+  const n = Math.max(1, installments);
+  const base = Math.floor(amountCents / n);
+  const remainder = amountCents - base * n;
   const saleDate = new Date(sale.sale_date);
   const results: Receivable[] = [];
-
-  const firstMethod = sale.payment_method
-    ? (sale.payment_method.split(",")[0].trim() as PaymentMethod) || null
-    : null;
 
   for (let i = 0; i < n; i++) {
     const amount = i === 0 ? base + remainder : base;
@@ -286,7 +351,7 @@ export function createReceivablesFromSale(
         amount_cents: amount,
         service_date: sale.sale_date,
         due_date: dueDateStr,
-        payment_method: firstMethod,
+        payment_method: method,
         installment_number: i + 1,
         total_installments: n,
       })

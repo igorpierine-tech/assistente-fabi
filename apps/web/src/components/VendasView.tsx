@@ -102,6 +102,13 @@ function toDateInput(iso: string): string {
 
 type ClientMode = "existing" | "new";
 
+interface PaymentEntry {
+  method: PaymentMethod;
+  amountInput: string;
+  installments: number;
+  date: string;
+}
+
 interface FormState {
   clientMode: ClientMode;
   clientId: string;
@@ -112,7 +119,7 @@ interface FormState {
   catalogItemId: string;
   itemName: string;
   amountInput: string;
-  paymentMethods: PaymentMethod[];
+  paymentEntries: PaymentEntry[];
   installments: number;
   saleDate: string;
   notes: string;
@@ -129,7 +136,7 @@ const emptyForm: FormState = {
   catalogItemId: "",
   itemName: "",
   amountInput: "",
-  paymentMethods: [],
+  paymentEntries: [],
   installments: 1,
   saleDate: new Date().toISOString().slice(0, 10),
   notes: "",
@@ -181,7 +188,37 @@ export function VendasView() {
     setEditModal("new");
   }
 
+  function parsePaymentEntries(raw: string | null, fallbackAmount: number, fallbackInstallments: number, fallbackDate: string): PaymentEntry[] {
+    if (!raw) return [];
+    if (raw.startsWith("[")) {
+      try {
+        const arr = JSON.parse(raw) as Array<{ method: string; amount_cents: number; installments: number }>;
+        if (Array.isArray(arr)) {
+          return arr
+            .filter((e) => METHOD_OPTIONS.includes(e.method as PaymentMethod))
+            .map((e) => ({
+              method: e.method as PaymentMethod,
+              amountInput: centsToInput(e.amount_cents),
+              installments: e.installments || 1,
+              date: fallbackDate,
+            }));
+        }
+      } catch {}
+    }
+    return raw
+      .split(",")
+      .map((m) => m.trim())
+      .filter((m): m is PaymentMethod => METHOD_OPTIONS.includes(m as PaymentMethod))
+      .map((m) => ({
+        method: m,
+        amountInput: centsToInput(fallbackAmount),
+        installments: fallbackInstallments,
+        date: fallbackDate,
+      }));
+  }
+
   function openEdit(s: Sale) {
+    const dateStr = toDateInput(s.sale_date);
     setForm({
       clientMode: s.client_id ? "existing" : "new",
       clientId: s.client_id || "",
@@ -192,11 +229,9 @@ export function VendasView() {
       catalogItemId: s.catalog_item_id || "",
       itemName: s.item_name,
       amountInput: centsToInput(s.amount_cents),
-      paymentMethods: s.payment_method
-        ? (s.payment_method.split(",").filter((m): m is PaymentMethod => METHOD_OPTIONS.includes(m as PaymentMethod)))
-        : [],
+      paymentEntries: parsePaymentEntries(s.payment_method, s.amount_cents, s.installments, dateStr),
       installments: s.installments,
-      saleDate: toDateInput(s.sale_date),
+      saleDate: dateStr,
       notes: s.notes || "",
       createClient: false,
     });
@@ -245,7 +280,13 @@ export function VendasView() {
       catalogItemId: form.catalogItemId || null,
       itemName: form.itemName.trim(),
       amount: form.amountInput,
-      paymentMethods: form.paymentMethods.length > 0 ? form.paymentMethods : null,
+      paymentMethods: form.paymentEntries.length > 0
+        ? form.paymentEntries.map((e) => ({
+            method: e.method,
+            amount: e.amountInput,
+            installments: e.installments,
+          }))
+        : null,
       installments: form.installments,
       saleDate: form.saleDate,
       notes: form.notes.trim() || null,
@@ -386,9 +427,21 @@ export function VendasView() {
                   <td className={styles.amount}>{formatBRL(s.amount_cents)}</td>
                   <td className={styles.methodTag}>
                     {s.payment_method
-                      ? s.payment_method.split(",").map((m) => METHOD_LABELS[m.trim() as PaymentMethod] || m.trim()).join(", ")
+                      ? (() => {
+                          if (s.payment_method.startsWith("[")) {
+                            try {
+                              const entries = JSON.parse(s.payment_method) as Array<{ method: string; amount_cents: number; installments: number }>;
+                              return entries.map((e) => {
+                                const label = METHOD_LABELS[e.method as PaymentMethod] || e.method;
+                                const inst = e.installments > 1 ? ` ${e.installments}x` : "";
+                                return `${label} ${formatBRL(e.amount_cents)}${inst}`;
+                              }).join("; ");
+                            } catch {}
+                          }
+                          return s.payment_method.split(",").map((m) => METHOD_LABELS[m.trim() as PaymentMethod] || m.trim()).join(", ")
+                            + (s.installments > 1 ? ` · ${s.installments}x` : "");
+                        })()
                       : "—"}
-                    {s.installments > 1 && ` · ${s.installments}x`}
                   </td>
                   <td>{formatDate(s.sale_date)}</td>
                   <td>
@@ -612,9 +665,9 @@ export function VendasView() {
                 />
               </div>
 
-              <div className={styles.fieldRow3}>
+              <div className={styles.fieldRow}>
                 <div className={styles.field}>
-                  <label>Valor (R$)</label>
+                  <label>Valor total (R$)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -626,22 +679,7 @@ export function VendasView() {
                   />
                 </div>
                 <div className={styles.field}>
-                  <label>Parcelas</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={form.installments}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        installments: Math.max(1, Number(e.target.value) || 1),
-                      })
-                    }
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label>Data</label>
+                  <label>Data da venda</label>
                   <input
                     type="date"
                     value={form.saleDate}
@@ -659,18 +697,79 @@ export function VendasView() {
                     <label key={m} className={styles.checkboxLabel}>
                       <input
                         type="checkbox"
-                        checked={form.paymentMethods.includes(m)}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...form.paymentMethods, m]
-                            : form.paymentMethods.filter((x) => x !== m);
-                          setForm({ ...form, paymentMethods: next });
+                        checked={form.paymentEntries.some((e) => e.method === m)}
+                        onChange={(ev) => {
+                          if (ev.target.checked) {
+                            setForm({
+                              ...form,
+                              paymentEntries: [
+                                ...form.paymentEntries,
+                                { method: m, amountInput: "", installments: 1, date: form.saleDate },
+                              ],
+                            });
+                          } else {
+                            setForm({
+                              ...form,
+                              paymentEntries: form.paymentEntries.filter((e) => e.method !== m),
+                            });
+                          }
                         }}
                       />
                       {METHOD_LABELS[m]}
                     </label>
                   ))}
                 </div>
+                {form.paymentEntries.length > 0 && (
+                  <div className={styles.paymentEntriesWrap}>
+                    {form.paymentEntries.map((entry, idx) => (
+                      <div key={entry.method} className={styles.paymentEntryRow}>
+                        <span className={styles.paymentEntryLabel}>{METHOD_LABELS[entry.method]}</span>
+                        <div className={styles.paymentEntryFields}>
+                          <div className={styles.field}>
+                            <label>Valor (R$)</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={entry.amountInput}
+                              onChange={(e) => {
+                                const next = [...form.paymentEntries];
+                                next[idx] = { ...entry, amountInput: e.target.value };
+                                setForm({ ...form, paymentEntries: next });
+                              }}
+                              placeholder="0,00"
+                            />
+                          </div>
+                          <div className={styles.field}>
+                            <label>Parcelas</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={60}
+                              value={entry.installments}
+                              onChange={(e) => {
+                                const next = [...form.paymentEntries];
+                                next[idx] = { ...entry, installments: Math.max(1, Number(e.target.value) || 1) };
+                                setForm({ ...form, paymentEntries: next });
+                              }}
+                            />
+                          </div>
+                          <div className={styles.field}>
+                            <label>Data</label>
+                            <input
+                              type="date"
+                              value={entry.date}
+                              onChange={(e) => {
+                                const next = [...form.paymentEntries];
+                                next[idx] = { ...entry, date: e.target.value };
+                                setForm({ ...form, paymentEntries: next });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className={styles.field}>

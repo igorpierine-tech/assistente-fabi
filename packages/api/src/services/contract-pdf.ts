@@ -70,6 +70,23 @@ function formatDateLong(iso: string): string {
 
 function formatMethod(method: string | null, installments: number): string {
   if (!method) return "A combinar";
+
+  if (method.startsWith("[")) {
+    try {
+      const entries = JSON.parse(method) as Array<{ method: string; amount_cents: number; installments: number }>;
+      if (Array.isArray(entries) && entries.length > 0) {
+        return entries
+          .map((e) => {
+            const label = METHOD_LABELS[e.method] || e.method;
+            const amount = formatBRL(e.amount_cents);
+            const inst = e.installments > 1 ? ` em ${e.installments}x` : "";
+            return `${amount} via ${label}${inst}`;
+          })
+          .join("; ");
+      }
+    } catch {}
+  }
+
   const methods = method.split(",").map((m) => m.trim()).filter(Boolean);
   if (methods.length === 0) return "A combinar";
   const labels = methods.map((m) => METHOD_LABELS[m] || m);
