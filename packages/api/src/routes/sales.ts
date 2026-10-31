@@ -63,6 +63,20 @@ function parsePaymentMethod(value: unknown): PaymentMethod | null {
     : null;
 }
 
+function parsePaymentMethods(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    const valid = value
+      .filter((v): v is string => typeof v === "string")
+      .filter((v) => VALID_METHODS.includes(v as PaymentMethod));
+    return valid.length > 0 ? valid.join(",") : null;
+  }
+  if (typeof value === "string") {
+    const methods = value.split(",").map((s) => s.trim()).filter((v) => VALID_METHODS.includes(v as PaymentMethod));
+    return methods.length > 0 ? methods.join(",") : null;
+  }
+  return null;
+}
+
 function parseAmount(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.max(0, Math.round(value));
@@ -104,6 +118,7 @@ router.post("/", (req, res) => {
     amount?: unknown;
     amountCents?: unknown;
     paymentMethod?: unknown;
+    paymentMethods?: unknown;
     installments?: number;
     saleDate?: string;
     notes?: string | null;
@@ -128,6 +143,10 @@ router.post("/", (req, res) => {
     if (!existing) clientId = null;
   }
 
+  const paymentMethodValue = b.paymentMethods
+    ? parsePaymentMethods(b.paymentMethods)
+    : parsePaymentMethod(b.paymentMethod);
+
   const saleData = {
     client_id: clientId,
     client_name: b.clientName.trim().slice(0, 160),
@@ -137,7 +156,7 @@ router.post("/", (req, res) => {
     catalog_item_id: b.catalogItemId ?? null,
     item_name: b.itemName.trim().slice(0, 160),
     amount_cents: parseAmount(b.amountCents ?? b.amount),
-    payment_method: parsePaymentMethod(b.paymentMethod),
+    payment_method: paymentMethodValue,
     installments: Math.max(1, Math.min(60, Number(b.installments) || 1)),
     sale_date: b.saleDate || new Date().toISOString(),
     notes: b.notes ? String(b.notes).slice(0, 2000) : null,
@@ -151,7 +170,7 @@ router.post("/", (req, res) => {
       client_name: sale.client_name,
       item_name: sale.item_name,
       amount_cents: sale.amount_cents,
-      payment_method: sale.payment_method as PaymentMethod | null,
+      payment_method: sale.payment_method,
       installments: sale.installments,
       sale_date: sale.sale_date,
     });
@@ -186,7 +205,11 @@ router.put("/:id", (req, res) => {
   if (b.amount !== undefined || b.amountCents !== undefined) {
     patch.amount_cents = parseAmount(b.amountCents ?? b.amount);
   }
-  if (b.paymentMethod !== undefined) patch.payment_method = parsePaymentMethod(b.paymentMethod);
+  if ((b as Record<string, unknown>).paymentMethods !== undefined) {
+    patch.payment_method = parsePaymentMethods((b as Record<string, unknown>).paymentMethods);
+  } else if (b.paymentMethod !== undefined) {
+    patch.payment_method = parsePaymentMethod(b.paymentMethod);
+  }
   if (b.installments !== undefined)
     patch.installments = Math.max(1, Math.min(60, Number(b.installments) || 1));
   if (typeof b.saleDate === "string") patch.sale_date = b.saleDate;
@@ -209,7 +232,7 @@ router.put("/:id", (req, res) => {
         client_name: updated.client_name,
         item_name: updated.item_name,
         amount_cents: updated.amount_cents,
-        payment_method: updated.payment_method as PaymentMethod | null,
+        payment_method: updated.payment_method,
         installments: updated.installments,
         sale_date: updated.sale_date,
       });

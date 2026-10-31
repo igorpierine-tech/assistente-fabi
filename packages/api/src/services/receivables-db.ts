@@ -253,7 +253,7 @@ export function createReceivablesFromSale(
     client_name: string;
     item_name: string;
     amount_cents: number;
-    payment_method: PaymentMethod | null;
+    payment_method: string | null;
     installments: number;
     sale_date: string;
   }
@@ -263,6 +263,10 @@ export function createReceivablesFromSale(
   const remainder = sale.amount_cents - base * n;
   const saleDate = new Date(sale.sale_date);
   const results: Receivable[] = [];
+
+  const firstMethod = sale.payment_method
+    ? (sale.payment_method.split(",")[0].trim() as PaymentMethod) || null
+    : null;
 
   for (let i = 0; i < n; i++) {
     const amount = i === 0 ? base + remainder : base;
@@ -282,7 +286,7 @@ export function createReceivablesFromSale(
         amount_cents: amount,
         service_date: sale.sale_date,
         due_date: dueDateStr,
-        payment_method: sale.payment_method,
+        payment_method: firstMethod,
         installment_number: i + 1,
         total_installments: n,
       })

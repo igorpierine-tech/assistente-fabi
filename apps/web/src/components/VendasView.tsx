@@ -112,7 +112,7 @@ interface FormState {
   catalogItemId: string;
   itemName: string;
   amountInput: string;
-  paymentMethod: PaymentMethod | "";
+  paymentMethods: PaymentMethod[];
   installments: number;
   saleDate: string;
   notes: string;
@@ -129,7 +129,7 @@ const emptyForm: FormState = {
   catalogItemId: "",
   itemName: "",
   amountInput: "",
-  paymentMethod: "",
+  paymentMethods: [],
   installments: 1,
   saleDate: new Date().toISOString().slice(0, 10),
   notes: "",
@@ -192,7 +192,9 @@ export function VendasView() {
       catalogItemId: s.catalog_item_id || "",
       itemName: s.item_name,
       amountInput: centsToInput(s.amount_cents),
-      paymentMethod: s.payment_method || "",
+      paymentMethods: s.payment_method
+        ? (s.payment_method.split(",").filter((m): m is PaymentMethod => METHOD_OPTIONS.includes(m as PaymentMethod)))
+        : [],
       installments: s.installments,
       saleDate: toDateInput(s.sale_date),
       notes: s.notes || "",
@@ -243,7 +245,7 @@ export function VendasView() {
       catalogItemId: form.catalogItemId || null,
       itemName: form.itemName.trim(),
       amount: form.amountInput,
-      paymentMethod: form.paymentMethod || null,
+      paymentMethods: form.paymentMethods.length > 0 ? form.paymentMethods : null,
       installments: form.installments,
       saleDate: form.saleDate,
       notes: form.notes.trim() || null,
@@ -383,7 +385,9 @@ export function VendasView() {
                   </td>
                   <td className={styles.amount}>{formatBRL(s.amount_cents)}</td>
                   <td className={styles.methodTag}>
-                    {s.payment_method ? METHOD_LABELS[s.payment_method] : "—"}
+                    {s.payment_method
+                      ? s.payment_method.split(",").map((m) => METHOD_LABELS[m.trim() as PaymentMethod] || m.trim()).join(", ")
+                      : "—"}
                     {s.installments > 1 && ` · ${s.installments}x`}
                   </td>
                   <td>{formatDate(s.sale_date)}</td>
@@ -649,23 +653,24 @@ export function VendasView() {
               </div>
 
               <div className={styles.field}>
-                <label>Forma de pagamento</label>
-                <select
-                  value={form.paymentMethod}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      paymentMethod: e.target.value as PaymentMethod | "",
-                    })
-                  }
-                >
-                  <option value="">—</option>
+                <label>Formas de pagamento</label>
+                <div className={styles.checkboxGroup}>
                   {METHOD_OPTIONS.map((m) => (
-                    <option key={m} value={m}>
+                    <label key={m} className={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        checked={form.paymentMethods.includes(m)}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...form.paymentMethods, m]
+                            : form.paymentMethods.filter((x) => x !== m);
+                          setForm({ ...form, paymentMethods: next });
+                        }}
+                      />
                       {METHOD_LABELS[m]}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
 
               <div className={styles.field}>

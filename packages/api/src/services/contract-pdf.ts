@@ -70,9 +70,14 @@ function formatDateLong(iso: string): string {
 
 function formatMethod(method: string | null, installments: number): string {
   if (!method) return "A combinar";
-  const label = METHOD_LABELS[method] || method;
-  if (installments > 1) return `${label} em ${installments}x`;
-  return label;
+  const methods = method.split(",").map((m) => m.trim()).filter(Boolean);
+  if (methods.length === 0) return "A combinar";
+  const labels = methods.map((m) => METHOD_LABELS[m] || m);
+  const joined = labels.length > 1
+    ? labels.slice(0, -1).join(", ") + " e " + labels[labels.length - 1]
+    : labels[0];
+  if (installments > 1) return `${joined} em ${installments}x`;
+  return joined;
 }
 
 function needsPageBreak(doc: PDFKit.PDFDocument, spaceNeeded: number): void {
