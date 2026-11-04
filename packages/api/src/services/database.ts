@@ -612,31 +612,6 @@ function migrateToWorkspace(db: Database.Database) {
     }
   })();
 
-  // One-time cleanup: remove test contracts 2026/0001 through 2026/0009
-  (() => {
-    const numbers = [];
-    for (let i = 1; i <= 9; i++) {
-      numbers.push(`2026/${String(i).padStart(4, "0")}`);
-    }
-    const placeholders = numbers.map(() => "?").join(", ");
-    const result = db.prepare(`DELETE FROM contracts WHERE contract_number IN (${placeholders})`).run(...numbers);
-    if (result.changes > 0) {
-      console.log(`[migration] Removed ${result.changes} test contract(s)`);
-    }
-  })();
-
-  // One-time cleanup: clear contract_generated_at for sales whose contracts were deleted
-  (() => {
-    const result = db.prepare(`
-      UPDATE sales SET contract_generated_at = NULL
-      WHERE contract_generated_at IS NOT NULL
-        AND id NOT IN (SELECT sale_id FROM contracts WHERE sale_id IS NOT NULL)
-    `).run();
-    if (result.changes > 0) {
-      console.log(`[migration] Cleared stale contract_generated_at from ${result.changes} sale(s)`);
-    }
-  })();
-
   try {
     db.exec(`ALTER TABLE receivables ADD COLUMN sale_id TEXT REFERENCES sales(id) ON DELETE CASCADE`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_receivables_sale ON receivables(sale_id) WHERE sale_id IS NOT NULL`);
