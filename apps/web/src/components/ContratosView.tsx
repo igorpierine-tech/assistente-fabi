@@ -141,8 +141,8 @@ export function ContratosView() {
   const fetchAll = useCallback(async () => {
     try {
       const [cRes, sRes] = await Promise.all([
-        api("/contracts"),
-        api("/contracts/services"),
+        api("/contracts", { cache: "no-store" }),
+        api("/contracts/services", { cache: "no-store" }),
       ]);
       setContracts(await cRes.json());
       setServices(await sRes.json());

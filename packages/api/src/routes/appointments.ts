@@ -128,9 +128,13 @@ router.post("/", async (req, res) => {
     if (Date.parse(endTime) <= Date.parse(startTime)) throw new ValidationError("Fim deve ser posterior ao início");
 
     let clientId: string | undefined;
+    let clientEmail: string | undefined;
     if (clientName) {
       const client = getClientByName(sharedOwnerId(req), clientName);
-      if (client) clientId = client.id;
+      if (client) {
+        clientId = client.id;
+        if (client.email) clientEmail = client.email;
+      }
     }
 
     let googleEventId: string | undefined;
@@ -143,6 +147,7 @@ router.post("/", async (req, res) => {
         description: notes,
         appointmentType: type || "outro",
         clientName,
+        clientEmail,
       });
       googleEventId = (gcEvent as any).id;
     }

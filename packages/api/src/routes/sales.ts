@@ -308,7 +308,8 @@ router.get("/:id/contract", async (req, res) => {
     const client = sale.client_id ? getClient(userId(req), sale.client_id) : null;
     const tenant = getTenantConfig(userId(req));
 
-    const contract = createContract(userId(req), {
+    // Reuse orphaned contract (created but revision failed) instead of creating a duplicate
+    const contract = existing || createContract(userId(req), {
       saleId: sale.id,
       serviceCode,
       clientId: sale.client_id || undefined,
