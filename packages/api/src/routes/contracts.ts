@@ -20,7 +20,7 @@ import {
   logContractEvent,
   listRevisions,
 } from "../services/contracts-db";
-import { getSale } from "../services/sales-db";
+import { getSale, clearContractGenerated } from "../services/sales-db";
 import { getClient, getTenantConfig } from "../services/database";
 import { composeSnapshot } from "../services/contract-composer";
 import { generateContractPdfFromSnapshot } from "../services/contract-pdf";
@@ -522,6 +522,9 @@ router.delete("/:id", (req, res) => {
   if (contract.status === "completed" || contract.status === "awaiting_signature") {
     res.status(400).json({ error: "Contrato em assinatura ou concluído não pode ser excluído" });
     return;
+  }
+  if (contract.sale_id) {
+    clearContractGenerated(userId(req), contract.sale_id);
   }
   deleteContract(userId(req), contract.id);
   logContractEvent({

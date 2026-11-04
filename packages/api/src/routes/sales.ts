@@ -270,6 +270,37 @@ router.get("/:id/contract", async (req, res) => {
     return;
   }
   try {
+    const existing = getContractBySaleId(userId(req), sale.id);
+    if (existing) {
+      const revision = getLatestRevision(existing.id);
+      if (revision) {
+        const artifact = getArtifactByType(revision.id, "original_pdf");
+        if (artifact?.content) {
+          const safeName = sale.client_name.replace(/[^a-zA-Z0-9\-_ ]/g, "").slice(0, 40) || "contrato";
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="Contrato-${existing.contract_number.replace("/", "-")}-${safeName}.pdf"`
+          );
+          res.setHeader("Content-Length", String(artifact.content.length));
+          res.end(artifact.content);
+          return;
+        }
+        const snap = JSON.parse(revision.snapshot);
+        const pdf = await generateContractPdfFromSnapshot(snap);
+        saveArtifact(revision.id, "original_pdf", pdf);
+        const safeName = sale.client_name.replace(/[^a-zA-Z0-9\-_ ]/g, "").slice(0, 40) || "contrato";
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="Contrato-${existing.contract_number.replace("/", "-")}-${safeName}.pdf"`
+        );
+        res.setHeader("Content-Length", String(pdf.length));
+        res.end(pdf);
+        return;
+      }
+    }
+
     const defs = listServiceDefinitions();
     const match = defs.find(d => sale.item_name.toLowerCase().includes(d.name.toLowerCase().split(" ")[0].toLowerCase()));
     const serviceCode = match?.code || defs[0]?.code || "generico";

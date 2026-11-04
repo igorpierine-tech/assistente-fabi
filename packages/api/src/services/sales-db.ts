@@ -136,6 +136,15 @@ export function markContractGenerated(userId: string, id: string): void {
     .run(userId, id);
 }
 
+export function clearContractGenerated(userId: string, id: string): void {
+  getDb()
+    .prepare(
+      `UPDATE sales SET contract_generated_at = NULL, updated_at = datetime('now')
+       WHERE user_id = ? AND id = ?`
+    )
+    .run(userId, id);
+}
+
 export function updateZapSignStatus(
   userId: string,
   id: string,
