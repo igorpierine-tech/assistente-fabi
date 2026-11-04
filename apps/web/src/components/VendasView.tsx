@@ -154,6 +154,9 @@ export function VendasView() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendingSignId, setSendingSignId] = useState<string | null>(null);
   const [zapSignConfigured, setZapSignConfigured] = useState(false);
+  const [nfseConfigured, setNfseConfigured] = useState(false);
+  const [nfseStatuses, setNfseStatuses] = useState<Record<string, { status: string; numero?: string | null }>>({});
+  const [emittingNfseId, setEmittingNfseId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -173,15 +176,66 @@ export function VendasView() {
           setZapSignConfigured(zs.configured);
         }
       } catch {}
+      try {
+        const nfseRes = await apiFetch("/nfse/status");
+        if (nfseRes.ok) {
+          const ns = await nfseRes.json();
+          setNfseConfigured(ns.configured);
+        }
+      } catch {}
     } catch {
       // silent
     }
     setLoading(false);
   }, []);
 
+  const fetchNfseStatuses = useCallback(async (saleList: Sale[]) => {
+    const statuses: Record<string, { status: string; numero?: string | null }> = {};
+    for (const s of saleList) {
+      try {
+        const res = await apiFetch(`/nfse/sale/${s.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            statuses[s.id] = { status: data.status, numero: data.numero_nfse };
+          }
+        }
+      } catch {}
+    }
+    setNfseStatuses(statuses);
+  }, []);
+
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  useEffect(() => {
+    if (sales.length > 0 && nfseConfigured) {
+      fetchNfseStatuses(sales);
+    }
+  }, [sales, nfseConfigured, fetchNfseStatuses]);
+
+  async function emitirNfse(s: Sale) {
+    if (!confirm(`Emitir NFS-e para a venda "${s.item_name}" de ${(s.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}?`)) return;
+    setEmittingNfseId(s.id);
+    try {
+      const res = await apiFetch("/nfse/emitir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saleId: s.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`NFS-e emitida com sucesso!${data.invoice?.numero_nfse ? ` Numero: ${data.invoice.numero_nfse}` : ""}`);
+        await fetchNfseStatuses(sales);
+      } else {
+        alert(data.error || "Falha ao emitir NFS-e");
+      }
+    } catch {
+      alert("Erro ao emitir NFS-e");
+    }
+    setEmittingNfseId(null);
+  }
 
   function openNew() {
     setForm({ ...emptyForm, saleDate: new Date().toISOString().slice(0, 10) });
@@ -499,6 +553,38 @@ export function VendasView() {
                               <path d="M12 4l4 4" />
                             </svg>
                             {sendingSignId === s.id ? "Enviando..." : "Assinar"}
+                          </button>
+                        )
+                      )}
+                      {nfseConfigured && (
+                        nfseStatuses[s.id] ? (
+                          <span
+                            className={`${styles.nfseBadge} ${
+                              nfseStatuses[s.id].status === "rejeitada" ? styles.nfseBadgeRejected :
+                              nfseStatuses[s.id].status === "cancelada" ? styles.nfseBadgeCancelled : ""
+                            }`}
+                            title={nfseStatuses[s.id].numero ? `NFS-e ${nfseStatuses[s.id].numero}` : undefined}
+                          >
+                            {nfseStatuses[s.id].status === "autorizada" ? "NFS-e" :
+                             nfseStatuses[s.id].status === "processando" ? "Processando..." :
+                             nfseStatuses[s.id].status === "rejeitada" ? "NFS-e rejeitada" :
+                             nfseStatuses[s.id].status === "cancelada" ? "NFS-e cancelada" :
+                             "NFS-e " + nfseStatuses[s.id].status}
+                            {nfseStatuses[s.id].numero && ` #${nfseStatuses[s.id].numero}`}
+                          </span>
+                        ) : (
+                          <button
+                            className={styles.nfseBtn}
+                            onClick={() => emitirNfse(s)}
+                            disabled={emittingNfseId === s.id}
+                            type="button"
+                            title="Emitir NFS-e para esta venda"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <rect x="3" y="3" width="14" height="14" rx="2" />
+                              <path d="M7 7h6M7 10h6M7 13h3" />
+                            </svg>
+                            {emittingNfseId === s.id ? "Emitindo..." : "NFS-e"}
                           </button>
                         )
                       )}

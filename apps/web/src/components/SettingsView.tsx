@@ -4,9 +4,10 @@ import { useState } from "react";
 import { CatalogPanel } from "./CatalogPanel";
 import { BookingSettingsPanel } from "./BookingSettingsPanel";
 import { GoogleCalendarSettings } from "./GoogleCalendarSettings";
+import { NfseSettings } from "./NfseSettings";
 import styles from "./SettingsView.module.css";
 
-type Section = "catalog" | "booking" | "calendar";
+type Section = "catalog" | "booking" | "calendar" | "nfse";
 
 export function SettingsView() {
   const [section, setSection] = useState<Section>("catalog");
@@ -35,12 +36,20 @@ export function SettingsView() {
         >
           Google Calendar
         </button>
+        <button
+          type="button"
+          className={`${styles.tab} ${section === "nfse" ? styles.tabActive : ""}`}
+          onClick={() => setSection("nfse")}
+        >
+          NFS-e
+        </button>
       </nav>
 
       <div className={styles.content}>
         {section === "catalog" && <CatalogPanel />}
         {section === "booking" && <BookingSettingsPanel />}
         {section === "calendar" && <GoogleCalendarSettings />}
+        {section === "nfse" && <NfseSettings />}
       </div>
     </div>
   );

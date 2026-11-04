@@ -17,6 +17,7 @@ import { tenantRouter } from "./routes/tenant";
 import { dashboardRouter } from "./routes/dashboard";
 import { zapSignWebhookRouter } from "./routes/sales";
 import { usersRouter } from "./routes/users";
+import { nfseRouter } from "./routes/nfse";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
 import { getDb } from "./services/database";
 import { isValidSignedSession } from "./services/mobile-auth";
@@ -132,6 +133,7 @@ app.use("/contracts", contractsRouter);
 app.use("/tenant", tenantRouter);
 app.use("/dashboard", dashboardRouter);
 app.use("/users", usersRouter);
+app.use("/nfse", nfseRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });

@@ -410,6 +410,57 @@ function initTables(db: Database.Database) {
     }
   })();
 
+  // NFS-e Nacional columns on tenant_config
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    const nfseCols: [string, string][] = [
+      ["nfse_certificado_base64", "TEXT"],
+      ["nfse_certificado_senha", "TEXT"],
+      ["nfse_ambiente", "TEXT DEFAULT 'homologacao'"],
+      ["nfse_codigo_municipio", "TEXT"],
+      ["nfse_codigo_tributacao_nacional", "TEXT"],
+      ["nfse_aliquota_iss", "REAL"],
+      ["nfse_item_lista_servico", "TEXT"],
+      ["nfse_regime_especial", "INTEGER"],
+      ["nfse_optante_simples", "INTEGER DEFAULT 1"],
+    ];
+    for (const [col, type] of nfseCols) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE tenant_config ADD COLUMN ${col} ${type}`);
+      }
+    }
+  })();
+
+  // NFS-e invoices table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nfse_invoices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      sale_id TEXT REFERENCES sales(id) ON DELETE SET NULL,
+      numero_nfse TEXT,
+      chave_acesso TEXT,
+      codigo_verificacao TEXT,
+      status TEXT NOT NULL DEFAULT 'pendente',
+      valor_servico_cents INTEGER NOT NULL,
+      descricao_servico TEXT NOT NULL,
+      tomador_nome TEXT NOT NULL,
+      tomador_documento TEXT,
+      tomador_email TEXT,
+      dps_xml TEXT,
+      nfse_xml TEXT,
+      danfse_url TEXT,
+      erro_mensagem TEXT,
+      emitida_em TEXT,
+      cancelada_em TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_nfse_user_status ON nfse_invoices(user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_nfse_sale ON nfse_invoices(sale_id);
+    CREATE INDEX IF NOT EXISTS idx_nfse_chave ON nfse_invoices(chave_acesso);
+  `);
+
   // One-time seed: populate the first tenant with real business data.
   seedFirstTenant(db);
 
@@ -1129,6 +1180,15 @@ export interface TenantConfigRow {
   email_comercial: string | null;
   telefone_comercial: string | null;
   representante_qualificacao: string | null;
+  nfse_certificado_base64: string | null;
+  nfse_certificado_senha: string | null;
+  nfse_ambiente: string | null;
+  nfse_codigo_municipio: string | null;
+  nfse_codigo_tributacao_nacional: string | null;
+  nfse_aliquota_iss: number | null;
+  nfse_item_lista_servico: string | null;
+  nfse_regime_especial: number | null;
+  nfse_optante_simples: number | null;
   created_at: string;
   updated_at: string;
 }

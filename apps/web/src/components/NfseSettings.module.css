@@ -1,0 +1,169 @@
+.wrap {
+  padding: 32px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text, #f4ede0);
+  margin: 0 0 8px;
+}
+
+.desc {
+  color: var(--text-muted, #8a7f6a);
+  font-size: 0.9rem;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.statusOk {
+  background: rgba(22, 163, 106, 0.15);
+  color: #22c55e;
+}
+
+.statusPending {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.sectionTitle {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text, #f4ede0);
+  margin: 0 0 12px;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.field label {
+  font-size: 0.82rem;
+  color: var(--text-muted, #8a7f6a);
+  font-weight: 500;
+}
+
+.field input,
+.field select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #3d3826);
+  background: var(--bg-input, #1e1b15);
+  color: var(--text, #f4ede0);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--primary, #7c3aed);
+}
+
+.btnRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: var(--primary, #7c3aed);
+  color: #fff;
+}
+
+.btnDanger {
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+}
+
+.btnSecondary {
+  background: var(--bg-input, #1e1b15);
+  color: var(--text, #f4ede0);
+  border: 1px solid var(--border, #3d3826);
+}
+
+.certInfo {
+  font-size: 0.85rem;
+  color: var(--text-muted, #8a7f6a);
+  margin-top: 8px;
+}
+
+.certLoaded {
+  color: #22c55e;
+}
+
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.alertSuccess {
+  background: rgba(22, 163, 106, 0.1);
+  color: #22c55e;
+}
+
+.alertError {
+  background: rgba(220, 38, 38, 0.1);
+  color: #ef4444;
+}
+
+.fileInput {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 20px 16px;
+  }
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+}
