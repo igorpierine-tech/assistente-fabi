@@ -267,7 +267,11 @@ export default function Home() {
       if (data.authenticated && data.user?.id) {
         setUserId(data.user.id);
         setUserName(data.user.name || "");
-        if (data.requireTenantSelection && data.tenants) {
+        const wasAdmin = (() => { try { return sessionStorage.getItem("adminSession") === "1"; } catch { return false; } })();
+        if (wasAdmin) {
+          setAdminSession(true);
+          setUserRole("admin");
+        } else if (data.requireTenantSelection && data.tenants) {
           setPendingTenants(data.tenants);
         } else {
           setUserRole((data.user.role as UserRole) || undefined);
@@ -349,6 +353,7 @@ export default function Home() {
       }
 
       setAdminSession(true);
+      try { sessionStorage.setItem("adminSession", "1"); } catch {}
       setUserId(data.user.id);
       setUserName(data.user.name || "");
       setUserRole("admin");
@@ -388,6 +393,7 @@ export default function Home() {
   async function handleLogout() {
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
     clearAuthToken();
+    try { sessionStorage.removeItem("adminSession"); } catch {}
     setUserId(null);
     setUserRole(undefined);
     setIsAuthenticated(false);
