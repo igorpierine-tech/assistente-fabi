@@ -77,7 +77,7 @@ export function AdminView() {
 
   // Forms
   const [tenantForm, setTenantForm] = useState({
-    name: "", slug: "", cnpj: "",
+    name: "", slug: "", cnpj: "", inscricaoMunicipal: "",
     endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "",
     adminName: "", adminEmail: "", adminPassword: "",
   });
@@ -126,7 +126,7 @@ export function AdminView() {
     setCnpjError("");
     setCnpjLoading(false);
     setTenantModalStep("cnpj");
-    setTenantForm({ name: "", slug: "", cnpj: "", endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "", adminName: "", adminEmail: "", adminPassword: "" });
+    setTenantForm({ name: "", slug: "", cnpj: "", inscricaoMunicipal: "", endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "", adminName: "", adminEmail: "", adminPassword: "" });
     setShowTenantModal(true);
   }
 
@@ -178,7 +178,7 @@ export function AdminView() {
   }
 
   async function handleCreateTenant() {
-    const { name, slug, adminName, adminEmail, adminPassword, cnpj, endereco, cep, municipio, uf, telefone, emailEmpresa } = tenantForm;
+    const { name, slug, adminName, adminEmail, adminPassword, cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = tenantForm;
     if (!name || !slug) return;
     const res = await apiFetch("/system/tenants", {
       method: "POST",
@@ -186,7 +186,8 @@ export function AdminView() {
       body: JSON.stringify({
         name, slug,
         adminName: adminName || undefined, adminEmail: adminEmail || undefined, adminPassword: adminPassword || undefined,
-        cnpj: cnpj || undefined, endereco: endereco || undefined, cep: cep || undefined,
+        cnpj: cnpj || undefined, inscricaoMunicipal: inscricaoMunicipal || undefined,
+        endereco: endereco || undefined, cep: cep || undefined,
         municipio: municipio || undefined, uf: uf || undefined,
         telefone: telefone || undefined, emailEmpresa: emailEmpresa || undefined,
       }),
@@ -204,7 +205,7 @@ export function AdminView() {
     setEditingTenant(tenant);
     setTenantModalStep("form");
     setTenantForm({
-      name: tenant.name, slug: tenant.slug, cnpj: "",
+      name: tenant.name, slug: tenant.slug, cnpj: "", inscricaoMunicipal: "",
       endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "",
       adminName: "", adminEmail: "", adminPassword: "",
     });
@@ -626,6 +627,10 @@ export function AdminView() {
                       placeholder="ex: clinica-exemplo"
                     />
                   </div>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Inscrição Municipal</label>
+                  <input value={tenantForm.inscricaoMunicipal} onChange={e => setTenantForm(f => ({ ...f, inscricaoMunicipal: e.target.value }))} className={styles.input} placeholder="Número da IM" />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Endereço</label>

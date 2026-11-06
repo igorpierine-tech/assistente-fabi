@@ -167,8 +167,8 @@ export function NfseSettings() {
       <div className={styles.section}>
         <h4 className={styles.sectionTitle}>Dados fiscais</h4>
         <p className={styles.desc}>
-          CNPJ: {config?.cnpj || "Nao configurado"} | IM: {config?.inscricaoMunicipal || "Nao configurada"}
-          {" "}(edite em Configuracoes &gt; Empresa)
+          CNPJ: {config?.cnpj || "Não configurado"} | IM: {config?.inscricaoMunicipal || "Não configurada"}
+          {" "}(edite na aba &quot;Empresa&quot;)
         </p>
       </div>
 

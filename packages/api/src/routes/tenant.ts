@@ -112,4 +112,59 @@ router.put("/config", (req, res) => {
   res.json(toPublicConfig(updated));
 });
 
+// --- Company / Empresa data (for NFS-e and contracts) ---
+
+router.get("/empresa", (req, res) => {
+  const ownerId = sharedOwnerId(req);
+  const row = getTenantConfig(ownerId);
+  if (!row) {
+    res.json({});
+    return;
+  }
+  res.json({
+    razaoSocial: row.razao_social || "",
+    cnpj: row.cnpj || "",
+    inscricaoEstadual: row.inscricao_estadual || "",
+    inscricaoMunicipal: row.inscricao_municipal || "",
+    endereco: row.endereco || "",
+    cep: row.cep || "",
+    telefone: row.telefone_comercial || "",
+    email: row.email_comercial || "",
+    representanteQualificacao: row.representante_qualificacao || "",
+  });
+});
+
+router.put("/empresa", (req, res) => {
+  const ownerId = sharedOwnerId(req);
+  const body = req.body;
+  if (!body || typeof body !== "object") {
+    throw new ValidationError("Corpo da requisição inválido");
+  }
+
+  const update: Record<string, unknown> = {};
+
+  if (body.razaoSocial !== undefined) update.razao_social = String(body.razaoSocial).slice(0, 200) || null;
+  if (body.cnpj !== undefined) update.cnpj = String(body.cnpj).slice(0, 20) || null;
+  if (body.inscricaoEstadual !== undefined) update.inscricao_estadual = String(body.inscricaoEstadual).slice(0, 20) || null;
+  if (body.inscricaoMunicipal !== undefined) update.inscricao_municipal = String(body.inscricaoMunicipal).slice(0, 20) || null;
+  if (body.endereco !== undefined) update.endereco = String(body.endereco).slice(0, 300) || null;
+  if (body.cep !== undefined) update.cep = String(body.cep).slice(0, 10) || null;
+  if (body.telefone !== undefined) update.telefone_comercial = String(body.telefone).slice(0, 20) || null;
+  if (body.email !== undefined) update.email_comercial = String(body.email).slice(0, 100) || null;
+  if (body.representanteQualificacao !== undefined) update.representante_qualificacao = String(body.representanteQualificacao).slice(0, 200) || null;
+
+  const updated = upsertTenantConfig(ownerId, update);
+  res.json({
+    razaoSocial: updated.razao_social || "",
+    cnpj: updated.cnpj || "",
+    inscricaoEstadual: updated.inscricao_estadual || "",
+    inscricaoMunicipal: updated.inscricao_municipal || "",
+    endereco: updated.endereco || "",
+    cep: updated.cep || "",
+    telefone: updated.telefone_comercial || "",
+    email: updated.email_comercial || "",
+    representanteQualificacao: updated.representante_qualificacao || "",
+  });
+});
+
 export { router as tenantRouter };
