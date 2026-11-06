@@ -2,21 +2,42 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { v4 as uuidv4 } from "uuid";
-import { databasePath } from "../config/persistence";
+import { databasePath, tenantDbPath } from "../config/persistence";
+import { getCurrentTenant } from "./tenant-context";
 
 const DB_PATH = databasePath();
 
-let db: Database.Database;
+const tenantDbs = new Map<string, Database.Database>();
+let legacyDb: Database.Database;
+
+function openTenantDb(slug: string): Database.Database {
+  const cached = tenantDbs.get(slug);
+  if (cached) return cached;
+  const dbPath = tenantDbPath(slug);
+  mkdirSync(dirname(dbPath), { recursive: true });
+  const db = new Database(dbPath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+  initTables(db);
+  tenantDbs.set(slug, db);
+  return db;
+}
+
+export function getTenantDb(slug: string): Database.Database {
+  return openTenantDb(slug);
+}
 
 export function getDb(): Database.Database {
-  if (!db) {
+  const ctx = getCurrentTenant();
+  if (ctx) return openTenantDb(ctx.tenantSlug);
+  if (!legacyDb) {
     mkdirSync(dirname(DB_PATH), { recursive: true });
-    db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
-    initTables(db);
+    legacyDb = new Database(DB_PATH);
+    legacyDb.pragma("journal_mode = WAL");
+    legacyDb.pragma("foreign_keys = ON");
+    initTables(legacyDb);
   }
-  return db;
+  return legacyDb;
 }
 
 function initTables(db: Database.Database) {
@@ -333,31 +354,6 @@ function initTables(db: Database.Database) {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-      password_hash TEXT,
-      role TEXT NOT NULL DEFAULT 'colaborador',
-      google_id TEXT UNIQUE,
-      active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-
-    CREATE TABLE IF NOT EXISTS google_tokens (
-      user_id       TEXT PRIMARY KEY REFERENCES users(id),
-      access_token  TEXT NOT NULL,
-      refresh_token TEXT NOT NULL,
-      expiry_date   INTEGER,
-      scope         TEXT,
-      google_email  TEXT,
-      connected_at  TEXT DEFAULT (datetime('now')),
-      updated_at    TEXT DEFAULT (datetime('now'))
-    );
   `);
 
   // Existing databases predate multi-tenancy. Legacy rows are deliberately

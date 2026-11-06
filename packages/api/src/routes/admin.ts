@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { Router, type Router as ExpressRouter } from "express";
+import { getMasterDb } from "../services/master-db";
 import { getDb } from "../services/database";
 import { getUserByEmail, updatePassword } from "../services/users-db";
 
@@ -27,7 +28,7 @@ function pickToken(req: import("express").Request): string | undefined {
 }
 
 function listUsersWithPasswordStatus() {
-  return getDb()
+  return getMasterDb()
     .prepare("SELECT id, name, email, role, CASE WHEN password_hash IS NOT NULL THEN 1 ELSE 0 END as has_password FROM users ORDER BY name")
     .all() as { id: string; name: string; email: string; role: string; has_password: number }[];
 }

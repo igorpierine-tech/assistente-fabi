@@ -18,9 +18,12 @@ import { dashboardRouter } from "./routes/dashboard";
 import { zapSignWebhookRouter } from "./routes/sales";
 import { usersRouter } from "./routes/users";
 import { nfseRouter } from "./routes/nfse";
+import { platformRouter } from "./routes/platform";
 import { EncryptedSessionStore } from "./services/encrypted-session-store";
-import { getDb } from "./services/database";
+import { getMasterDb } from "./services/master-db";
+import { migrateToMultitenant } from "./services/migrate-to-multitenant";
 import { isValidSignedSession } from "./services/mobile-auth";
+import { resolveTenant } from "./middleware/tenant";
 import { rateLimit, requireTrustedOrigin, securityHeaders } from "./middleware/security";
 import { ValidationError } from "./services/validation";
 import { privacyRouter } from "./routes/privacy";
@@ -110,6 +113,7 @@ app.use(session({
     maxAge: 30 * 24 * 60 * 60 * 1000,
   },
 }));
+app.use(resolveTenant);
 app.use(requireTrustedOrigin(allowedOrigins));
 app.use(rateLimit({ prefix: "api", windowMs: 15 * 60_000, max: 300 }));
 app.use(auditRequests);
@@ -134,6 +138,7 @@ app.use("/tenant", tenantRouter);
 app.use("/dashboard", dashboardRouter);
 app.use("/users", usersRouter);
 app.use("/nfse", nfseRouter);
+app.use("/platform", platformRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
@@ -161,7 +166,8 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   res.status(500).json({ error: "Erro interno do servidor" });
 });
 
-getDb();
+migrateToMultitenant();
+getMasterDb();
 
 app.listen(port, () => {
   console.log(`Assistente de Agenda API rodando na porta ${port}`);

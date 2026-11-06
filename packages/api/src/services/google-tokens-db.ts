@@ -1,4 +1,4 @@
-import { getDb } from "./database";
+import { getMasterDb } from "./master-db";
 import type { Credentials } from "google-auth-library";
 
 export interface GoogleTokenRow {
@@ -17,7 +17,7 @@ export function saveGoogleTokens(
   tokens: Credentials,
   googleEmail?: string
 ): void {
-  const db = getDb();
+  const db = getMasterDb();
   db.prepare(`
     INSERT INTO google_tokens (user_id, access_token, refresh_token, expiry_date, scope, google_email)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -39,7 +39,7 @@ export function saveGoogleTokens(
 }
 
 export function getGoogleTokens(userId: string): Credentials | null {
-  const db = getDb();
+  const db = getMasterDb();
   const row = db.prepare("SELECT * FROM google_tokens WHERE user_id = ?").get(userId) as GoogleTokenRow | undefined;
   if (!row) return null;
   return {
@@ -50,12 +50,12 @@ export function getGoogleTokens(userId: string): Credentials | null {
 }
 
 export function getGoogleTokenRow(userId: string): GoogleTokenRow | null {
-  const db = getDb();
+  const db = getMasterDb();
   return (db.prepare("SELECT * FROM google_tokens WHERE user_id = ?").get(userId) as GoogleTokenRow) ?? null;
 }
 
 export function updateGoogleTokens(userId: string, tokens: Credentials): void {
-  const db = getDb();
+  const db = getMasterDb();
   const sets: string[] = ["updated_at = datetime('now')"];
   const values: unknown[] = [];
   if (tokens.access_token) { sets.push("access_token = ?"); values.push(tokens.access_token); }
@@ -66,6 +66,6 @@ export function updateGoogleTokens(userId: string, tokens: Credentials): void {
 }
 
 export function deleteGoogleTokens(userId: string): void {
-  const db = getDb();
+  const db = getMasterDb();
   db.prepare("DELETE FROM google_tokens WHERE user_id = ?").run(userId);
 }

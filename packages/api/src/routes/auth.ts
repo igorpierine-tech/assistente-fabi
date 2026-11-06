@@ -4,6 +4,8 @@ import { google } from "googleapis";
 import { consumeMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
 import { getUserByEmail, verifyPassword } from "../services/users-db";
+import { getMasterUserByEmail } from "../services/master-db";
+import { getTenantById } from "../services/master-db";
 import { saveGoogleTokens, getGoogleTokenRow, deleteGoogleTokens } from "../services/google-tokens-db";
 import "../session-types";
 
@@ -67,6 +69,12 @@ router.post("/login", authLimiter, async (req, res) => {
     return;
   }
 
+  const tenant = getTenantById(user.tenant_id);
+  if (!tenant || !tenant.active) {
+    res.status(403).json({ error: "Empresa desativada" });
+    return;
+  }
+
   req.session.regenerate((err) => {
     if (err) {
       res.status(500).json({ error: "Erro ao criar sessão" });
@@ -77,6 +85,8 @@ router.post("/login", authLimiter, async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
     };
     req.session.save((saveErr) => {
       if (saveErr) {
@@ -122,6 +132,8 @@ router.get("/status", (req, res) => {
     user: appUser
       ? { id: appUser.id, name: appUser.name, email: appUser.email, role: appUser.role }
       : null,
+    tenantId: appUser?.tenantId ?? null,
+    tenantSlug: appUser?.tenantSlug ?? null,
     calendarConnected: Boolean(calendarRow),
     calendarEmail: calendarRow?.google_email ?? null,
   });

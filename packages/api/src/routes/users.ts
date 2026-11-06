@@ -17,8 +17,8 @@ router.use(requireRole("admin"));
 
 const VALID_ROLES: UserRole[] = ["admin", "gestor", "colaborador", "visualizador"];
 
-router.get("/", (_req, res) => {
-  res.json(listUsers());
+router.get("/", (req, res) => {
+  res.json(listUsers(req.session.appUser?.tenantId));
 });
 
 router.get("/:id", (req, res) => {
@@ -50,8 +50,15 @@ router.post("/", async (req, res) => {
     return;
   }
 
+  const tenantId = req.session.appUser?.tenantId;
+  if (!tenantId) {
+    res.status(400).json({ error: "Tenant não definido na sessão" });
+    return;
+  }
+
   try {
     const user = await createUser({
+      tenantId,
       name,
       email,
       password: password || undefined,
