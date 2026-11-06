@@ -198,16 +198,16 @@ export default function Home() {
   }, [clientRows, appointmentRows]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !adminSession) {
       fetchAppointments();
       fetchClients();
       fetchTenantConfig();
       fetchUserModules();
     }
-  }, [isAuthenticated, fetchAppointments, fetchClients, fetchTenantConfig, fetchUserModules]); // eslint-disable-line
+  }, [isAuthenticated, adminSession, fetchAppointments, fetchClients, fetchTenantConfig, fetchUserModules]); // eslint-disable-line
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || adminSession) {
       setPendingBookingCount(0);
       return;
     }
@@ -228,7 +228,7 @@ export default function Home() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [isAuthenticated, activeView]);
+  }, [isAuthenticated, adminSession, activeView]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -348,11 +348,11 @@ export default function Home() {
         }
       }
 
-      setIsAuthenticated(true);
       setAdminSession(true);
       setUserId(data.user.id);
       setUserName(data.user.name || "");
       setUserRole("admin");
+      setIsAuthenticated(true);
       return null;
     } catch {
       return "Não foi possível conectar ao servidor";
