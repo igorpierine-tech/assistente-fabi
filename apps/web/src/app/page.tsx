@@ -127,6 +127,7 @@ export default function Home() {
   const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<UserRole | undefined>(undefined);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminSession, setAdminSession] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<View>("inicio");
   const [pendingBookingCount, setPendingBookingCount] = useState(0);
@@ -315,6 +316,49 @@ export default function Home() {
     }
   }
 
+  async function handleAdminLogin(email: string, password: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return data.error || "Erro ao fazer login";
+      setAuthToken(data.token);
+
+      const role = data.requireTenantSelection
+        ? data.tenants?.[0]?.role
+        : data.user?.role;
+
+      if (role !== "admin") {
+        clearAuthToken();
+        return "Acesso restrito a administradores";
+      }
+
+      if (data.requireTenantSelection && data.tenants?.length > 0) {
+        const selectRes = await apiFetch("/auth/select-tenant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tenantSlug: data.tenants[0].slug }),
+        });
+        if (!selectRes.ok) {
+          clearAuthToken();
+          return "Erro ao selecionar empresa";
+        }
+      }
+
+      setIsAuthenticated(true);
+      setAdminSession(true);
+      setUserId(data.user.id);
+      setUserName(data.user.name || "");
+      setUserRole("admin");
+      return null;
+    } catch {
+      return "Não foi possível conectar ao servidor";
+    }
+  }
+
   async function handleSelectTenant(tenantSlug: string) {
     setSelectingTenant(true);
     try {
@@ -347,6 +391,7 @@ export default function Home() {
     setUserId(null);
     setUserRole(undefined);
     setIsAuthenticated(false);
+    setAdminSession(false);
     setPendingBookingCount(0);
     setActiveView("inicio");
     setClientRows([]);
@@ -467,7 +512,7 @@ export default function Home() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen onPasswordLogin={handlePasswordLogin} />;
+    return <LoginScreen onPasswordLogin={handlePasswordLogin} onAdminLogin={handleAdminLogin} />;
   }
 
   if (pendingTenants) {
@@ -478,6 +523,21 @@ export default function Home() {
         onSelect={handleSelectTenant}
         loading={selectingTenant}
       />
+    );
+  }
+
+  if (adminSession) {
+    return (
+      <div className="admin-standalone">
+        <header className="admin-standalone-header">
+          <span className="admin-standalone-title">Painel Administrativo</span>
+          <span className="admin-standalone-user">{userName}</span>
+          <button className="admin-standalone-logout" onClick={handleLogout} type="button">Sair</button>
+        </header>
+        <main className="admin-standalone-main">
+          <AdminView />
+        </main>
+      </div>
     );
   }
 

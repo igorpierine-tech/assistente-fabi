@@ -222,3 +222,55 @@ input, textarea {
     padding: 8px;
   }
 }
+
+/* Admin standalone layout */
+.admin-standalone {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.admin-standalone-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--primary);
+  color: var(--bg);
+  border-bottom: 2px solid var(--secondary);
+}
+
+.admin-standalone-title {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.admin-standalone-user {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.admin-standalone-logout {
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: var(--bg);
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-standalone-logout:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-standalone-main {
+  padding: 16px 24px;
+  max-width: 1600px;
+  width: 100%;
+  overflow-y: auto;
+  height: calc(100vh - 52px);
+}

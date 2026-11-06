@@ -6,24 +6,34 @@ import styles from "./LoginScreen.module.css";
 
 interface LoginScreenProps {
   onPasswordLogin: (email: string, password: string) => Promise<string | null>;
+  onAdminLogin?: (email: string, password: string) => Promise<string | null>;
 }
 
-export function LoginScreen({ onPasswordLogin }: LoginScreenProps) {
+export function LoginScreen({ onPasswordLogin, onAdminLogin }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
     setError("");
-    const err = await onPasswordLogin(email, password);
+    const handler = adminMode && onAdminLogin ? onAdminLogin : onPasswordLogin;
+    const err = await handler(email, password);
     if (err) {
       setError(err);
       setLoading(false);
     }
+  }
+
+  function toggleMode() {
+    setAdminMode(!adminMode);
+    setError("");
+    setEmail("");
+    setPassword("");
   }
 
   return (
@@ -33,34 +43,50 @@ export function LoginScreen({ onPasswordLogin }: LoginScreenProps) {
         <p className={styles.heroDesc}>
           Plataforma de Gestão de Atendimentos
         </p>
-        <ul className={styles.features}>
-          <li>Agenda integrada ao Google Calendar</li>
-          <li>Cadastro e histórico de clientes</li>
-          <li>Assistente de IA para agendamentos</li>
-          <li>Contratos e gestão financeira</li>
-        </ul>
+        {!adminMode && (
+          <ul className={styles.features}>
+            <li>Agenda integrada ao Google Calendar</li>
+            <li>Cadastro e histórico de clientes</li>
+            <li>Assistente de IA para agendamentos</li>
+            <li>Contratos e gestão financeira</li>
+          </ul>
+        )}
       </section>
 
       <div className={styles.card}>
-        <div className={styles.logoWrap}>
-          <Image
-            src="/logo-raizes.png"
-            alt="Raízes e Riquezas"
-            width={220}
-            height={220}
-            priority
-            className={styles.logo}
-          />
-        </div>
+        {!adminMode && (
+          <div className={styles.logoWrap}>
+            <Image
+              src="/logo-raizes.png"
+              alt="Raízes e Riquezas"
+              width={220}
+              height={220}
+              priority
+              className={styles.logo}
+            />
+          </div>
+        )}
 
         <h1 className={styles.title}>
-          Bem-vindo(a) ao seu
-          <br />
-          <em>Assistente de Agenda.</em>
+          {adminMode ? (
+            <>
+              Painel
+              <br />
+              <em>Administrativo</em>
+            </>
+          ) : (
+            <>
+              Bem-vindo(a) ao seu
+              <br />
+              <em>Assistente de Agenda.</em>
+            </>
+          )}
         </h1>
 
         <p className={styles.desc}>
-          Sua agenda, seus clientes e um assistente de IA — tudo num só lugar.
+          {adminMode
+            ? "Acesso restrito ao administrador da plataforma."
+            : "Sua agenda, seus clientes e um assistente de IA — tudo num só lugar."}
         </p>
 
         <form onSubmit={handleSubmit} className={styles.loginForm}>
@@ -85,13 +111,23 @@ export function LoginScreen({ onPasswordLogin }: LoginScreenProps) {
             minLength={6}
           />
           <button className={styles.primaryBtn} type="submit" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? "Entrando..." : adminMode ? "Entrar como Admin" : "Entrar"}
           </button>
         </form>
 
         <p className={styles.footer}>
-          Use as credenciais fornecidas pelo administrador.
+          {adminMode
+            ? "Use as credenciais de administrador da plataforma."
+            : "Use as credenciais fornecidas pelo administrador."}
         </p>
+
+        <button
+          type="button"
+          className={styles.adminToggle}
+          onClick={toggleMode}
+        >
+          {adminMode ? "Voltar ao login normal" : "Acesso Administrativo"}
+        </button>
 
         <nav className={styles.legalLinks}>
           <a href="/privacidade" target="_blank" rel="noopener noreferrer">

@@ -207,6 +207,25 @@
   color: #8a7f6a;
 }
 
+.adminToggle {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #8a7f6a;
+  font-size: 12px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: color 0.15s;
+  text-decoration: none;
+}
+
+.adminToggle:hover {
+  color: #d9b268;
+  text-decoration: underline;
+}
+
 .legalLinks {
   margin-top: 16px;
   font-size: 12px;

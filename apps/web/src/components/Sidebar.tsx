@@ -39,7 +39,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const ROLE_NAV_ACCESS: Record<UserRole, View[]> = {
-  admin: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro", "configuracoes", "usuarios", "admin"],
+  admin: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro", "configuracoes", "usuarios"],
   gestor: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro"],
   colaborador: ["inicio", "agenda", "clientes", "agendamentos"],
   visualizador: ["inicio", "financeiro", "contratos"],
@@ -56,7 +56,6 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
   { id: "usuarios", label: "Usuários", icon: "users" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
-  { id: "admin", label: "Administração", icon: "shield" },
 ];
 
 function NavIcon({ name }: { name: string }) {
