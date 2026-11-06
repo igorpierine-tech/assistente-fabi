@@ -22,17 +22,56 @@ export async function consultarCnpj(cnpj: string): Promise<CnpjData> {
     throw new Error("CNPJ deve ter 14 dígitos");
   }
 
-  const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${clean}`);
-  if (!res.ok) {
-    if (res.status === 404) throw new Error("CNPJ não encontrado na base da Receita Federal");
-    throw new Error(`Erro ao consultar CNPJ: ${res.status}`);
+  const headers = { "User-Agent": "AssistenteFabi/1.0", "Accept": "application/json" };
+
+  // Try BrasilAPI first
+  let data: Record<string, unknown> | null = null;
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${clean}`, { headers });
+    if (res.ok) {
+      data = await res.json() as Record<string, unknown>;
+    } else if (res.status === 404) {
+      throw new Error("CNPJ não encontrado na base da Receita Federal");
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("não encontrado")) throw err;
   }
 
-  const data = await res.json() as Record<string, unknown>;
+  // Fallback to ReceitaWS
+  if (!data) {
+    try {
+      const res2 = await fetch(`https://receitaws.com.br/v1/cnpj/${clean}`, { headers });
+      if (res2.ok) {
+        const rw = await res2.json() as Record<string, unknown>;
+        if (rw.status === "ERROR") throw new Error((rw.message as string) || "CNPJ não encontrado");
+        const atv = Array.isArray(rw.atividade_principal) ? (rw.atividade_principal as Array<{ text?: string }>)[0]?.text || "" : "";
+        return {
+          cnpj: clean,
+          razao_social: (rw.nome as string) || "",
+          nome_fantasia: (rw.fantasia as string) || "",
+          situacao_cadastral: (rw.situacao as string) || "",
+          logradouro: (rw.logradouro as string) || "",
+          numero: (rw.numero as string) || "",
+          complemento: (rw.complemento as string) || "",
+          bairro: (rw.bairro as string) || "",
+          municipio: (rw.municipio as string) || "",
+          uf: (rw.uf as string) || "",
+          cep: (rw.cep as string) || "",
+          telefone: (rw.telefone as string) || "",
+          email: (rw.email as string) || "",
+          atividade_principal: atv,
+          natureza_juridica: (rw.natureza_juridica as string) || "",
+        };
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("não encontrado")) throw err;
+    }
+  }
 
-  const atividadePrincipal = Array.isArray(data.cnaes_secundarios)
-    ? ""
-    : "";
+  if (!data) {
+    throw new Error("Não foi possível consultar o CNPJ. Tente novamente em alguns minutos.");
+  }
+
   const cnaeDesc = data.cnae_fiscal_descricao as string || "";
 
   return {
