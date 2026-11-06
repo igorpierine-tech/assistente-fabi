@@ -213,19 +213,64 @@ router.post("/tenants", async (req, res) => {
   res.status(201).json({ tenant, admin });
 });
 
+router.get("/tenants/:id/empresa", (req, res) => {
+  const tenant = getTenantById(req.params.id);
+  if (!tenant) {
+    res.status(404).json({ error: "Empresa não encontrada" });
+    return;
+  }
+  tenantContext.run({ tenantId: tenant.id, tenantSlug: tenant.slug }, () => {
+    const db = getTenantDb(tenant.slug);
+    const row = db.prepare("SELECT * FROM tenant_config LIMIT 1").get() as Record<string, unknown> | undefined;
+    if (!row) {
+      res.json({});
+      return;
+    }
+    res.json({
+      cnpj: row.cnpj || "",
+      inscricaoMunicipal: row.inscricao_municipal || "",
+      endereco: row.endereco || "",
+      cep: row.cep || "",
+      telefone: row.telefone_comercial || "",
+      emailEmpresa: row.email_comercial || "",
+    });
+  });
+});
+
 router.put("/tenants/:id", (req, res) => {
   const tenant = getTenantById(req.params.id);
   if (!tenant) {
     res.status(404).json({ error: "Empresa não encontrada" });
     return;
   }
-  const { name, slug } = req.body || {};
+  const { name, slug, cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = req.body || {};
   const updated = updateTenant(req.params.id, { name, slug });
-  if (updated) {
-    res.json({ ...updated, userCount: listMasterUsers(updated.id).length });
-  } else {
+  if (!updated) {
     res.status(404).json({ error: "Empresa não encontrada" });
+    return;
   }
+
+  const hasCompanyData = cnpj !== undefined || inscricaoMunicipal !== undefined || endereco !== undefined || cep !== undefined || telefone !== undefined || emailEmpresa !== undefined;
+  if (hasCompanyData) {
+    tenantContext.run({ tenantId: updated.id, tenantSlug: updated.slug }, () => {
+      const db = getTenantDb(updated.slug);
+      const row = db.prepare("SELECT user_id FROM tenant_config LIMIT 1").get() as { user_id: string } | undefined;
+      const configUserId = row?.user_id || req.session.appUser!.id;
+      const fullEndereco = municipio || uf
+        ? [endereco, municipio && uf ? `${municipio}/${uf}` : municipio || uf].filter(Boolean).join(" — ")
+        : endereco;
+      upsertTenantConfig(configUserId, {
+        cnpj: cnpj !== undefined ? (String(cnpj).replace(/\D/g, "").replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") || null) : undefined,
+        inscricao_municipal: inscricaoMunicipal !== undefined ? (inscricaoMunicipal || null) : undefined,
+        endereco: fullEndereco !== undefined ? (fullEndereco || null) : undefined,
+        cep: cep !== undefined ? (cep || null) : undefined,
+        telefone_comercial: telefone !== undefined ? (telefone || null) : undefined,
+        email_comercial: emailEmpresa !== undefined ? (emailEmpresa || null) : undefined,
+      });
+    });
+  }
+
+  res.json({ ...updated, userCount: listMasterUsers(updated.id).length });
 });
 
 router.delete("/tenants/:id", (req, res) => {

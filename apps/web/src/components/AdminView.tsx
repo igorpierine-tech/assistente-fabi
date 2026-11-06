@@ -201,7 +201,7 @@ export function AdminView() {
     }
   }
 
-  function openEditTenantModal(tenant: Tenant) {
+  async function openEditTenantModal(tenant: Tenant) {
     setEditingTenant(tenant);
     setTenantModalStep("form");
     setTenantForm({
@@ -210,6 +210,21 @@ export function AdminView() {
       adminName: "", adminEmail: "", adminPassword: "",
     });
     setShowTenantModal(true);
+    try {
+      const res = await apiFetch(`/system/tenants/${tenant.id}/empresa`);
+      if (res.ok) {
+        const data = await res.json();
+        setTenantForm(f => ({
+          ...f,
+          cnpj: data.cnpj || "",
+          inscricaoMunicipal: data.inscricaoMunicipal || "",
+          endereco: data.endereco || "",
+          cep: data.cep || "",
+          telefone: data.telefone || "",
+          emailEmpresa: data.emailEmpresa || "",
+        }));
+      }
+    } catch { /* silent */ }
   }
 
   async function handleUpdateTenant() {
@@ -217,7 +232,17 @@ export function AdminView() {
     const res = await apiFetch(`/system/tenants/${editingTenant.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: tenantForm.name, slug: tenantForm.slug }),
+      body: JSON.stringify({
+        name: tenantForm.name, slug: tenantForm.slug,
+        cnpj: tenantForm.cnpj || undefined,
+        inscricaoMunicipal: tenantForm.inscricaoMunicipal || undefined,
+        endereco: tenantForm.endereco || undefined,
+        cep: tenantForm.cep || undefined,
+        municipio: tenantForm.municipio || undefined,
+        uf: tenantForm.uf || undefined,
+        telefone: tenantForm.telefone || undefined,
+        emailEmpresa: tenantForm.emailEmpresa || undefined,
+      }),
     });
     if (res.ok) {
       closeTenantModal();
