@@ -74,6 +74,7 @@ export function AdminView() {
   const [cnpjInput, setCnpjInput] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cnpjError, setCnpjError] = useState("");
+  const [slugTaken, setSlugTaken] = useState(false);
 
   // Forms
   const [tenantForm, setTenantForm] = useState({
@@ -125,9 +126,17 @@ export function AdminView() {
     setCnpjInput("");
     setCnpjError("");
     setCnpjLoading(false);
+    setSlugTaken(false);
     setTenantModalStep("cnpj");
     setTenantForm({ name: "", slug: "", cnpj: "", inscricaoMunicipal: "", endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "", adminName: "", adminEmail: "", adminPassword: "" });
     setShowTenantModal(true);
+  }
+
+  async function checkSlugAvailability(slug: string) {
+    if (!slug || slug.length < 2) { setSlugTaken(false); return; }
+    if (editingTenant && editingTenant.slug === slug) { setSlugTaken(false); return; }
+    const existing = tenants.find(t => t.slug === slug);
+    setSlugTaken(!!existing);
   }
 
   function closeTenantModal() {
@@ -166,6 +175,7 @@ export function AdminView() {
         telefone: data.telefone || "",
         emailEmpresa: data.email || "",
       }));
+      checkSlugAvailability(autoSlug);
       setTenantModalStep("form");
     } catch {
       setCnpjError("Não foi possível consultar o CNPJ. Tente novamente.");
@@ -179,7 +189,7 @@ export function AdminView() {
 
   async function handleCreateTenant() {
     const { name, slug, adminName, adminEmail, adminPassword, cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = tenantForm;
-    if (!name || !slug) return;
+    if (!name || !slug || slugTaken) return;
     const res = await apiFetch("/system/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -638,6 +648,7 @@ export function AdminView() {
                         const name = e.target.value;
                         const autoSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
                         setTenantForm(f => ({ ...f, name, slug: autoSlug }));
+                        checkSlugAvailability(autoSlug);
                       }}
                       className={styles.input}
                       placeholder="Ex: Clínica Exemplo"
@@ -647,10 +658,16 @@ export function AdminView() {
                     <label>Slug (identificador) *</label>
                     <input
                       value={tenantForm.slug}
-                      onChange={e => setTenantForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+                      onChange={e => {
+                        const s = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                        setTenantForm(f => ({ ...f, slug: s }));
+                        checkSlugAvailability(s);
+                      }}
                       className={styles.input}
                       placeholder="ex: clinica-exemplo"
+                      style={slugTaken ? { borderColor: "var(--error)" } : undefined}
                     />
+                    {slugTaken && <span style={{ color: "var(--error)", fontSize: "12px", marginTop: 4 }}>Esse slug já está em uso</span>}
                   </div>
                 </div>
                 <div className={styles.formGroup}>
@@ -707,7 +724,7 @@ export function AdminView() {
                 )}
                 <div className={styles.modalActions}>
                   <button className={styles.btnOutline} onClick={closeTenantModal}>Cancelar</button>
-                  <button className={styles.addBtn} onClick={editingTenant ? handleUpdateTenant : handleCreateTenant}>
+                  <button className={styles.addBtn} onClick={editingTenant ? handleUpdateTenant : handleCreateTenant} disabled={slugTaken}>
                     {editingTenant ? "Salvar" : "Criar Empresa"}
                   </button>
                 </div>
