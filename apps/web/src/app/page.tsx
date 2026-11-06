@@ -8,6 +8,7 @@ import { DaySummary } from "@/components/DaySummary";
 import { CalendarView } from "@/components/CalendarView";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { LoginScreen } from "@/components/LoginScreen";
+import { TenantSelector } from "@/components/TenantSelector";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { ClientsPanel } from "@/components/ClientsPanel";
 import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
@@ -129,6 +130,8 @@ export default function Home() {
   const [activeView, setActiveView] = useState<View>("inicio");
   const [pendingBookingCount, setPendingBookingCount] = useState(0);
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
+  const [pendingTenants, setPendingTenants] = useState<{ id: string; slug: string; name: string; role: string }[] | null>(null);
+  const [selectingTenant, setSelectingTenant] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -248,10 +251,14 @@ export default function Home() {
       if (data.authenticated && data.user?.id) {
         setUserId(data.user.id);
         setUserName(data.user.name || "");
-        setUserRole((data.user.role as UserRole) || undefined);
-        fetchAppointments();
-        fetchClients();
-        fetchTenantConfig();
+        if (data.requireTenantSelection && data.tenants) {
+          setPendingTenants(data.tenants);
+        } else {
+          setUserRole((data.user.role as UserRole) || undefined);
+          fetchAppointments();
+          fetchClients();
+          fetchTenantConfig();
+        }
       }
     } catch {
       setIsAuthenticated(false);
@@ -269,6 +276,15 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) return data.error || "Erro ao fazer login";
       setAuthToken(data.token);
+
+      if (data.requireTenantSelection && data.tenants) {
+        setPendingTenants(data.tenants);
+        setUserId(data.user.id);
+        setUserName(data.user.name || "");
+        setIsAuthenticated(true);
+        return null;
+      }
+
       setIsAuthenticated(true);
       setUserId(data.user.id);
       setUserName(data.user.name || "");
@@ -282,6 +298,31 @@ export default function Home() {
     }
   }
 
+  async function handleSelectTenant(tenantSlug: string) {
+    setSelectingTenant(true);
+    try {
+      const res = await apiFetch("/auth/select-tenant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantSlug }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Erro ao selecionar empresa");
+        setSelectingTenant(false);
+        return;
+      }
+      setPendingTenants(null);
+      setUserRole((data.user.role as UserRole) || undefined);
+      fetchAppointments();
+      fetchClients();
+      fetchTenantConfig();
+    } catch {
+      alert("Erro de conexão");
+    }
+    setSelectingTenant(false);
+  }
+
   async function handleLogout() {
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
     clearAuthToken();
@@ -293,6 +334,7 @@ export default function Home() {
     setClientRows([]);
     setAppointmentRows([]);
     setTenantConfig(null);
+    setPendingTenants(null);
   }
 
   function handleEventClick(event: CalendarEvent) {
@@ -407,6 +449,17 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return <LoginScreen onPasswordLogin={handlePasswordLogin} />;
+  }
+
+  if (pendingTenants) {
+    return (
+      <TenantSelector
+        userName={userName}
+        tenants={pendingTenants}
+        onSelect={handleSelectTenant}
+        loading={selectingTenant}
+      />
+    );
   }
 
   if (tenantConfig && !tenantConfig.onboardingCompleted) {

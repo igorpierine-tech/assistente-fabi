@@ -80,6 +80,24 @@ function initMasterTables(db: Database.Database) {
       connected_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS user_tenants (
+      user_id TEXT NOT NULL REFERENCES users(id),
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      role TEXT NOT NULL DEFAULT 'colaborador',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, tenant_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_tenants_user ON user_tenants(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_tenants_tenant ON user_tenants(tenant_id);
+  `);
+
+  // Backfill: ensure every user with a tenant_id has a row in user_tenants
+  db.exec(`
+    INSERT OR IGNORE INTO user_tenants (user_id, tenant_id, role)
+    SELECT id, tenant_id, role FROM users WHERE tenant_id IS NOT NULL
   `);
 }
 
@@ -152,21 +170,25 @@ export function createMasterUser(data: {
   googleId?: string;
 }): MasterUserRow {
   const id = uuidv4();
-  getMasterDb()
-    .prepare(
-      `INSERT INTO users (id, tenant_id, name, email, password_hash, role, platform_role, google_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      id,
-      data.tenantId,
-      data.name,
-      data.email.toLowerCase(),
-      data.passwordHash || null,
-      data.role || "colaborador",
-      data.platformRole || "user",
-      data.googleId || null
-    );
+  const role = data.role || "colaborador";
+  const db = getMasterDb();
+  db.prepare(
+    `INSERT INTO users (id, tenant_id, name, email, password_hash, role, platform_role, google_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    data.tenantId,
+    data.name,
+    data.email.toLowerCase(),
+    data.passwordHash || null,
+    role,
+    data.platformRole || "user",
+    data.googleId || null
+  );
+  // Also insert into user_tenants junction table
+  db.prepare(
+    "INSERT OR IGNORE INTO user_tenants (user_id, tenant_id, role) VALUES (?, ?, ?)"
+  ).run(id, data.tenantId, role);
   return getMasterUserById(id)!;
 }
 
@@ -201,4 +223,40 @@ export function masterUserCount(tenantId?: string): number {
     return (getMasterDb().prepare("SELECT COUNT(*) as cnt FROM users WHERE tenant_id = ?").get(tenantId) as { cnt: number }).cnt;
   }
   return (getMasterDb().prepare("SELECT COUNT(*) as cnt FROM users").get() as { cnt: number }).cnt;
+}
+
+// --- User ↔ Tenant (N:N) ---
+
+export interface UserTenantRow {
+  user_id: string;
+  tenant_id: string;
+  role: string;
+  active: number;
+  tenant_name: string;
+  tenant_slug: string;
+}
+
+export function getUserTenants(userId: string): UserTenantRow[] {
+  return getMasterDb()
+    .prepare(`
+      SELECT ut.user_id, ut.tenant_id, ut.role, ut.active,
+             t.name AS tenant_name, t.slug AS tenant_slug
+      FROM user_tenants ut
+      JOIN tenants t ON t.id = ut.tenant_id
+      WHERE ut.user_id = ? AND ut.active = 1 AND t.active = 1
+      ORDER BY t.name
+    `)
+    .all(userId) as UserTenantRow[];
+}
+
+export function addUserToTenant(userId: string, tenantId: string, role: string = "colaborador"): void {
+  getMasterDb()
+    .prepare("INSERT OR IGNORE INTO user_tenants (user_id, tenant_id, role) VALUES (?, ?, ?)")
+    .run(userId, tenantId, role);
+}
+
+export function removeUserFromTenant(userId: string, tenantId: string): void {
+  getMasterDb()
+    .prepare("UPDATE user_tenants SET active = 0 WHERE user_id = ? AND tenant_id = ?")
+    .run(userId, tenantId);
 }

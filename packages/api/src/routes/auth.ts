@@ -4,8 +4,7 @@ import { google } from "googleapis";
 import { consumeMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
 import { getUserByEmail, verifyPassword } from "../services/users-db";
-import { getMasterUserByEmail } from "../services/master-db";
-import { getTenantById } from "../services/master-db";
+import { getMasterUserByEmail, getUserTenants, getTenantById, getTenantBySlug } from "../services/master-db";
 import { saveGoogleTokens, getGoogleTokenRow, deleteGoogleTokens } from "../services/google-tokens-db";
 import "../session-types";
 
@@ -46,7 +45,7 @@ function verifyCalendarState(state: unknown): string | null {
 // --- Email/password login ---
 
 router.post("/login", authLimiter, async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, tenantSlug } = req.body || {};
   if (typeof email !== "string" || typeof password !== "string") {
     res.status(400).json({ error: "E-mail e senha são obrigatórios" });
     return;
@@ -69,10 +68,61 @@ router.post("/login", authLimiter, async (req, res) => {
     return;
   }
 
-  const tenant = getTenantById(user.tenant_id);
-  if (!tenant || !tenant.active) {
-    res.status(403).json({ error: "Empresa desativada" });
+  const userTenants = getUserTenants(user.id);
+  if (userTenants.length === 0) {
+    res.status(403).json({ error: "Nenhuma empresa ativa vinculada a este usuário" });
     return;
+  }
+
+  // If user has multiple tenants and didn't specify which one, return the list
+  if (userTenants.length > 1 && !tenantSlug) {
+    req.session.regenerate((err) => {
+      if (err) {
+        res.status(500).json({ error: "Erro ao criar sessão" });
+        return;
+      }
+      // Store partial auth (authenticated but no tenant selected yet)
+      req.session.appUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: "",
+        tenantSlug: "",
+      };
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          res.status(500).json({ error: "Erro ao salvar sessão" });
+          return;
+        }
+        const token = signSessionId(req.sessionID, process.env.SESSION_SECRET!);
+        res.json({
+          requireTenantSelection: true,
+          token,
+          user: { id: user.id, name: user.name, email: user.email, role: user.role },
+          tenants: userTenants.map((ut) => ({
+            id: ut.tenant_id,
+            slug: ut.tenant_slug,
+            name: ut.tenant_name,
+            role: ut.role,
+          })),
+        });
+      });
+    });
+    return;
+  }
+
+  // Pick the tenant: either the one specified or the only one available
+  let selectedTenant;
+  if (tenantSlug) {
+    const match = userTenants.find((ut) => ut.tenant_slug === tenantSlug);
+    if (!match) {
+      res.status(403).json({ error: "Você não tem acesso a esta empresa" });
+      return;
+    }
+    selectedTenant = { id: match.tenant_id, slug: match.tenant_slug, role: match.role };
+  } else {
+    selectedTenant = { id: userTenants[0].tenant_id, slug: userTenants[0].tenant_slug, role: userTenants[0].role };
   }
 
   req.session.regenerate((err) => {
@@ -84,9 +134,9 @@ router.post("/login", authLimiter, async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
+      role: selectedTenant.role as string,
+      tenantId: selectedTenant.id,
+      tenantSlug: selectedTenant.slug,
     };
     req.session.save((saveErr) => {
       if (saveErr) {
@@ -100,9 +150,57 @@ router.post("/login", authLimiter, async (req, res) => {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: selectedTenant.role,
         },
       });
+    });
+  });
+});
+
+// Select tenant (after login when user has multiple companies)
+router.post("/select-tenant", (req, res) => {
+  const appUser = req.session.appUser;
+  if (!appUser) {
+    res.status(401).json({ error: "Não autenticado" });
+    return;
+  }
+
+  const { tenantSlug } = req.body || {};
+  if (!tenantSlug) {
+    res.status(400).json({ error: "tenantSlug é obrigatório" });
+    return;
+  }
+
+  const userTenants = getUserTenants(appUser.id);
+  const match = userTenants.find((ut) => ut.tenant_slug === tenantSlug);
+  if (!match) {
+    res.status(403).json({ error: "Você não tem acesso a esta empresa" });
+    return;
+  }
+
+  req.session.appUser = {
+    ...appUser,
+    role: match.role,
+    tenantId: match.tenant_id,
+    tenantSlug: match.tenant_slug,
+  };
+  req.session.save((saveErr) => {
+    if (saveErr) {
+      res.status(500).json({ error: "Erro ao salvar sessão" });
+      return;
+    }
+    res.json({
+      user: {
+        id: appUser.id,
+        name: appUser.name,
+        email: appUser.email,
+        role: match.role,
+      },
+      tenant: {
+        id: match.tenant_id,
+        slug: match.tenant_slug,
+        name: match.tenant_name,
+      },
     });
   });
 });
@@ -127,13 +225,29 @@ router.post("/mobile/exchange", authLimiter, (req, res) => {
 router.get("/status", (req, res) => {
   const appUser = req.session.appUser;
   const calendarRow = appUser ? getGoogleTokenRow(appUser.id) : null;
+
+  // Check if user is authenticated but hasn't selected a tenant yet
+  const needsTenantSelection = Boolean(appUser && !appUser.tenantId);
+  let tenants: { id: string; slug: string; name: string; role: string }[] | undefined;
+  if (needsTenantSelection && appUser) {
+    const userTenants = getUserTenants(appUser.id);
+    tenants = userTenants.map((ut) => ({
+      id: ut.tenant_id,
+      slug: ut.tenant_slug,
+      name: ut.tenant_name,
+      role: ut.role,
+    }));
+  }
+
   res.json({
     authenticated: Boolean(appUser),
+    requireTenantSelection: needsTenantSelection,
     user: appUser
       ? { id: appUser.id, name: appUser.name, email: appUser.email, role: appUser.role }
       : null,
     tenantId: appUser?.tenantId ?? null,
     tenantSlug: appUser?.tenantSlug ?? null,
+    tenants,
     calendarConnected: Boolean(calendarRow),
     calendarEmail: calendarRow?.google_email ?? null,
   });
