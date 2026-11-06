@@ -123,7 +123,7 @@ export function LoginScreen({ onPasswordLogin, onAdminLogin }: LoginScreenProps)
 
         <button
           type="button"
-          className={styles.adminToggle}
+          className={adminMode ? styles.adminToggle : styles.secondaryBtn}
           onClick={toggleMode}
         >
           {adminMode ? "Voltar ao login normal" : "Acesso Administrativo"}
