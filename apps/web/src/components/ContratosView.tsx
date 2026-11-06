@@ -18,6 +18,9 @@ interface ContractRow {
   client_name: string | null;
   status: string;
   current_revision: number;
+  zapsign_doc_token: string | null;
+  zapsign_status: string | null;
+  zapsign_sign_url: string | null;
   created_at: string;
 }
 
@@ -126,6 +129,9 @@ export function ContratosView() {
   const [creating, setCreating] = useState(false);
 
   const [issuingId, setIssuingId] = useState("");
+  const [sendingSignId, setSendingSignId] = useState("");
+  const [checkingSignId, setCheckingSignId] = useState("");
+  const [zapSignConfigured, setZapSignConfigured] = useState(false);
 
   // Editor state
   const [editingContract, setEditingContract] = useState<ContractRow | null>(null);
@@ -146,6 +152,10 @@ export function ContratosView() {
       ]);
       setContracts(await cRes.json());
       setServices(await sRes.json());
+      try {
+        const zsRes = await api("/contracts/zapsign/status");
+        setZapSignConfigured((await zsRes.json()).configured);
+      } catch {}
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -343,6 +353,45 @@ export function ContratosView() {
       await fetchAll();
     } catch (e) {
       setError((e as Error).message);
+    }
+  };
+
+  const handleSendForSignature = async (id: string) => {
+    if (!confirm("Enviar este contrato para assinatura eletrônica via ZapSign?")) return;
+    setSendingSignId(id);
+    setError("");
+    try {
+      const res = await api(`/contracts/${id}/send-signature`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        await fetchAll();
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSendingSignId("");
+    }
+  };
+
+  const handleCheckSignatureStatus = async (id: string) => {
+    setCheckingSignId(id);
+    setError("");
+    try {
+      const res = await api(`/contracts/${id}/signature-status`);
+      const data = await res.json();
+      await fetchAll();
+      if (data.status === "signed") {
+        alert("Contrato assinado com sucesso!");
+      } else if (data.status === "cancelled") {
+        alert("Assinatura foi cancelada.");
+      } else {
+        const signerInfo = data.signers?.map((s: { name: string; status: string }) => `${s.name}: ${s.status}`).join("\n") || "";
+        alert(`Status: Aguardando assinatura\n${signerInfo}`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCheckingSignId("");
     }
   };
 
@@ -700,6 +749,26 @@ export function ContratosView() {
                           disabled={issuingId === c.id}
                         >
                           {issuingId === c.id ? "Emitindo..." : "Emitir"}
+                        </button>
+                      )}
+                      {zapSignConfigured && c.status === "issued" && !c.zapsign_doc_token && (
+                        <button
+                          className={styles.issueBtn}
+                          onClick={() => handleSendForSignature(c.id)}
+                          disabled={sendingSignId === c.id}
+                          style={{ background: "#d97706" }}
+                        >
+                          {sendingSignId === c.id ? "Enviando..." : "Assinar"}
+                        </button>
+                      )}
+                      {c.zapsign_status === "pending" && (
+                        <button
+                          className={styles.iconOnly}
+                          onClick={() => handleCheckSignatureStatus(c.id)}
+                          disabled={checkingSignId === c.id}
+                          title="Verificar status da assinatura"
+                        >
+                          {checkingSignId === c.id ? "..." : "Verificar"}
                         </button>
                       )}
                       {c.status !== "voided" && c.status !== "completed" && (

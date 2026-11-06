@@ -178,12 +178,18 @@ export function AdminView() {
   }
 
   async function handleCreateTenant() {
-    const { name, slug, adminName, adminEmail, adminPassword } = tenantForm;
+    const { name, slug, adminName, adminEmail, adminPassword, cnpj, endereco, cep, municipio, uf, telefone, emailEmpresa } = tenantForm;
     if (!name || !slug) return;
     const res = await apiFetch("/system/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, slug, adminName: adminName || undefined, adminEmail: adminEmail || undefined, adminPassword: adminPassword || undefined }),
+      body: JSON.stringify({
+        name, slug,
+        adminName: adminName || undefined, adminEmail: adminEmail || undefined, adminPassword: adminPassword || undefined,
+        cnpj: cnpj || undefined, endereco: endereco || undefined, cep: cep || undefined,
+        municipio: municipio || undefined, uf: uf || undefined,
+        telefone: telefone || undefined, emailEmpresa: emailEmpresa || undefined,
+      }),
     });
     if (res.ok) {
       closeTenantModal();

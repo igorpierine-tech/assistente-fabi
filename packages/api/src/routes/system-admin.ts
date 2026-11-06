@@ -24,7 +24,7 @@ import {
   SYSTEM_MODULES,
 } from "../services/master-db";
 import { hashPassword } from "../services/users-db";
-import { getTenantDb } from "../services/database";
+import { getTenantDb, upsertTenantConfig } from "../services/database";
 import { tenantContext } from "../services/tenant-context";
 import "../session-types";
 
@@ -151,7 +151,7 @@ router.get("/tenants/:id", (req, res) => {
 });
 
 router.post("/tenants", async (req, res) => {
-  const { name, slug, adminName, adminEmail, adminPassword } = req.body || {};
+  const { name, slug, adminName, adminEmail, adminPassword, cnpj, endereco, cep, municipio, uf, telefone, emailEmpresa } = req.body || {};
   if (!name || !slug) {
     res.status(400).json({ error: "name e slug são obrigatórios" });
     return;
@@ -172,11 +172,13 @@ router.post("/tenants", async (req, res) => {
   });
 
   let admin = null;
+  let adminUserId: string | null = null;
   if (adminEmail && adminPassword) {
     const existing = getMasterUserByEmail(adminEmail);
     if (existing) {
       addUserToTenant(existing.id, tenant.id, "admin");
       admin = { id: existing.id, name: existing.name, email: existing.email };
+      adminUserId = existing.id;
     } else {
       const passwordHash = await hashPassword(adminPassword);
       const user = createMasterUser({
@@ -187,8 +189,26 @@ router.post("/tenants", async (req, res) => {
         role: "admin",
       });
       admin = { id: user.id, name: user.name, email: user.email };
+      adminUserId = user.id;
     }
   }
+
+  const hasCompanyData = cnpj || endereco || cep || municipio || uf || telefone || emailEmpresa;
+  if (hasCompanyData) {
+    const configUserId = adminUserId || req.session.appUser!.id;
+    const fullEndereco = [endereco, municipio && uf ? `${municipio}/${uf}` : municipio || uf].filter(Boolean).join(" — ");
+    tenantContext.run({ tenantId: tenant.id, tenantSlug: tenant.slug }, () => {
+      upsertTenantConfig(configUserId, {
+        razao_social: name,
+        cnpj: cnpj ? String(cnpj).replace(/\D/g, "").replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : null,
+        endereco: fullEndereco || null,
+        cep: cep || null,
+        telefone: telefone || null,
+        email: emailEmpresa || null,
+      });
+    });
+  }
+
   res.status(201).json({ tenant, admin });
 });
 

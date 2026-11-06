@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import styles from "./ClientsPanel.module.css";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 
 interface Client {
   id: string;
@@ -38,6 +38,8 @@ export function ClientsPanel() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [form, setForm] = useState<ClientForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cnpjError, setCnpjError] = useState("");
 
   const fetchClients = useCallback(async () => {
     try {
@@ -116,6 +118,37 @@ export function ClientsPanel() {
     } catch {
       // silent
     }
+  }
+
+  async function handleCnpjLookup() {
+    const clean = form.document.replace(/\D/g, "");
+    if (clean.length !== 14) {
+      setCnpjError("CNPJ deve ter 14 dígitos");
+      return;
+    }
+    setCnpjLoading(true);
+    setCnpjError("");
+    try {
+      const res = await fetch(`${API_URL}/platform/cnpj/${clean}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setCnpjError(data.error || "Erro ao consultar CNPJ");
+        setCnpjLoading(false);
+        return;
+      }
+      const nome = data.nome_fantasia || data.razao_social || "";
+      const addr = [data.logradouro, data.numero, data.complemento, data.bairro, data.municipio ? `${data.municipio}/${data.uf}` : "", data.cep].filter(Boolean).join(", ");
+      setForm(f => ({
+        ...f,
+        name: nome || f.name,
+        address: addr || f.address,
+        phone: data.telefone || f.phone,
+        email: data.email || f.email,
+      }));
+    } catch {
+      setCnpjError("Não foi possível consultar o CNPJ");
+    }
+    setCnpjLoading(false);
   }
 
   const filtered = clients;
@@ -227,12 +260,27 @@ export function ClientsPanel() {
                 </div>
                 <div className={styles.field}>
                   <label>{form.tipo_pessoa === "PJ" ? "CNPJ" : "CPF"}</label>
-                  <input
-                    type="text"
-                    value={form.document}
-                    onChange={(e) => setForm({ ...form, document: e.target.value })}
-                    placeholder={form.tipo_pessoa === "PJ" ? "00.000.000/0000-00" : "000.000.000-00"}
-                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      value={form.document}
+                      onChange={(e) => { setForm({ ...form, document: e.target.value }); setCnpjError(""); }}
+                      placeholder={form.tipo_pessoa === "PJ" ? "00.000.000/0000-00" : "000.000.000-00"}
+                      style={{ flex: 1 }}
+                    />
+                    {form.tipo_pessoa === "PJ" && (
+                      <button
+                        type="button"
+                        className={styles.saveBtn}
+                        onClick={handleCnpjLookup}
+                        disabled={cnpjLoading}
+                        style={{ whiteSpace: "nowrap", padding: "8px 14px", fontSize: "0.85rem" }}
+                      >
+                        {cnpjLoading ? "..." : "Buscar"}
+                      </button>
+                    )}
+                  </div>
+                  {cnpjError && <span style={{ color: "#c0392b", fontSize: "0.8rem", marginTop: "4px", display: "block" }}>{cnpjError}</span>}
                 </div>
               </div>
               {form.tipo_pessoa === "PJ" && (

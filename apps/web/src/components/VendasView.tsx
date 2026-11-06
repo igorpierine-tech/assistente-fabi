@@ -153,6 +153,7 @@ export function VendasView() {
   const [saving, setSaving] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendingSignId, setSendingSignId] = useState<string | null>(null);
+  const [checkingSignId, setCheckingSignId] = useState<string | null>(null);
   const [zapSignConfigured, setZapSignConfigured] = useState(false);
   const [nfseConfigured, setNfseConfigured] = useState(false);
   const [nfseStatuses, setNfseStatuses] = useState<Record<string, { status: string; numero?: string | null }>>({});
@@ -399,6 +400,28 @@ export function VendasView() {
     setSendingSignId(null);
   }
 
+  async function refreshSignatureStatus(s: Sale) {
+    setCheckingSignId(s.id);
+    try {
+      const res = await apiFetch(`/sales/${s.id}/signature-status`);
+      if (res.ok) {
+        const data = await res.json();
+        await fetchAll();
+        if (data.status === "signed") {
+          alert("Contrato assinado com sucesso!");
+        } else if (data.status === "cancelled") {
+          alert("Assinatura foi cancelada.");
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Falha ao verificar status");
+      }
+    } catch {
+      alert("Erro ao verificar status da assinatura");
+    }
+    setCheckingSignId(null);
+  }
+
   async function downloadContract(s: Sale) {
     setDownloadingId(s.id);
     try {
@@ -532,14 +555,27 @@ export function VendasView() {
                       </button>
                       {zapSignConfigured && (
                         s.zapsign_status ? (
-                          <span
-                            className={styles.signBadge}
-                            style={{ color: SIGN_STATUS_LABELS[s.zapsign_status]?.color || "#6b6152" }}
-                            title={s.zapsign_sign_url ? `Link: ${s.zapsign_sign_url}` : undefined}
-                          >
-                            {s.zapsign_status === "signed" ? "✓ " : s.zapsign_status === "pending" ? "⏳ " : ""}
-                            {SIGN_STATUS_LABELS[s.zapsign_status]?.label || s.zapsign_status}
-                          </span>
+                          s.zapsign_status === "pending" ? (
+                            <button
+                              className={styles.signBadge}
+                              style={{ color: SIGN_STATUS_LABELS.pending.color, cursor: "pointer", background: "transparent", border: `1px solid ${SIGN_STATUS_LABELS.pending.color}`, borderRadius: "6px", padding: "4px 10px", fontSize: "0.8rem", fontFamily: "inherit" }}
+                              onClick={() => refreshSignatureStatus(s)}
+                              disabled={checkingSignId === s.id}
+                              title="Clique para atualizar o status da assinatura"
+                              type="button"
+                            >
+                              {checkingSignId === s.id ? "Verificando..." : "⏳ Aguardando assinatura"}
+                            </button>
+                          ) : (
+                            <span
+                              className={styles.signBadge}
+                              style={{ color: SIGN_STATUS_LABELS[s.zapsign_status]?.color || "#6b6152" }}
+                              title={s.zapsign_sign_url ? `Link: ${s.zapsign_sign_url}` : undefined}
+                            >
+                              {s.zapsign_status === "signed" ? "✓ " : ""}
+                              {SIGN_STATUS_LABELS[s.zapsign_status]?.label || s.zapsign_status}
+                            </span>
+                          )
                         ) : (
                           <button
                             className={styles.signBtn}
