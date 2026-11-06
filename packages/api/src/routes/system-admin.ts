@@ -4,8 +4,11 @@ import {
   getTenantById,
   getTenantBySlug,
   createTenant,
+  updateTenant,
+  deleteTenant,
   listMasterUsers,
   getMasterUserByEmail,
+  getMasterUserById,
   createMasterUser,
   updateMasterUser,
   getUserTenants,
@@ -189,6 +192,31 @@ router.post("/tenants", async (req, res) => {
   res.status(201).json({ tenant, admin });
 });
 
+router.put("/tenants/:id", (req, res) => {
+  const tenant = getTenantById(req.params.id);
+  if (!tenant) {
+    res.status(404).json({ error: "Empresa não encontrada" });
+    return;
+  }
+  const { name, slug } = req.body || {};
+  const updated = updateTenant(req.params.id, { name, slug });
+  if (updated) {
+    res.json({ ...updated, userCount: listMasterUsers(updated.id).length });
+  } else {
+    res.status(404).json({ error: "Empresa não encontrada" });
+  }
+});
+
+router.delete("/tenants/:id", (req, res) => {
+  const tenant = getTenantById(req.params.id);
+  if (!tenant) {
+    res.status(404).json({ error: "Empresa não encontrada" });
+    return;
+  }
+  deleteTenant(req.params.id);
+  res.status(204).end();
+});
+
 // --- Users for a tenant ---
 
 router.get("/tenants/:id/users", (req, res) => {
@@ -260,11 +288,21 @@ router.put("/tenants/:tenantId/users/:userId/profile", (req, res) => {
 });
 
 router.put("/tenants/:tenantId/users/:userId", (req, res) => {
-  const { active } = req.body || {};
-  if (active !== undefined) {
-    updateMasterUser(req.params.userId, { active: active ? 1 : 0 });
+  const { active, name, email } = req.body || {};
+  const updates: Record<string, unknown> = {};
+  if (active !== undefined) updates.active = active ? 1 : 0;
+  if (name !== undefined) updates.name = name;
+  if (email !== undefined) updates.email = email;
+  if (Object.keys(updates).length > 0) {
+    updateMasterUser(req.params.userId, updates as any);
   }
-  res.json({ success: true });
+  const user = getMasterUserById(req.params.userId);
+  res.json(user ? { id: user.id, name: user.name, email: user.email, active: user.active } : { success: true });
+});
+
+router.delete("/tenants/:tenantId/users/:userId", (req, res) => {
+  removeUserFromTenant(req.params.userId, req.params.tenantId);
+  res.status(204).end();
 });
 
 export { router as systemAdminRouter };

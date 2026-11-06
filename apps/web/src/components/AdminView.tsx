@@ -64,7 +64,11 @@ export function AdminView() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<AccessProfile | null>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [assigningUser, setAssigningUser] = useState<TenantUser | null>(null);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ name: "", email: "" });
 
   // CNPJ lookup
   const [cnpjInput, setCnpjInput] = useState("");
@@ -128,6 +132,7 @@ export function AdminView() {
 
   function closeTenantModal() {
     setShowTenantModal(false);
+    setEditingTenant(null);
   }
 
   async function handleCnpjSearch() {
@@ -186,6 +191,44 @@ export function AdminView() {
     } else {
       const err = await res.json().catch(() => ({}));
       alert(err.error || "Erro ao criar empresa");
+    }
+  }
+
+  function openEditTenantModal(tenant: Tenant) {
+    setEditingTenant(tenant);
+    setTenantModalStep("form");
+    setTenantForm({
+      name: tenant.name, slug: tenant.slug, cnpj: "",
+      endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "",
+      adminName: "", adminEmail: "", adminPassword: "",
+    });
+    setShowTenantModal(true);
+  }
+
+  async function handleUpdateTenant() {
+    if (!editingTenant || !tenantForm.name || !tenantForm.slug) return;
+    const res = await apiFetch(`/system/tenants/${editingTenant.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: tenantForm.name, slug: tenantForm.slug }),
+    });
+    if (res.ok) {
+      closeTenantModal();
+      await fetchTenants();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Erro ao atualizar empresa");
+    }
+  }
+
+  async function handleDeleteTenant(id: string) {
+    if (!confirm("Deseja realmente desativar esta empresa? Ela ficará inativa mas os dados serão preservados.")) return;
+    const res = await apiFetch(`/system/tenants/${id}`, { method: "DELETE" });
+    if (res.ok || res.status === 204) {
+      await fetchTenants();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Erro ao desativar empresa");
     }
   }
 
@@ -280,6 +323,42 @@ export function AdminView() {
     await fetchTenantUsers(selectedTenantId);
   }
 
+  function openEditUserModal(user: TenantUser) {
+    setEditingUser(user);
+    setEditUserForm({ name: user.name, email: user.email });
+    setShowEditUserModal(true);
+  }
+
+  async function handleUpdateUser() {
+    if (!selectedTenantId || !editingUser || !editUserForm.name || !editUserForm.email) return;
+    const res = await apiFetch(`/system/tenants/${selectedTenantId}/users/${editingUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editUserForm.name, email: editUserForm.email }),
+    });
+    if (res.ok) {
+      setShowEditUserModal(false);
+      setEditingUser(null);
+      await fetchTenantUsers(selectedTenantId);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Erro ao atualizar usuário");
+    }
+  }
+
+  async function handleRemoveUser(userId: string) {
+    if (!selectedTenantId) return;
+    if (!confirm("Deseja remover este usuário da empresa?")) return;
+    const res = await apiFetch(`/system/tenants/${selectedTenantId}/users/${userId}`, { method: "DELETE" });
+    if (res.ok || res.status === 204) {
+      await fetchTenantUsers(selectedTenantId);
+      await fetchTenants();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Erro ao remover usuário");
+    }
+  }
+
   async function handleToggleUserActive(userId: string, active: boolean) {
     if (!selectedTenantId) return;
     await apiFetch(`/system/tenants/${selectedTenantId}/users/${userId}`, {
@@ -330,6 +409,7 @@ export function AdminView() {
                 <th>Usuários</th>
                 <th>Status</th>
                 <th>Criada em</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -340,10 +420,16 @@ export function AdminView() {
                   <td>{t.userCount}</td>
                   <td><span className={`${styles.badge} ${t.active ? styles.badgeActive : styles.badgeInactive}`}>{t.active ? "Ativa" : "Inativa"}</span></td>
                   <td className={styles.cellMuted}>{new Date(t.created_at).toLocaleDateString("pt-BR")}</td>
+                  <td>
+                    <div className={styles.profileActions}>
+                      <button className={styles.btnSmall} onClick={() => openEditTenantModal(t)}>Editar</button>
+                      <button className={styles.btnDanger} onClick={() => handleDeleteTenant(t.id)} style={{ padding: "4px 12px", fontSize: "0.78rem" }}>Excluir</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {tenants.length === 0 && (
-                <tr><td colSpan={5} className={styles.empty}>Nenhuma empresa cadastrada</td></tr>
+                <tr><td colSpan={6} className={styles.empty}>Nenhuma empresa cadastrada</td></tr>
               )}
             </tbody>
           </table>
@@ -452,9 +538,13 @@ export function AdminView() {
                       </span>
                     </td>
                     <td>
-                      <button className={styles.btnSmall} onClick={() => handleToggleUserActive(u.id, !u.active)}>
-                        {u.active ? "Desativar" : "Ativar"}
-                      </button>
+                      <div className={styles.profileActions}>
+                        <button className={styles.btnSmall} onClick={() => openEditUserModal(u)}>Editar</button>
+                        <button className={styles.btnSmall} onClick={() => handleToggleUserActive(u.id, !u.active)}>
+                          {u.active ? "Desativar" : "Ativar"}
+                        </button>
+                        <button className={styles.btnDanger} onClick={() => handleRemoveUser(u.id)} style={{ padding: "4px 12px", fontSize: "0.78rem" }}>Remover</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -472,7 +562,7 @@ export function AdminView() {
       {showTenantModal && (
         <div className={styles.overlay} onClick={closeTenantModal}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            {tenantModalStep === "cnpj" ? (
+            {tenantModalStep === "cnpj" && !editingTenant ? (
               <>
                 <h2 className={styles.modalTitle}>Nova Empresa</h2>
                 <p className={styles.formHint}>Informe o CNPJ para buscar os dados automaticamente na Receita Federal</p>
@@ -500,8 +590,8 @@ export function AdminView() {
               </>
             ) : (
               <>
-                <h2 className={styles.modalTitle}>Nova Empresa</h2>
-                {tenantForm.cnpj && (
+                <h2 className={styles.modalTitle}>{editingTenant ? "Editar Empresa" : "Nova Empresa"}</h2>
+                {tenantForm.cnpj && !editingTenant && (
                   <div className={styles.cnpjBadgeRow}>
                     <span className={styles.cnpjBadge}>CNPJ: {tenantForm.cnpj}</span>
                     <button className={styles.btnSmall} onClick={() => setTenantModalStep("cnpj")}>Alterar</button>
@@ -559,25 +649,31 @@ export function AdminView() {
                     <input type="email" value={tenantForm.emailEmpresa} onChange={e => setTenantForm(f => ({ ...f, emailEmpresa: e.target.value }))} className={styles.input} />
                   </div>
                 </div>
-                <hr className={styles.divider} />
-                <p className={styles.formHint}>Administrador (opcional)</p>
-                <div className={styles.formGroup}>
-                  <label>Nome</label>
-                  <input value={tenantForm.adminName} onChange={e => setTenantForm(f => ({ ...f, adminName: e.target.value }))} className={styles.input} />
-                </div>
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label>Email</label>
-                    <input type="email" value={tenantForm.adminEmail} onChange={e => setTenantForm(f => ({ ...f, adminEmail: e.target.value }))} className={styles.input} />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Senha</label>
-                    <input type="password" value={tenantForm.adminPassword} onChange={e => setTenantForm(f => ({ ...f, adminPassword: e.target.value }))} className={styles.input} />
-                  </div>
-                </div>
+                {!editingTenant && (
+                  <>
+                    <hr className={styles.divider} />
+                    <p className={styles.formHint}>Administrador (opcional)</p>
+                    <div className={styles.formGroup}>
+                      <label>Nome</label>
+                      <input value={tenantForm.adminName} onChange={e => setTenantForm(f => ({ ...f, adminName: e.target.value }))} className={styles.input} />
+                    </div>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label>Email</label>
+                        <input type="email" value={tenantForm.adminEmail} onChange={e => setTenantForm(f => ({ ...f, adminEmail: e.target.value }))} className={styles.input} />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Senha</label>
+                        <input type="password" value={tenantForm.adminPassword} onChange={e => setTenantForm(f => ({ ...f, adminPassword: e.target.value }))} className={styles.input} />
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className={styles.modalActions}>
                   <button className={styles.btnOutline} onClick={closeTenantModal}>Cancelar</button>
-                  <button className={styles.addBtn} onClick={handleCreateTenant}>Criar Empresa</button>
+                  <button className={styles.addBtn} onClick={editingTenant ? handleUpdateTenant : handleCreateTenant}>
+                    {editingTenant ? "Salvar" : "Criar Empresa"}
+                  </button>
                 </div>
               </>
             )}
@@ -620,6 +716,27 @@ export function AdminView() {
             <div className={styles.modalActions}>
               <button className={styles.btnOutline} onClick={() => { setShowProfileModal(false); setEditingProfile(null); }}>Cancelar</button>
               <button className={styles.addBtn} onClick={handleSaveProfile}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL: Editar Usuário === */}
+      {showEditUserModal && editingUser && (
+        <div className={styles.overlay} onClick={() => { setShowEditUserModal(false); setEditingUser(null); }}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Editar Usuário</h2>
+            <div className={styles.formGroup}>
+              <label>Nome *</label>
+              <input value={editUserForm.name} onChange={e => setEditUserForm(f => ({ ...f, name: e.target.value }))} className={styles.input} />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Email *</label>
+              <input type="email" value={editUserForm.email} onChange={e => setEditUserForm(f => ({ ...f, email: e.target.value }))} className={styles.input} />
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.btnOutline} onClick={() => { setShowEditUserModal(false); setEditingUser(null); }}>Cancelar</button>
+              <button className={styles.addBtn} onClick={handleUpdateUser}>Salvar</button>
             </div>
           </div>
         </div>

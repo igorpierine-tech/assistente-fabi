@@ -157,6 +157,27 @@ export function createTenant(data: { name: string; slug: string }): TenantRow {
   return getTenantById(id)!;
 }
 
+export function updateTenant(
+  id: string,
+  data: Partial<{ name: string; slug: string; active: number }>
+): TenantRow | undefined {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
+  if (data.slug !== undefined) { fields.push("slug = ?"); values.push(data.slug); }
+  if (data.active !== undefined) { fields.push("active = ?"); values.push(data.active); }
+  if (fields.length === 0) return getTenantById(id);
+  fields.push("updated_at = datetime('now')");
+  values.push(id);
+  getMasterDb().prepare(`UPDATE tenants SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+  return getTenantById(id);
+}
+
+export function deleteTenant(id: string): boolean {
+  getMasterDb().prepare("UPDATE tenants SET active = 0, updated_at = datetime('now') WHERE id = ?").run(id);
+  return true;
+}
+
 // --- User CRUD (master level) ---
 
 export function getMasterUserByEmail(email: string): MasterUserRow | undefined {
