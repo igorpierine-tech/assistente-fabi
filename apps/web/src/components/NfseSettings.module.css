@@ -9,12 +9,12 @@
 .heading {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text, #f4ede0);
+  color: var(--text);
   margin: 0 0 8px;
 }
 
 .desc {
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin: 0 0 20px;
   line-height: 1.5;
@@ -48,7 +48,7 @@
 .sectionTitle {
   font-size: 0.92rem;
   font-weight: 600;
-  color: var(--text, #f4ede0);
+  color: var(--text);
   margin: 0 0 12px;
 }
 
@@ -70,25 +70,26 @@
 
 .field label {
   font-size: 0.82rem;
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .field input,
 .field select {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border, #3d3826);
-  background: var(--bg-input, #1e1b15);
-  color: var(--text, #f4ede0);
-  font-size: 0.88rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--bg);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.2s;
 }
 
 .field input:focus,
 .field select:focus {
-  border-color: var(--primary, #7c3aed);
+  border-color: var(--secondary);
 }
 
 .btnRow {
@@ -113,7 +114,7 @@
 }
 
 .btnPrimary {
-  background: var(--primary, #7c3aed);
+  background: var(--primary);
   color: #fff;
 }
 
@@ -123,14 +124,14 @@
 }
 
 .btnSecondary {
-  background: var(--bg-input, #1e1b15);
-  color: var(--text, #f4ede0);
-  border: 1px solid var(--border, #3d3826);
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .certInfo {
   font-size: 0.85rem;
-  color: var(--text-muted, #8a7f6a);
+  color: var(--text-muted);
   margin-top: 8px;
 }
 
