@@ -371,6 +371,46 @@
   margin: 0 0 12px;
 }
 
+.formRow {
+  display: flex;
+  gap: 12px;
+}
+
+.formRow .formGroup {
+  flex: 1;
+  min-width: 0;
+}
+
+.cnpjRow {
+  display: flex;
+  gap: 10px;
+}
+
+.cnpjRow .input { flex: 1; }
+
+.cnpjBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.cnpjBadge {
+  background: rgba(184, 135, 58, 0.1);
+  color: var(--text);
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.errorText {
+  color: #c0392b;
+  font-size: 0.8rem;
+  margin: 6px 0 0;
+}
+
 .modalActions {
   display: flex;
   justify-content: flex-end;
@@ -430,4 +470,6 @@
   .profileGrid { grid-template-columns: 1fr; }
   .table { font-size: 0.8rem; }
   .table th, .table td { padding: 8px 10px; }
+  .formRow { flex-direction: column; gap: 0; }
+  .cnpjRow { flex-direction: column; }
 }

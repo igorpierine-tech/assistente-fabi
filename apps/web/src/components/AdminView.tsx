@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 import styles from "./AdminView.module.css";
 
 type AdminTab = "empresas" | "perfis" | "usuarios";
+type TenantModalStep = "cnpj" | "form";
+
+function formatCnpj(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
 
 interface Tenant {
   id: string;
@@ -50,13 +60,23 @@ export function AdminView() {
 
   // Modals
   const [showTenantModal, setShowTenantModal] = useState(false);
+  const [tenantModalStep, setTenantModalStep] = useState<TenantModalStep>("cnpj");
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState<AccessProfile | null>(null);
   const [assigningUser, setAssigningUser] = useState<TenantUser | null>(null);
 
+  // CNPJ lookup
+  const [cnpjInput, setCnpjInput] = useState("");
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cnpjError, setCnpjError] = useState("");
+
   // Forms
-  const [tenantForm, setTenantForm] = useState({ name: "", slug: "", adminName: "", adminEmail: "", adminPassword: "" });
+  const [tenantForm, setTenantForm] = useState({
+    name: "", slug: "", cnpj: "",
+    endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "",
+    adminName: "", adminEmail: "", adminPassword: "",
+  });
   const [profileForm, setProfileForm] = useState({ name: "", modules: [] as string[] });
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", profileId: "" });
 
@@ -97,6 +117,61 @@ export function AdminView() {
   }, [selectedTenantId, fetchTenantUsers]);
 
   // --- Tenant actions ---
+  function openTenantModal() {
+    setCnpjInput("");
+    setCnpjError("");
+    setCnpjLoading(false);
+    setTenantModalStep("cnpj");
+    setTenantForm({ name: "", slug: "", cnpj: "", endereco: "", cep: "", municipio: "", uf: "", telefone: "", emailEmpresa: "", adminName: "", adminEmail: "", adminPassword: "" });
+    setShowTenantModal(true);
+  }
+
+  function closeTenantModal() {
+    setShowTenantModal(false);
+  }
+
+  async function handleCnpjSearch() {
+    const clean = cnpjInput.replace(/\D/g, "");
+    if (clean.length !== 14) {
+      setCnpjError("CNPJ deve ter 14 dígitos");
+      return;
+    }
+    setCnpjLoading(true);
+    setCnpjError("");
+    try {
+      const res = await fetch(`${API_URL}/platform/cnpj/${clean}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setCnpjError(data.error || "Erro ao consultar CNPJ");
+        setCnpjLoading(false);
+        return;
+      }
+      const nome = data.nome_fantasia || data.razao_social || "";
+      const autoSlug = nome.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const addr = [data.logradouro, data.numero, data.complemento, data.bairro].filter(Boolean).join(", ");
+      setTenantForm(f => ({
+        ...f,
+        name: nome,
+        slug: autoSlug,
+        cnpj: formatCnpj(clean),
+        endereco: addr,
+        cep: data.cep || "",
+        municipio: data.municipio || "",
+        uf: data.uf || "",
+        telefone: data.telefone || "",
+        emailEmpresa: data.email || "",
+      }));
+      setTenantModalStep("form");
+    } catch {
+      setCnpjError("Não foi possível consultar o CNPJ. Tente novamente.");
+    }
+    setCnpjLoading(false);
+  }
+
+  function handleSkipCnpj() {
+    setTenantModalStep("form");
+  }
+
   async function handleCreateTenant() {
     const { name, slug, adminName, adminEmail, adminPassword } = tenantForm;
     if (!name || !slug) return;
@@ -106,8 +181,7 @@ export function AdminView() {
       body: JSON.stringify({ name, slug, adminName: adminName || undefined, adminEmail: adminEmail || undefined, adminPassword: adminPassword || undefined }),
     });
     if (res.ok) {
-      setShowTenantModal(false);
-      setTenantForm({ name: "", slug: "", adminName: "", adminEmail: "", adminPassword: "" });
+      closeTenantModal();
       await fetchTenants();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -246,7 +320,7 @@ export function AdminView() {
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <span className={styles.sectionCount}>{tenants.length} empresa{tenants.length !== 1 ? "s" : ""}</span>
-            <button className={styles.addBtn} onClick={() => setShowTenantModal(true)}>+ Nova Empresa</button>
+            <button className={styles.addBtn} onClick={openTenantModal}>+ Nova Empresa</button>
           </div>
           <table className={styles.table}>
             <thead>
@@ -396,49 +470,117 @@ export function AdminView() {
 
       {/* === MODAL: Nova Empresa === */}
       {showTenantModal && (
-        <div className={styles.overlay} onClick={() => setShowTenantModal(false)}>
+        <div className={styles.overlay} onClick={closeTenantModal}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>Nova Empresa</h2>
-            <div className={styles.formGroup}>
-              <label>Nome da Empresa *</label>
-              <input
-                value={tenantForm.name}
-                onChange={e => {
-                  const name = e.target.value;
-                  const autoSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-                  setTenantForm(f => ({ ...f, name, slug: autoSlug }));
-                }}
-                className={styles.input}
-                placeholder="Ex: Clínica Exemplo"
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Slug (identificador) *</label>
-              <input
-                value={tenantForm.slug}
-                onChange={e => setTenantForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
-                className={styles.input}
-                placeholder="ex: clinica-exemplo"
-              />
-            </div>
-            <hr className={styles.divider} />
-            <p className={styles.formHint}>Administrador (opcional)</p>
-            <div className={styles.formGroup}>
-              <label>Nome</label>
-              <input value={tenantForm.adminName} onChange={e => setTenantForm(f => ({ ...f, adminName: e.target.value }))} className={styles.input} />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Email</label>
-              <input type="email" value={tenantForm.adminEmail} onChange={e => setTenantForm(f => ({ ...f, adminEmail: e.target.value }))} className={styles.input} />
-            </div>
-            <div className={styles.formGroup}>
-              <label>Senha</label>
-              <input type="password" value={tenantForm.adminPassword} onChange={e => setTenantForm(f => ({ ...f, adminPassword: e.target.value }))} className={styles.input} />
-            </div>
-            <div className={styles.modalActions}>
-              <button className={styles.btnOutline} onClick={() => setShowTenantModal(false)}>Cancelar</button>
-              <button className={styles.addBtn} onClick={handleCreateTenant}>Criar Empresa</button>
-            </div>
+            {tenantModalStep === "cnpj" ? (
+              <>
+                <h2 className={styles.modalTitle}>Nova Empresa</h2>
+                <p className={styles.formHint}>Informe o CNPJ para buscar os dados automaticamente na Receita Federal</p>
+                <div className={styles.formGroup}>
+                  <label>CNPJ</label>
+                  <div className={styles.cnpjRow}>
+                    <input
+                      value={cnpjInput}
+                      onChange={e => { setCnpjInput(formatCnpj(e.target.value)); setCnpjError(""); }}
+                      className={styles.input}
+                      placeholder="00.000.000/0000-00"
+                      maxLength={18}
+                      onKeyDown={e => { if (e.key === "Enter") handleCnpjSearch(); }}
+                    />
+                    <button className={styles.addBtn} onClick={handleCnpjSearch} disabled={cnpjLoading}>
+                      {cnpjLoading ? "Buscando..." : "Buscar"}
+                    </button>
+                  </div>
+                  {cnpjError && <p className={styles.errorText}>{cnpjError}</p>}
+                </div>
+                <div className={styles.modalActions}>
+                  <button className={styles.btnOutline} onClick={closeTenantModal}>Cancelar</button>
+                  <button className={styles.btnOutline} onClick={handleSkipCnpj}>Preencher manualmente</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className={styles.modalTitle}>Nova Empresa</h2>
+                {tenantForm.cnpj && (
+                  <div className={styles.cnpjBadgeRow}>
+                    <span className={styles.cnpjBadge}>CNPJ: {tenantForm.cnpj}</span>
+                    <button className={styles.btnSmall} onClick={() => setTenantModalStep("cnpj")}>Alterar</button>
+                  </div>
+                )}
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Nome da Empresa *</label>
+                    <input
+                      value={tenantForm.name}
+                      onChange={e => {
+                        const name = e.target.value;
+                        const autoSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                        setTenantForm(f => ({ ...f, name, slug: autoSlug }));
+                      }}
+                      className={styles.input}
+                      placeholder="Ex: Clínica Exemplo"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Slug (identificador) *</label>
+                    <input
+                      value={tenantForm.slug}
+                      onChange={e => setTenantForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+                      className={styles.input}
+                      placeholder="ex: clinica-exemplo"
+                    />
+                  </div>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Endereço</label>
+                  <input value={tenantForm.endereco} onChange={e => setTenantForm(f => ({ ...f, endereco: e.target.value }))} className={styles.input} />
+                </div>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>CEP</label>
+                    <input value={tenantForm.cep} onChange={e => setTenantForm(f => ({ ...f, cep: e.target.value }))} className={styles.input} />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Município</label>
+                    <input value={tenantForm.municipio} onChange={e => setTenantForm(f => ({ ...f, municipio: e.target.value }))} className={styles.input} />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>UF</label>
+                    <input value={tenantForm.uf} onChange={e => setTenantForm(f => ({ ...f, uf: e.target.value }))} className={styles.input} maxLength={2} />
+                  </div>
+                </div>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Telefone</label>
+                    <input value={tenantForm.telefone} onChange={e => setTenantForm(f => ({ ...f, telefone: e.target.value }))} className={styles.input} />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Email da Empresa</label>
+                    <input type="email" value={tenantForm.emailEmpresa} onChange={e => setTenantForm(f => ({ ...f, emailEmpresa: e.target.value }))} className={styles.input} />
+                  </div>
+                </div>
+                <hr className={styles.divider} />
+                <p className={styles.formHint}>Administrador (opcional)</p>
+                <div className={styles.formGroup}>
+                  <label>Nome</label>
+                  <input value={tenantForm.adminName} onChange={e => setTenantForm(f => ({ ...f, adminName: e.target.value }))} className={styles.input} />
+                </div>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Email</label>
+                    <input type="email" value={tenantForm.adminEmail} onChange={e => setTenantForm(f => ({ ...f, adminEmail: e.target.value }))} className={styles.input} />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Senha</label>
+                    <input type="password" value={tenantForm.adminPassword} onChange={e => setTenantForm(f => ({ ...f, adminPassword: e.target.value }))} className={styles.input} />
+                  </div>
+                </div>
+                <div className={styles.modalActions}>
+                  <button className={styles.btnOutline} onClick={closeTenantModal}>Cancelar</button>
+                  <button className={styles.addBtn} onClick={handleCreateTenant}>Criar Empresa</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
