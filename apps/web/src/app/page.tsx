@@ -17,6 +17,7 @@ import { FinanceiroView } from "@/components/FinanceiroView";
 import { VendasView } from "@/components/VendasView";
 import { ContratosView } from "@/components/ContratosView";
 import { UsuariosView } from "@/components/UsuariosView";
+import { AdminView } from "@/components/AdminView";
 import { FloatingAssistant } from "@/components/FloatingAssistant";
 import type { CalendarEvent } from "@/components/CalendarView";
 import { isoToLocalInput, localInputToIso } from "@/lib/timezone";
@@ -132,6 +133,7 @@ export default function Home() {
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
   const [pendingTenants, setPendingTenants] = useState<{ id: string; slug: string; name: string; role: string }[] | null>(null);
   const [selectingTenant, setSelectingTenant] = useState(false);
+  const [allowedModules, setAllowedModules] = useState<string[] | null>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -179,6 +181,17 @@ export default function Home() {
     }
   }, []);
 
+  const fetchUserModules = useCallback(async () => {
+    try {
+      const res = await apiFetch("/system/my-modules");
+      if (res.ok) {
+        setAllowedModules(await res.json());
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
   useEffect(() => {
     setClients(buildDashboardClients(clientRows, appointmentRows));
   }, [clientRows, appointmentRows]);
@@ -188,8 +201,9 @@ export default function Home() {
       fetchAppointments();
       fetchClients();
       fetchTenantConfig();
+      fetchUserModules();
     }
-  }, [isAuthenticated, fetchAppointments, fetchClients, fetchTenantConfig]);
+  }, [isAuthenticated, fetchAppointments, fetchClients, fetchTenantConfig, fetchUserModules]); // eslint-disable-line
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -233,6 +247,7 @@ export default function Home() {
           fetchAppointments();
           fetchClients();
           fetchTenantConfig();
+          fetchUserModules();
           setLoading(false);
         } else {
           checkAuth();
@@ -258,6 +273,7 @@ export default function Home() {
           fetchAppointments();
           fetchClients();
           fetchTenantConfig();
+          fetchUserModules();
         }
       }
     } catch {
@@ -292,6 +308,7 @@ export default function Home() {
       fetchAppointments();
       fetchClients();
       fetchTenantConfig();
+      fetchUserModules();
       return null;
     } catch {
       return "Não foi possível conectar ao servidor";
@@ -317,6 +334,7 @@ export default function Home() {
       fetchAppointments();
       fetchClients();
       fetchTenantConfig();
+      fetchUserModules();
     } catch {
       alert("Erro de conexão");
     }
@@ -335,6 +353,7 @@ export default function Home() {
     setAppointmentRows([]);
     setTenantConfig(null);
     setPendingTenants(null);
+    setAllowedModules(null);
   }
 
   function handleEventClick(event: CalendarEvent) {
@@ -548,6 +567,12 @@ export default function Home() {
             <UsuariosView />
           </div>
         );
+      case "admin":
+        return (
+          <div className="main-scrollable">
+            <AdminView />
+          </div>
+        );
     }
   }
 
@@ -574,6 +599,7 @@ export default function Home() {
           onLogout={handleLogout}
           mobileOpen={sidebarOpen}
           onMobileClose={() => setSidebarOpen(false)}
+          allowedModules={allowedModules || undefined}
         />
         <main className="app-main">
           {renderContent()}

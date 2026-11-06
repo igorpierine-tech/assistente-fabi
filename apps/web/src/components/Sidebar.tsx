@@ -15,7 +15,8 @@ export type View =
   | "contratos"
   | "financeiro"
   | "configuracoes"
-  | "usuarios";
+  | "usuarios"
+  | "admin";
 
 interface SidebarProps {
   activeView: View;
@@ -27,6 +28,7 @@ interface SidebarProps {
   onLogout?: () => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  allowedModules?: string[];
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -37,7 +39,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const ROLE_NAV_ACCESS: Record<UserRole, View[]> = {
-  admin: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro", "configuracoes", "usuarios"],
+  admin: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro", "configuracoes", "usuarios", "admin"],
   gestor: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro"],
   colaborador: ["inicio", "agenda", "clientes", "agendamentos"],
   visualizador: ["inicio", "financeiro", "contratos"],
@@ -54,6 +56,7 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
   { id: "usuarios", label: "Usuários", icon: "users" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
+  { id: "admin", label: "Administração", icon: "shield" },
 ];
 
 function NavIcon({ name }: { name: string }) {
@@ -134,6 +137,13 @@ function NavIcon({ name }: { name: string }) {
           <path d="M12 18c0-2 1.5-3.5 3-3.5s2.5 1.5 2.5 3.5" />
         </svg>
       );
+    case "shield":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10 2L3 6v5c0 4.4 3 8.5 7 9.5 4-1 7-5.1 7-9.5V6l-7-4z" />
+          <path d="M7 10l2 2 4-4" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -149,10 +159,13 @@ export function Sidebar({
   onLogout,
   mobileOpen = false,
   onMobileClose,
+  allowedModules,
 }: SidebarProps) {
   const tenant = useTenant();
   const brandName = tenant.businessName;
-  const allowedViews = ROLE_NAV_ACCESS[userRole] || ROLE_NAV_ACCESS.colaborador;
+  const allowedViews = allowedModules
+    ? allowedModules as View[]
+    : (ROLE_NAV_ACCESS[userRole] || ROLE_NAV_ACCESS.colaborador);
   const visibleItems = NAV_ITEMS.filter((item) => allowedViews.includes(item.id));
 
   function handleNav(view: View) {

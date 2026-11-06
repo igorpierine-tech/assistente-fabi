@@ -92,13 +92,41 @@ function initMasterTables(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_user_tenants_user ON user_tenants(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_tenants_tenant ON user_tenants(tenant_id);
+
+    CREATE TABLE IF NOT EXISTS access_profiles (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      modules TEXT NOT NULL DEFAULT '[]',
+      is_default INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_access_profiles_tenant ON access_profiles(tenant_id);
   `);
+
+  // Add profile_id column to user_tenants if not present
+  try {
+    db.exec("ALTER TABLE user_tenants ADD COLUMN profile_id TEXT REFERENCES access_profiles(id)");
+  } catch {
+    // column already exists
+  }
 
   // Backfill: ensure every user with a tenant_id has a row in user_tenants
   db.exec(`
     INSERT OR IGNORE INTO user_tenants (user_id, tenant_id, role)
     SELECT id, tenant_id, role FROM users WHERE tenant_id IS NOT NULL
   `);
+
+  // Seed default profiles for each tenant that has none
+  const tenantsWithout = db.prepare(`
+    SELECT t.id, t.slug FROM tenants t
+    WHERE NOT EXISTS (SELECT 1 FROM access_profiles ap WHERE ap.tenant_id = t.id)
+  `).all() as { id: string; slug: string }[];
+  for (const t of tenantsWithout) {
+    seedDefaultProfiles(db, t.id);
+  }
 }
 
 // --- Tenant CRUD ---
@@ -232,6 +260,7 @@ export interface UserTenantRow {
   tenant_id: string;
   role: string;
   active: number;
+  profile_id: string | null;
   tenant_name: string;
   tenant_slug: string;
 }
@@ -239,7 +268,7 @@ export interface UserTenantRow {
 export function getUserTenants(userId: string): UserTenantRow[] {
   return getMasterDb()
     .prepare(`
-      SELECT ut.user_id, ut.tenant_id, ut.role, ut.active,
+      SELECT ut.user_id, ut.tenant_id, ut.role, ut.active, ut.profile_id,
              t.name AS tenant_name, t.slug AS tenant_slug
       FROM user_tenants ut
       JOIN tenants t ON t.id = ut.tenant_id
@@ -259,4 +288,120 @@ export function removeUserFromTenant(userId: string, tenantId: string): void {
   getMasterDb()
     .prepare("UPDATE user_tenants SET active = 0 WHERE user_id = ? AND tenant_id = ?")
     .run(userId, tenantId);
+}
+
+export function setUserTenantProfile(userId: string, tenantId: string, profileId: string | null): void {
+  getMasterDb()
+    .prepare("UPDATE user_tenants SET profile_id = ? WHERE user_id = ? AND tenant_id = ?")
+    .run(profileId, userId, tenantId);
+}
+
+// --- System modules definition ---
+
+export const SYSTEM_MODULES = [
+  { id: "inicio", label: "Início", description: "Dashboard principal" },
+  { id: "agenda", label: "Agenda", description: "Gestão de agendamentos" },
+  { id: "assistente", label: "Assistente IA", description: "Assistente de inteligência artificial" },
+  { id: "clientes", label: "Clientes", description: "Cadastro e gestão de clientes" },
+  { id: "agendamentos", label: "Agendamentos", description: "Solicitações de agendamento" },
+  { id: "vendas", label: "Vendas", description: "Gestão de vendas" },
+  { id: "contratos", label: "Contratos", description: "Gestão de contratos" },
+  { id: "financeiro", label: "Financeiro", description: "Gestão financeira" },
+  { id: "usuarios", label: "Usuários", description: "Gestão de usuários da empresa" },
+  { id: "configuracoes", label: "Configurações", description: "Configurações da empresa" },
+  { id: "admin", label: "Administração", description: "Administração do sistema (empresas, usuários e perfis)" },
+] as const;
+
+export type ModuleId = typeof SYSTEM_MODULES[number]["id"];
+
+// --- Access Profiles ---
+
+export interface AccessProfileRow {
+  id: string;
+  tenant_id: string;
+  name: string;
+  modules: string; // JSON array of module ids
+  is_default: number;
+  created_at: string;
+  updated_at: string;
+}
+
+function seedDefaultProfiles(db: Database.Database, tenantId: string) {
+  const profiles = [
+    { name: "Administrador", modules: ["inicio","agenda","assistente","clientes","agendamentos","vendas","contratos","financeiro","usuarios","configuracoes","admin"], isDefault: 1 },
+    { name: "Gestor", modules: ["inicio","agenda","assistente","clientes","agendamentos","vendas","contratos","financeiro"], isDefault: 0 },
+    { name: "Colaborador", modules: ["inicio","agenda","clientes","agendamentos"], isDefault: 0 },
+    { name: "Visualizador", modules: ["inicio","financeiro","contratos"], isDefault: 0 },
+  ];
+  const stmt = db.prepare(
+    "INSERT INTO access_profiles (id, tenant_id, name, modules, is_default) VALUES (?, ?, ?, ?, ?)"
+  );
+  for (const p of profiles) {
+    stmt.run(uuidv4(), tenantId, p.name, JSON.stringify(p.modules), p.isDefault);
+  }
+}
+
+export function listAccessProfiles(tenantId: string): AccessProfileRow[] {
+  return getMasterDb()
+    .prepare("SELECT * FROM access_profiles WHERE tenant_id = ? ORDER BY is_default DESC, name")
+    .all(tenantId) as AccessProfileRow[];
+}
+
+export function getAccessProfileById(id: string): AccessProfileRow | undefined {
+  return getMasterDb()
+    .prepare("SELECT * FROM access_profiles WHERE id = ?")
+    .get(id) as AccessProfileRow | undefined;
+}
+
+export function createAccessProfile(data: { tenantId: string; name: string; modules: string[] }): AccessProfileRow {
+  const id = uuidv4();
+  getMasterDb()
+    .prepare("INSERT INTO access_profiles (id, tenant_id, name, modules) VALUES (?, ?, ?, ?)")
+    .run(id, data.tenantId, data.name, JSON.stringify(data.modules));
+  return getAccessProfileById(id)!;
+}
+
+export function updateAccessProfile(id: string, data: { name?: string; modules?: string[] }): AccessProfileRow | undefined {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
+  if (data.modules !== undefined) { fields.push("modules = ?"); values.push(JSON.stringify(data.modules)); }
+  if (fields.length === 0) return getAccessProfileById(id);
+  fields.push("updated_at = datetime('now')");
+  values.push(id);
+  getMasterDb().prepare(`UPDATE access_profiles SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+  return getAccessProfileById(id);
+}
+
+export function deleteAccessProfile(id: string): boolean {
+  const profile = getAccessProfileById(id);
+  if (!profile || profile.is_default) return false;
+  getMasterDb().prepare("UPDATE user_tenants SET profile_id = NULL WHERE profile_id = ?").run(id);
+  getMasterDb().prepare("DELETE FROM access_profiles WHERE id = ?").run(id);
+  return true;
+}
+
+export function getUserModules(userId: string, tenantId: string): string[] {
+  const row = getMasterDb().prepare(`
+    SELECT ap.modules
+    FROM user_tenants ut
+    JOIN access_profiles ap ON ap.id = ut.profile_id
+    WHERE ut.user_id = ? AND ut.tenant_id = ? AND ut.active = 1
+  `).get(userId, tenantId) as { modules: string } | undefined;
+
+  if (row) {
+    return JSON.parse(row.modules) as string[];
+  }
+
+  // Fallback: if no profile assigned, use the default profile for the tenant
+  const defaultProfile = getMasterDb().prepare(
+    "SELECT modules FROM access_profiles WHERE tenant_id = ? AND is_default = 1 LIMIT 1"
+  ).get(tenantId) as { modules: string } | undefined;
+
+  if (defaultProfile) {
+    return JSON.parse(defaultProfile.modules) as string[];
+  }
+
+  // Ultimate fallback: all modules
+  return SYSTEM_MODULES.map(m => m.id);
 }
