@@ -113,8 +113,8 @@ router.put("/:id/password", async (req, res) => {
   }
 
   const { password } = req.body || {};
-  if (!password || typeof password !== "string" || password.length < 6) {
-    res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+  if (!password || typeof password !== "string" || password.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
     return;
   }
 

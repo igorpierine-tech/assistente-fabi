@@ -33,8 +33,19 @@ function listUsersWithPasswordStatus() {
     .all() as { id: string; name: string; email: string; role: string; has_password: number }[];
 }
 
-// GET /admin — admin tools page
-router.get("/", (_req, res) => {
+// GET /admin — admin tools page (requires ADMIN_TOKEN via query or header)
+router.get("/", (req, res) => {
+  const expected = getAdminToken();
+  if (!expected) {
+    res.status(501).json({ error: "ADMIN_TOKEN não configurado no servidor." });
+    return;
+  }
+  const provided = (req.query.token as string) || req.get("x-admin-token");
+  if (!tokenMatches(provided, expected)) {
+    res.status(401).json({ error: "Token de acesso obrigatório. Use ?token=SEU_TOKEN na URL." });
+    return;
+  }
+
   const users = listUsersWithPasswordStatus();
   const userOptions = users.map((u) =>
     `<option value="${u.email}">${u.name} (${u.email}) — ${u.role}${u.has_password ? "" : " [SEM SENHA]"}</option>`
@@ -73,8 +84,8 @@ router.get("/", (_req, res) => {
   <input id="sp-token" name="token" type="password" autocomplete="off" required>
   <label for="sp-email">E-mail do usuário</label>
   <select id="sp-email" name="email">${userOptions || '<option value="">Nenhum usuário</option>'}</select>
-  <label for="sp-password">Nova senha (mín. 6 caracteres)</label>
-  <input id="sp-password" name="password" type="password" minlength="6" required>
+  <label for="sp-password">Nova senha (mín. 8 caracteres)</label>
+  <input id="sp-password" name="password" type="password" minlength="8" required>
   <button type="submit" class="btn-primary">Definir senha</button>
   <div class="info">Permite login por e-mail/senha</div>
 </form>
@@ -110,8 +121,8 @@ router.post("/set-password", async (req, res) => {
     res.status(400).json({ error: "E-mail é obrigatório" });
     return;
   }
-  if (!password || typeof password !== "string" || password.length < 6) {
-    res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+  if (!password || typeof password !== "string" || password.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
     return;
   }
 

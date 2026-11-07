@@ -671,28 +671,17 @@ function migrateToWorkspace(db: Database.Database) {
 function seedFirstTenant(db: Database.Database) {
   const updated = db.prepare(`
     UPDATE tenant_config
-    SET business_name = 'Raízes e Riquezas',
-        owner_name = 'Fabiana dos Santos Castro',
-        profession = 'Consultora Financeira, Terapeuta e Consteladora',
-        tagline = 'Agenda, clientes e assistente inteligente',
-        timezone = 'America/Cuiaba',
-        primary_color = '#7c3aed',
-        secondary_color = '#d9b268',
-        accent_color = '#2f4a2b',
-        onboarding_completed = 1,
-        razao_social = 'RAÍZES E RIQUEZAS CONSULTORIAS LTDA',
-        cnpj = '66.666.514/0001-99',
-        inscricao_estadual = 'ISENTO',
-        inscricao_municipal = '6825435',
-        endereco = 'Rua Ludovico Vieira de Camargo, 22 - Núcleo Habitacional Rio Vermelho, Rondonópolis/MT',
-        cep = '78740-291',
-        email_comercial = 'raizeseriquezas@outlook.com',
-        representante_qualificacao = 'brasileira, casada, empresária, portadora da Cédula de Identidade RG 1420009 e CPF 001.547.691-00',
+    SET business_name = COALESCE(business_name, 'Minha Empresa'),
+        tagline = COALESCE(tagline, 'Agenda, clientes e assistente inteligente'),
+        timezone = COALESCE(timezone, 'America/Sao_Paulo'),
+        primary_color = COALESCE(primary_color, '#7c3aed'),
+        secondary_color = COALESCE(secondary_color, '#d9b268'),
+        accent_color = COALESCE(accent_color, '#2f4a2b'),
         updated_at = datetime('now')
-    WHERE razao_social IS NULL OR business_name != 'Raízes e Riquezas'
+    WHERE business_name IS NULL
   `).run();
   if (updated.changes > 0) {
-    console.log(`[seed] Tenant config updated for ${updated.changes} row(s)`);
+    console.log(`[seed] Tenant config defaults applied for ${updated.changes} row(s)`);
   }
 }
 

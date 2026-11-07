@@ -14,6 +14,7 @@ import { upsertTenantConfig } from "../services/database";
 import { consultarCnpj } from "../services/cnpj-lookup";
 import { rateLimit } from "../middleware/security";
 import { tenantContext } from "../services/tenant-context";
+import { requiredString, optionalString, optionalEmail } from "../services/validation";
 
 const router: ExpressRouter = Router();
 
@@ -51,18 +52,18 @@ router.get("/tenants", (req, res) => {
 router.post("/tenants", async (req, res) => {
   if (!requireAdminToken(req, res)) return;
 
-  const { name, slug, adminName, adminEmail, adminPassword } = req.body || {};
-
-  if (!name || !slug) {
-    res.status(400).json({ error: "name e slug são obrigatórios" });
+  const body = req.body || {};
+  const name = requiredString(body.name, "name", 200);
+  const rawSlug = requiredString(body.slug, "slug", 100);
+  const adminName = optionalString(body.adminName, "adminName", 200);
+  const adminEmail = requiredString(body.adminEmail, "adminEmail", 254).toLowerCase();
+  const adminPassword = requiredString(body.adminPassword, "adminPassword", 128);
+  if (adminPassword.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
     return;
   }
-  if (!adminEmail || !adminPassword) {
-    res.status(400).json({ error: "adminEmail e adminPassword são obrigatórios para o primeiro usuário" });
-    return;
-  }
 
-  const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const safeSlug = rawSlug.toLowerCase().replace(/[^a-z0-9_-]/g, "");
   if (safeSlug.length < 2) {
     res.status(400).json({ error: "Slug deve ter pelo menos 2 caracteres alfanuméricos" });
     return;
@@ -126,9 +127,13 @@ router.post("/tenants/:slug/users", async (req, res) => {
     return;
   }
 
-  const { name, email, password, role } = req.body || {};
-  if (!name || !email || !password) {
-    res.status(400).json({ error: "name, email e password são obrigatórios" });
+  const body = req.body || {};
+  const name = requiredString(body.name, "name", 200);
+  const email = requiredString(body.email, "email", 254).toLowerCase();
+  const password = requiredString(body.password, "password", 128);
+  const role = optionalString(body.role, "role", 50);
+  if (password.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
     return;
   }
 
@@ -171,22 +176,21 @@ router.get("/cnpj/:cnpj", cnpjLimiter, async (req, res) => {
 });
 
 router.post("/register", registerLimiter, async (req, res) => {
-  const {
-    cnpj, razaoSocial, nomeFantasia,
-    endereco, cep, municipio, uf, telefone, emailEmpresa,
-    adminName, adminEmail, adminPassword,
-  } = req.body || {};
-
-  if (!cnpj || !razaoSocial) {
-    res.status(400).json({ error: "CNPJ e razão social são obrigatórios" });
-    return;
-  }
-  if (!adminName || !adminEmail || !adminPassword) {
-    res.status(400).json({ error: "Nome, e-mail e senha do administrador são obrigatórios" });
-    return;
-  }
-  if (typeof adminPassword !== "string" || adminPassword.length < 6) {
-    res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+  const body = req.body || {};
+  const cnpj = requiredString(body.cnpj, "cnpj", 30);
+  const razaoSocial = requiredString(body.razaoSocial, "razaoSocial", 300);
+  const nomeFantasia = optionalString(body.nomeFantasia, "nomeFantasia", 300);
+  const endereco = optionalString(body.endereco, "endereco", 500);
+  const cep = optionalString(body.cep, "cep", 20);
+  const municipio = optionalString(body.municipio, "municipio", 100);
+  const uf = optionalString(body.uf, "uf", 2);
+  const telefone = optionalString(body.telefone, "telefone", 30);
+  const emailEmpresa = optionalEmail(body.emailEmpresa);
+  const adminName = requiredString(body.adminName, "adminName", 200);
+  const adminEmail = requiredString(body.adminEmail, "adminEmail", 254).toLowerCase();
+  const adminPassword = requiredString(body.adminPassword, "adminPassword", 128);
+  if (adminPassword.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
     return;
   }
 

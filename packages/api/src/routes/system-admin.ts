@@ -26,17 +26,13 @@ import {
 import { hashPassword } from "../services/users-db";
 import { getTenantDb, upsertTenantConfig } from "../services/database";
 import { tenantContext } from "../services/tenant-context";
+import { requireUser, requirePlatformRole } from "../middleware/auth";
+import { requiredString, optionalString, optionalEmail } from "../services/validation";
 import "../session-types";
 
 const router: ExpressRouter = Router();
 
-router.use((req, res, next) => {
-  if (!req.session.appUser) {
-    res.status(401).json({ error: "Não autenticado" });
-    return;
-  }
-  next();
-});
+router.use(requireUser, requirePlatformRole("super_admin"));
 
 // --- Modules ---
 
@@ -151,12 +147,22 @@ router.get("/tenants/:id", (req, res) => {
 });
 
 router.post("/tenants", async (req, res) => {
-  const { name, slug, adminName, adminEmail, adminPassword, cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = req.body || {};
-  if (!name || !slug) {
-    res.status(400).json({ error: "name e slug são obrigatórios" });
-    return;
-  }
-  const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const body = req.body || {};
+  const name = requiredString(body.name, "name", 200);
+  const rawSlug = requiredString(body.slug, "slug", 100);
+  const adminName = optionalString(body.adminName, "adminName", 200);
+  const adminEmail = optionalEmail(body.adminEmail);
+  const adminPassword = optionalString(body.adminPassword, "adminPassword", 128);
+  const cnpj = optionalString(body.cnpj, "cnpj", 30);
+  const inscricaoMunicipal = optionalString(body.inscricaoMunicipal, "inscricaoMunicipal", 30);
+  const endereco = optionalString(body.endereco, "endereco", 500);
+  const cep = optionalString(body.cep, "cep", 20);
+  const municipio = optionalString(body.municipio, "municipio", 100);
+  const uf = optionalString(body.uf, "uf", 2);
+  const telefone = optionalString(body.telefone, "telefone", 30);
+  const emailEmpresa = optionalEmail(body.emailEmpresa);
+
+  const safeSlug = rawSlug.toLowerCase().replace(/[^a-z0-9_-]/g, "");
   if (safeSlug.length < 2) {
     res.status(400).json({ error: "Slug deve ter pelo menos 2 caracteres" });
     return;
@@ -204,8 +210,8 @@ router.post("/tenants", async (req, res) => {
         inscricao_municipal: inscricaoMunicipal || null,
         endereco: fullEndereco || null,
         cep: cep || null,
-        telefone: telefone || null,
-        email: emailEmpresa || null,
+        telefone_comercial: telefone || null,
+        email_comercial: emailEmpresa || null,
       });
     });
   }
@@ -316,9 +322,13 @@ router.post("/tenants/:id/users", async (req, res) => {
     res.status(404).json({ error: "Empresa não encontrada" });
     return;
   }
-  const { name, email, password, profileId } = req.body || {};
-  if (!name || !email || !password) {
-    res.status(400).json({ error: "name, email e password são obrigatórios" });
+  const body = req.body || {};
+  const name = requiredString(body.name, "name", 200);
+  const email = requiredString(body.email, "email", 254).toLowerCase();
+  const password = requiredString(body.password, "password", 128);
+  const profileId = optionalString(body.profileId, "profileId", 128);
+  if (password.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
     return;
   }
 

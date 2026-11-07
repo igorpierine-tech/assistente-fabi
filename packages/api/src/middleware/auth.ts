@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { getWorkspaceId } from "../services/auth-config";
 import { getGoogleTokens } from "../services/google-tokens-db";
+import { getMasterUserById } from "../services/master-db";
 import type { UserRole } from "../services/users-db";
 
 export function requireUser(req: Request, res: Response, next: NextFunction): void {
@@ -72,6 +73,22 @@ export function readOwnerId(req: Request): string | null {
 export function personalReadOwnerId(req: Request): string | null {
   if (req.session.appUser?.role === "admin") return null;
   return req.session.appUser?.id || "";
+}
+
+export function requirePlatformRole(...allowed: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const userId = req.session.appUser?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Não autenticado" });
+      return;
+    }
+    const masterUser = getMasterUserById(userId);
+    if (!masterUser || !allowed.includes(masterUser.platform_role)) {
+      res.status(403).json({ error: "Acesso restrito a administradores da plataforma" });
+      return;
+    }
+    next();
+  };
 }
 
 export function requireGoogleCalendar(req: Request, res: Response, next: NextFunction): void {

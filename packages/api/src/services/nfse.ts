@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { TenantConfigRow } from "./database";
+import { decrypt, isEncrypted } from "./crypto";
 
 const SEFIN_URLS = {
   producao: "https://sefin.nfse.gov.br/SefinNacional",
@@ -21,6 +22,12 @@ export interface DpsData {
   optanteSimples: number;
   regimeEspecial: number | null;
   competencia: string;
+}
+
+function getCertPassword(config: TenantConfigRow): string {
+  const raw = config.nfse_certificado_senha;
+  if (!raw) return "";
+  return isEncrypted(raw) ? decrypt(raw) : raw;
 }
 
 export interface EmissaoResult {
@@ -179,7 +186,7 @@ export async function emitirNfse(
     const { Agent } = await import("node:https");
     const agent = new Agent({
       pfx: pfxBuffer,
-      passphrase: config.nfse_certificado_senha,
+      passphrase: getCertPassword(config),
       rejectUnauthorized: true,
     });
 
@@ -243,7 +250,7 @@ export async function consultarNfse(
     const { Agent } = await import("node:https");
     const agent = new Agent({
       pfx: pfxBuffer,
-      passphrase: config.nfse_certificado_senha,
+      passphrase: getCertPassword(config),
       rejectUnauthorized: true,
     });
 
@@ -302,7 +309,7 @@ export async function cancelarNfse(
     const { Agent } = await import("node:https");
     const agent = new Agent({
       pfx: pfxBuffer,
-      passphrase: config.nfse_certificado_senha,
+      passphrase: getCertPassword(config),
       rejectUnauthorized: true,
     });
 

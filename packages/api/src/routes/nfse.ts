@@ -11,6 +11,7 @@ import {
 import { emitirNfse, consultarNfse, cancelarNfse, isNfseConfigured } from "../services/nfse";
 import { getSale } from "../services/sales-db";
 import { ValidationError } from "../services/validation";
+import { encrypt } from "../services/crypto";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -114,7 +115,7 @@ router.post("/certificate", (req, res) => {
 
   upsertTenantConfig(uid, {
     nfse_certificado_base64: certificateBase64,
-    nfse_certificado_senha: password,
+    nfse_certificado_senha: encrypt(password),
   });
   res.json({ success: true, message: "Certificado salvo com sucesso" });
 });
