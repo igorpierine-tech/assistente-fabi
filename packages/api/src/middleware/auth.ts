@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { getWorkspaceId } from "../services/auth-config";
 import { getGoogleTokens } from "../services/google-tokens-db";
-import { getMasterUserById } from "../services/master-db";
+import { getMasterUserById, getTenantById } from "../services/master-db";
 import type { UserRole } from "../services/users-db";
 
 export function requireUser(req: Request, res: Response, next: NextFunction): void {
@@ -88,6 +88,44 @@ export function requirePlatformRole(...allowed: string[]) {
       return;
     }
     next();
+  };
+}
+
+export function requireActiveTenant() {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const tenantId = req.session.appUser?.tenantId;
+    if (!tenantId) {
+      res.status(401).json({ error: "Tenant não selecionado" });
+      return;
+    }
+    const tenant = getTenantById(tenantId);
+    if (!tenant || tenant.active !== 1) {
+      res.status(403).json({ error: "Empresa desativada ou inexistente", code: "TENANT_BLOCKED" });
+      return;
+    }
+    next();
+  };
+}
+
+export function requireModule(moduleId: string) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const allowed = req.session.appUser?.allowedModules;
+    if (!allowed || !allowed.includes(moduleId)) {
+      res.status(403).json({ error: `Módulo "${moduleId}" não disponível no seu plano ou perfil`, code: "MODULE_BLOCKED" });
+      return;
+    }
+    next();
+  };
+}
+
+export function requireTenantModule(moduleId: string) {
+  const checkTenant = requireActiveTenant();
+  const checkModule = requireModule(moduleId);
+  return (req: Request, res: Response, next: NextFunction): void => {
+    checkTenant(req, res, (err?: unknown) => {
+      if (err || res.headersSent) return;
+      checkModule(req, res, next);
+    });
   };
 }
 

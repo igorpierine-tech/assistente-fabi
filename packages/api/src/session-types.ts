@@ -9,8 +9,10 @@ declare module "express-session" {
       name: string;
       email: string;
       role: UserRole;
+      platformRole: string;
       tenantId: string;
       tenantSlug: string;
+      allowedModules: string[];
     };
   }
 }

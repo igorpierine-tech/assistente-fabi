@@ -4,7 +4,7 @@ import { google } from "googleapis";
 import { consumeMobileLogin, signSessionId } from "../services/mobile-auth";
 import { rateLimit } from "../middleware/security";
 import { getUserByEmail, verifyPassword } from "../services/users-db";
-import { getMasterUserByEmail, getUserTenants, getTenantById, getTenantBySlug } from "../services/master-db";
+import { getMasterUserByEmail, getMasterUserById, getUserTenants, getTenantById, getTenantBySlug, getUserModules } from "../services/master-db";
 import { saveGoogleTokens, getGoogleTokenRow, deleteGoogleTokens } from "../services/google-tokens-db";
 import "../session-types";
 
@@ -74,6 +74,9 @@ router.post("/login", authLimiter, async (req, res) => {
     return;
   }
 
+  const masterUser = getMasterUserByEmail(email);
+  const platformRole = masterUser?.platform_role || "user";
+
   // If user has multiple tenants and didn't specify which one, return the list
   if (userTenants.length > 1 && !tenantSlug) {
     req.session.regenerate((err) => {
@@ -87,8 +90,10 @@ router.post("/login", authLimiter, async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        platformRole,
         tenantId: "",
         tenantSlug: "",
+        allowedModules: [],
       };
       req.session.save((saveErr) => {
         if (saveErr) {
@@ -130,13 +135,16 @@ router.post("/login", authLimiter, async (req, res) => {
       res.status(500).json({ error: "Erro ao criar sessão" });
       return;
     }
+    const allowedModules = getUserModules(user.id, selectedTenant.id);
     req.session.appUser = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: selectedTenant.role as string,
+      platformRole,
       tenantId: selectedTenant.id,
       tenantSlug: selectedTenant.slug,
+      allowedModules,
     };
     req.session.save((saveErr) => {
       if (saveErr) {
@@ -178,11 +186,15 @@ router.post("/select-tenant", (req, res) => {
     return;
   }
 
+  const modules = getUserModules(appUser.id, match.tenant_id);
+  const mu = getMasterUserById(appUser.id);
   req.session.appUser = {
     ...appUser,
     role: match.role,
+    platformRole: mu?.platform_role || appUser.platformRole || "user",
     tenantId: match.tenant_id,
     tenantSlug: match.tenant_slug,
+    allowedModules: modules,
   };
   req.session.save((saveErr) => {
     if (saveErr) {
@@ -243,10 +255,11 @@ router.get("/status", (req, res) => {
     authenticated: Boolean(appUser),
     requireTenantSelection: needsTenantSelection,
     user: appUser
-      ? { id: appUser.id, name: appUser.name, email: appUser.email, role: appUser.role }
+      ? { id: appUser.id, name: appUser.name, email: appUser.email, role: appUser.role, platformRole: appUser.platformRole ?? "user" }
       : null,
     tenantId: appUser?.tenantId ?? null,
     tenantSlug: appUser?.tenantSlug ?? null,
+    allowedModules: appUser?.allowedModules ?? [],
     tenants,
     calendarConnected: Boolean(calendarRow),
     calendarEmail: calendarRow?.google_email ?? null,
