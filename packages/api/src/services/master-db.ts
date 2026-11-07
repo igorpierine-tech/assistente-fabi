@@ -4,6 +4,9 @@ import { dirname } from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import { masterDbPath } from "../config/persistence";
 
+export const MASTER_DB_TYPE = process.env.MASTER_DB_TYPE || "sqlite";
+export const isPostgres = MASTER_DB_TYPE === "postgresql";
+
 let masterDb: Database.Database;
 
 export interface TenantRow {

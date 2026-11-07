@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:bcryptjs --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:pdfkit --external:pdf-lib --external:uuid",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:better-sqlite3 --external:bcryptjs --external:pg --external:cors --external:dotenv --external:express --external:express-session --external:google-auth-library --external:googleapis --external:luxon --external:multer --external:openai --external:pdfkit --external:pdf-lib --external:uuid",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "test": "tsx --test src/services/validation.test.ts src/services/mobile-auth.test.ts"
@@ -27,6 +27,7 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.15.0",
     "tsx": "^4.19.0",
+    "pg": "^8.13.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
@@ -37,6 +38,7 @@
     "@types/express-session": "^1.18.1",
     "@types/luxon": "^3.4.2",
     "@types/multer": "^1.4.12",
+    "@types/pg": "^8.11.10",
     "@types/pdfkit": "^0.13.4",
     "@types/uuid": "^10.0.0",
     "esbuild": "^0.28.2",
