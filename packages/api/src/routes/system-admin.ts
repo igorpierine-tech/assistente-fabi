@@ -23,7 +23,7 @@ import {
   getUserModules,
   SYSTEM_MODULES,
 } from "../services/master-db";
-import { hashPassword } from "../services/users-db";
+import { hashPassword, updatePassword, getUserByEmail } from "../services/users-db";
 import { getTenantDb, upsertTenantConfig } from "../services/database";
 import { tenantContext } from "../services/tenant-context";
 import { requireUser, requirePlatformRole } from "../middleware/auth";
@@ -32,22 +32,23 @@ import "../session-types";
 
 const router: ExpressRouter = Router();
 
+// Accessible to any authenticated user (before super_admin guard)
+router.get("/my-modules", requireUser, (req, res) => {
+  const appUser = req.session.appUser;
+  if (!appUser?.tenantId) {
+    res.json(SYSTEM_MODULES.map(m => m.id));
+    return;
+  }
+  res.json(getUserModules(appUser.id, appUser.tenantId));
+});
+
+// Everything below requires super_admin
 router.use(requireUser, requirePlatformRole("super_admin"));
 
 // --- Modules ---
 
 router.get("/modules", (_req, res) => {
   res.json(SYSTEM_MODULES);
-});
-
-router.get("/my-modules", (req, res) => {
-  const { id, tenantId } = req.session.appUser!;
-  if (!tenantId) {
-    res.json(SYSTEM_MODULES.map(m => m.id));
-    return;
-  }
-  const modules = getUserModules(id, tenantId);
-  res.json(modules);
 });
 
 // --- Access Profiles ---
@@ -379,6 +380,51 @@ router.put("/tenants/:tenantId/users/:userId", (req, res) => {
 router.delete("/tenants/:tenantId/users/:userId", (req, res) => {
   removeUserFromTenant(req.params.userId, req.params.tenantId);
   res.status(204).end();
+});
+
+// --- Set password (moved from legacy /admin) ---
+
+router.post("/set-password", async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || typeof email !== "string") {
+    res.status(400).json({ error: "E-mail é obrigatório" });
+    return;
+  }
+  if (!password || typeof password !== "string" || password.length < 8) {
+    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
+    return;
+  }
+  const user = getUserByEmail(email);
+  if (!user) {
+    res.status(404).json({ error: "Usuário não encontrado" });
+    return;
+  }
+  try {
+    await updatePassword(user.id, password);
+    res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (error) {
+    console.error("Erro ao definir senha:", error);
+    res.status(500).json({ error: "Falha ao definir senha" });
+  }
+});
+
+// --- Platform metrics ---
+
+router.get("/metrics", (_req, res) => {
+  const tenants = listTenants();
+  const allUsers = listMasterUsers();
+  const activeUsers = allUsers.filter(u => u.active === 1);
+  res.json({
+    totalTenants: tenants.length,
+    totalUsers: allUsers.length,
+    activeUsers: activeUsers.length,
+    tenantsWithUsers: tenants.map(t => ({
+      id: t.id,
+      name: t.name,
+      slug: t.slug,
+      userCount: allUsers.filter(u => u.tenant_id === t.id).length,
+    })),
+  });
 });
 
 export { router as systemAdminRouter };
