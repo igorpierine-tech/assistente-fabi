@@ -242,6 +242,13 @@
   background: rgba(184, 135, 58, 0.08);
 }
 
+/* === Left Column === */
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 /* === Appointments Card === */
 .appointmentsCard {
   background: var(--surface);

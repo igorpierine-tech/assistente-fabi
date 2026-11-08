@@ -375,7 +375,8 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
 
       {/* Main Grid */}
       <div className={styles.mainGrid}>
-        {/* Left: Upcoming appointments */}
+        {/* Left column */}
+        <div className={styles.leftColumn}>
         <div className={styles.appointmentsCard}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>Próximos atendimentos</h2>
@@ -475,6 +476,53 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
           )}
         </div>
 
+          {/* Milagre da Cocriação */}
+          {(() => {
+            const devotion = getDailyDevotion();
+            const today = new Date();
+            const dayNum = today.getDate();
+            const monthName = today.toLocaleDateString("pt-BR", { month: "long" });
+            return (
+              <div className={styles.verseCard}>
+                <div className={styles.verseHeader}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+                  </svg>
+                  <h3 className={styles.cardTitle}>Milagre da Cocriação</h3>
+                </div>
+                <div className={styles.devotionDate}>{dayNum} de {monthName}</div>
+                <h4 className={styles.devotionTitle}>{devotion.title}</h4>
+                <p className={styles.devotionMainText}>{devotion.text}</p>
+
+                <div className={styles.devotionSidebar}>
+                  <div className={styles.devotionBox}>
+                    <h5 className={styles.devotionBoxLabel}>Reflexão do Dia</h5>
+                    <p className={styles.devotionBoxText}>{devotion.reflexao}</p>
+                  </div>
+                  <div className={styles.devotionBox}>
+                    <h5 className={styles.devotionBoxLabel}>O Que Fazer</h5>
+                    <p className={styles.devotionBoxText}>{devotion.oQueFazer}</p>
+                  </div>
+                  <div className={styles.devotionBox}>
+                    <h5 className={styles.devotionBoxLabel}>Pergunta Reflexiva</h5>
+                    <p className={styles.devotionBoxText}>{devotion.pergunta}</p>
+                  </div>
+                  <div className={styles.devotionBoxHighlight}>
+                    <h5 className={styles.devotionBoxLabel}>Afirmação de Poder</h5>
+                    <p className={styles.devotionBoxTextBold}>{devotion.afirmacao}</p>
+                  </div>
+                  <div className={styles.devotionBoxVerse}>
+                    <h5 className={styles.devotionBoxLabel}>Versículo</h5>
+                    <p className={styles.devotionBoxTextItalic}>&ldquo;{devotion.versiculo}&rdquo;</p>
+                    <cite className={styles.devotionBoxRef}>{devotion.versiculoRef}</cite>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
         {/* Right column */}
         <div className={styles.rightColumn}>
           {/* Destaques do mês */}
@@ -559,52 +607,6 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
               </div>
             </div>
           )}
-
-          {/* Milagre da Cocriação */}
-          {(() => {
-            const devotion = getDailyDevotion();
-            const today = new Date();
-            const dayNum = today.getDate();
-            const monthName = today.toLocaleDateString("pt-BR", { month: "long" });
-            return (
-              <div className={styles.verseCard}>
-                <div className={styles.verseHeader}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-                  </svg>
-                  <h3 className={styles.cardTitle}>Milagre da Cocriação</h3>
-                </div>
-                <div className={styles.devotionDate}>{dayNum} de {monthName}</div>
-                <h4 className={styles.devotionTitle}>{devotion.title}</h4>
-                <p className={styles.devotionMainText}>{devotion.text}</p>
-
-                <div className={styles.devotionSidebar}>
-                  <div className={styles.devotionBox}>
-                    <h5 className={styles.devotionBoxLabel}>Reflexão do Dia</h5>
-                    <p className={styles.devotionBoxText}>{devotion.reflexao}</p>
-                  </div>
-                  <div className={styles.devotionBox}>
-                    <h5 className={styles.devotionBoxLabel}>O Que Fazer</h5>
-                    <p className={styles.devotionBoxText}>{devotion.oQueFazer}</p>
-                  </div>
-                  <div className={styles.devotionBox}>
-                    <h5 className={styles.devotionBoxLabel}>Pergunta Reflexiva</h5>
-                    <p className={styles.devotionBoxText}>{devotion.pergunta}</p>
-                  </div>
-                  <div className={styles.devotionBoxHighlight}>
-                    <h5 className={styles.devotionBoxLabel}>Afirmação de Poder</h5>
-                    <p className={styles.devotionBoxTextBold}>{devotion.afirmacao}</p>
-                  </div>
-                  <div className={styles.devotionBoxVerse}>
-                    <h5 className={styles.devotionBoxLabel}>Versículo</h5>
-                    <p className={styles.devotionBoxTextItalic}>&ldquo;{devotion.versiculo}&rdquo;</p>
-                    <cite className={styles.devotionBoxRef}>{devotion.versiculoRef}</cite>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Quick Actions */}
           <div className={styles.quickActionsCard}>
