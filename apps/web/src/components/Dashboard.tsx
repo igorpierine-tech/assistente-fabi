@@ -134,12 +134,6 @@ function getTimeUntilNext(events: CalendarEvent[]) {
   return "agora";
 }
 
-function getDayProgress() {
-  const now = new Date();
-  const h = now.getHours() + now.getMinutes() / 60;
-  return Math.min(100, Math.max(0, ((h - 7) / 14) * 100));
-}
-
 function TrendBadge({ value }: { value: number }) {
   if (value === 0) return null;
   const isUp = value > 0;
@@ -198,7 +192,6 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
     : 0;
 
   const timeUntilNext = useMemo(() => getTimeUntilNext(todayEvents), [todayEvents]);
-  const dayProgress = getDayProgress();
   const hasOverdue = kpis && kpis.receivables.overdueCount > 0;
 
   return (
@@ -378,81 +371,11 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
 
         {/* Right column */}
         <div className={styles.rightColumn}>
-          {/* Today timeline */}
-          <div className={styles.todayCard}>
-            <div className={styles.cardHeader}>
-              <h2 className={styles.cardTitle}>Sua agenda hoje</h2>
-              {todayEvents.length > 0 && (
-                <span className={styles.todayCount}>{todayEvents.length}</span>
-              )}
-            </div>
-
-            {todayEvents.length === 0 ? (
-              <div className={styles.todayEmpty}>
-                <div className={styles.todayEmptyText}>Dia livre</div>
-                <button className={styles.todayEmptyBtn} onClick={() => onNavigate("agenda")} type="button">
-                  Ver agenda da semana →
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className={styles.dayProgressWrap}>
-                  <div className={styles.dayProgressBar}>
-                    <div className={styles.dayProgressFill} style={{ width: `${dayProgress}%` }} />
-                  </div>
-                  <span className={styles.dayProgressLabel}>
-                    {timeUntilNext ? `Próximo ${timeUntilNext}` : "Concluído"}
-                  </span>
-                </div>
-                <div className={styles.timeline}>
-                  {todayEvents.slice(0, 6).map((e) => {
-                    const isPast = new Date(e.endDate) < new Date();
-                    const isCurrent = new Date(e.startDate) <= new Date() && new Date(e.endDate) >= new Date();
-                    return (
-                      <div
-                        key={e.id}
-                        className={`${styles.timelineItem} ${isPast ? styles.timelineItemPast : ""} ${isCurrent ? styles.timelineItemCurrent : ""}`}
-                      >
-                        <div
-                          className={styles.timelineDot}
-                          style={{ borderColor: BORDER_COLORS[e.type] || "#b8873a" }}
-                        />
-                        <div className={styles.timelineContent}>
-                          <span className={styles.timelineTime}>{formatTime(e.startDate)}</span>
-                          <span className={styles.timelineName}>
-                            {e.clientName || e.title.split(" — ")[0]}
-                          </span>
-                        </div>
-                        {e.status === "concluido" && <span className={styles.timelineDone}>✓</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-
           {/* Actionable Insights / Alerts */}
-          {kpis && (kpis.receivables.overdueCount > 0 || kpis.month.cancelled > 0 || newClientsThisMonth > 0 || (kpis.month.completionRate >= 80 && kpis.month.completed > 0)) && (
+          {kpis && (kpis.month.cancelled > 0 || newClientsThisMonth > 0 || (kpis.month.completionRate >= 80 && kpis.month.completed > 0)) && (
             <div className={styles.insightsCard}>
-              <h3 className={styles.cardTitle}>Alertas e destaques</h3>
+              <h3 className={styles.cardTitle}>Destaques</h3>
               <div className={styles.insightsList}>
-                {kpis.receivables.overdueCount > 0 && (
-                  <button className={`${styles.insightItem} ${styles.insightItemDanger}`} onClick={() => onNavigate("financeiro")} type="button">
-                    <span className={`${styles.insightIcon} ${styles.insightIconDanger}`}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                    </span>
-                    <div className={styles.insightText}>
-                      <strong>{kpis.receivables.overdueCount} cobranças em atraso</strong>
-                      <span>{formatCurrency(kpis.receivables.overdue)}</span>
-                    </div>
-                    <span className={styles.insightArrow}>→</span>
-                  </button>
-                )}
                 {kpis.month.cancelled > 0 && (
                   <button className={`${styles.insightItem} ${styles.insightItemWarning}`} onClick={() => onNavigate("agenda")} type="button">
                     <span className={`${styles.insightIcon} ${styles.insightIconWarning}`}>
