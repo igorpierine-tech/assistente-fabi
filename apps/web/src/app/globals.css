@@ -96,14 +96,16 @@ input, textarea {
 /* Sidebar layout */
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-main {
   flex: 1;
   margin-left: 260px;
-  min-height: 100vh;
+  height: 100vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Legacy shell (login) */
@@ -158,6 +160,7 @@ input, textarea {
 @media (max-width: 768px) {
   .app-main {
     margin-left: 0;
+    height: 100vh;
     padding-top: 56px;
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
