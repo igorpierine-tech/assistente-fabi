@@ -16,7 +16,7 @@
 }
 
 .dateLabel {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 1.2px;
   color: var(--text-muted);
@@ -87,7 +87,7 @@
 }
 
 .statLabel {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -121,7 +121,7 @@
 }
 
 .statSub {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
 }
 
 .statCardPrimary .statSub {
@@ -185,8 +185,8 @@
 }
 
 .financeIcon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   background: rgba(184, 135, 58, 0.1);
   color: var(--secondary);
@@ -217,7 +217,7 @@
 }
 
 .financeLabel {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -227,7 +227,7 @@
 
 .financeValue {
   font-family: var(--font-heading);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: var(--text);
   white-space: nowrap;
 }
@@ -280,7 +280,7 @@
 }
 
 .viewAllBtn {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--secondary);
   font-weight: 500;
   background: none;
@@ -331,13 +331,13 @@
 }
 
 .upcomingName {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text);
 }
 
 .upcomingSub {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   margin-top: 1px;
 }
@@ -366,36 +366,148 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px 0;
-  gap: 8px;
-}
-
-.emptyIcon {
-  font-size: 2rem;
-  opacity: 0.5;
+  padding: 40px 16px;
+  gap: 10px;
 }
 
 .emptyText {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 8px;
+}
+
+.emptySubtext {
   font-size: 0.88rem;
   color: var(--text-muted);
 }
 
-.emptyBtn {
-  margin-top: 8px;
-  padding: 8px 18px;
+.emptyActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.quickActionBtn {
+  padding: 8px 16px;
   border-radius: 8px;
-  background: var(--secondary);
-  color: white;
-  font-size: 0.82rem;
-  font-weight: 600;
-  border: none;
+  background: var(--surface);
+  color: var(--secondary);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
+  transition: all 0.15s;
+}
+
+.quickActionBtn:hover {
+  background: rgba(184, 135, 58, 0.08);
+  border-color: var(--secondary);
+}
+
+/* Upcoming item actions */
+.upcomingActions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
   transition: opacity 0.15s;
 }
 
-.emptyBtn:hover {
-  opacity: 0.9;
+.upcomingItem:hover .upcomingActions {
+  opacity: 1;
+}
+
+.upcomingActionBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.upcomingActionBtn:hover {
+  background: rgba(184, 135, 58, 0.08);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+/* Today empty */
+.todayEmpty {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.todayEmptyText {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.todayEmptyBtn {
+  background: none;
+  border: none;
+  color: var(--secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 0;
+}
+
+.todayEmptyBtn:hover {
+  text-decoration: underline;
+}
+
+/* Quick actions card */
+.quickActionsCard {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+}
+
+.quickActionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.quickAction {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.quickAction:hover {
+  background: rgba(184, 135, 58, 0.06);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+/* Danger stat value */
+.statValueDanger {
+  color: #c04a2a;
 }
 
 /* Right column */
@@ -427,7 +539,7 @@
 }
 
 .todayItemName {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text);
 }
@@ -438,7 +550,7 @@
 }
 
 .todayItemSub {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   margin-top: 1px;
 }
@@ -462,7 +574,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   color: var(--text);
   line-height: 1.5;
   padding: 4px 0;
@@ -544,13 +656,13 @@
 }
 
 .clientName {
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   font-weight: 500;
   color: var(--text);
 }
 
 .clientMiniSub {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 

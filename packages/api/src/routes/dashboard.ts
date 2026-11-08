@@ -1,8 +1,11 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { requireUser, readOwnerId, personalReadOwnerId } from "../middleware/auth";
-import { listAppointments } from "../services/database";
-import { getReceivablesSummary } from "../services/receivables-db";
+import { listAppointments, listClients } from "../services/database";
+import { listReceivables, getReceivablesSummary } from "../services/receivables-db";
 import { listSales } from "../services/sales-db";
+import { listContracts } from "../services/contracts-db";
+import { listBookingRequests } from "../services/booking-db";
+import { listCatalogItems } from "../services/catalog-db";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -100,6 +103,185 @@ router.get("/kpis", (req, res) => {
       overdueCount: receivables.em_atraso_count,
     },
     upcoming,
+  });
+});
+
+router.get("/analytics", (req, res) => {
+  const shared = readOwnerId(req);
+  const personal = personalReadOwnerId(req);
+
+  const rangeParam = (req.query.range as string) || "this_month";
+  const now = new Date();
+  let startDate: Date;
+  let endDate: Date = now;
+  let prevStart: Date;
+  let prevEnd: Date;
+
+  switch (rangeParam) {
+    case "last_month": {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      prevStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      prevEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59);
+      break;
+    }
+    case "last_3_months": {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      prevStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      prevEnd = new Date(now.getFullYear(), now.getMonth() - 2, 0, 23, 59, 59);
+      break;
+    }
+    case "custom": {
+      const from = req.query.from as string;
+      const to = req.query.to as string;
+      startDate = from ? new Date(from) : new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = to ? new Date(to + "T23:59:59") : now;
+      const diff = endDate.getTime() - startDate.getTime();
+      prevEnd = new Date(startDate.getTime() - 1);
+      prevStart = new Date(prevEnd.getTime() - diff);
+      break;
+    }
+    default: {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    }
+  }
+
+  const startStr = startDate.toISOString().slice(0, 10);
+  const endStr = endDate.toISOString().slice(0, 10);
+  const prevStartStr = prevStart.toISOString().slice(0, 10);
+  const prevEndStr = prevEnd.toISOString().slice(0, 10);
+
+  const inRange = (d: string) => d >= startStr && d <= endStr;
+  const inPrev = (d: string) => d >= prevStartStr && d <= prevEndStr;
+
+  // --- Financial ---
+  const allReceivables = listReceivables(shared);
+  const periodReceivables = allReceivables.filter((r) => inRange(r.due_date));
+  const prevReceivables = allReceivables.filter((r) => inPrev(r.due_date));
+
+  const revenueRealized = periodReceivables
+    .filter((r) => r.status === "pago")
+    .reduce((s, r) => s + r.amount_cents, 0);
+  const revenueProjected = periodReceivables.reduce((s, r) => s + r.amount_cents, 0);
+  const prevRevenue = prevReceivables
+    .filter((r) => r.status === "pago")
+    .reduce((s, r) => s + r.amount_cents, 0);
+
+  const overdueReceivables = allReceivables.filter(
+    (r) => r.status === "pendente" && r.due_date < startStr
+  );
+  const overdueTotal = overdueReceivables.reduce((s, r) => s + r.amount_cents, 0);
+  const delinquencyRate = revenueProjected > 0
+    ? Math.round((overdueTotal / revenueProjected) * 100)
+    : 0;
+
+  const sales = listSales(shared);
+  const periodSales = sales.filter((s) => inRange(s.sale_date));
+  const avgTicket = periodSales.length > 0
+    ? Math.round(periodSales.reduce((s, x) => s + x.amount_cents, 0) / periodSales.length)
+    : 0;
+
+  const revenueByMonth: Record<string, number> = {};
+  periodReceivables.filter((r) => r.status === "pago").forEach((r) => {
+    const m = (r.paid_at || r.due_date).slice(0, 7);
+    revenueByMonth[m] = (revenueByMonth[m] || 0) + r.amount_cents;
+  });
+
+  // --- Operational ---
+  const allAppts = listAppointments(personal, {});
+  const periodAppts = allAppts.filter((a) => inRange(a.start_time.slice(0, 10)));
+  const prevAppts = allAppts.filter((a) => inPrev(a.start_time.slice(0, 10)));
+
+  const completed = periodAppts.filter((a) => a.status === "concluido").length;
+  const cancelled = periodAppts.filter((a) => a.status === "cancelado").length;
+  const noShow = periodAppts.filter((a) => a.status === "faltou").length;
+  const totalAppts = periodAppts.length;
+  const prevTotal = prevAppts.length;
+
+  const catalog = listCatalogItems(shared);
+  const serviceCatalog = catalog.filter((c) => c.kind === "servico" && c.duration_minutes);
+  const totalSlotMinutes = serviceCatalog.reduce((s, c) => s + (c.duration_minutes || 0), 0);
+  const avgSessionMin = totalSlotMinutes > 0 ? Math.round(totalSlotMinutes / serviceCatalog.length) : 60;
+
+  const workdaysInPeriod = Math.max(1, Math.round(
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24) * 5 / 7
+  ));
+  const slotsPerDay = Math.floor(480 / avgSessionMin);
+  const totalSlots = workdaysInPeriod * slotsPerDay;
+  const occupancyRate = totalSlots > 0
+    ? Math.min(100, Math.round((totalAppts / totalSlots) * 100))
+    : 0;
+
+  const apptsByMonth: Record<string, { completed: number; cancelled: number; total: number }> = {};
+  periodAppts.forEach((a) => {
+    const m = a.start_time.slice(0, 7);
+    if (!apptsByMonth[m]) apptsByMonth[m] = { completed: 0, cancelled: 0, total: 0 };
+    apptsByMonth[m].total++;
+    if (a.status === "concluido") apptsByMonth[m].completed++;
+    if (a.status === "cancelado") apptsByMonth[m].cancelled++;
+  });
+
+  // --- Sales ---
+  const bookingRequests = listBookingRequests(shared);
+  const periodBookings = bookingRequests.filter((b) => inRange(b.created_at.slice(0, 10)));
+  const approvedBookings = periodBookings.filter((b) => b.status === "approved").length;
+  const bookingConversion = periodBookings.length > 0
+    ? Math.round((approvedBookings / periodBookings.length) * 100)
+    : 0;
+
+  const contracts = listContracts(shared);
+  const periodContracts = contracts.filter((c) => inRange(c.created_at.slice(0, 10)));
+  const signedContracts = periodContracts.filter(
+    (c) => c.zapsign_status === "signed" || c.status === "completed"
+  ).length;
+
+  const clients = listClients(shared);
+  const newClients = clients.filter((c) => inRange(c.created_at.slice(0, 10))).length;
+  const prevNewClients = clients.filter((c) => inPrev(c.created_at.slice(0, 10))).length;
+
+  res.json({
+    range: { start: startStr, end: endStr },
+    financial: {
+      revenueRealized,
+      revenueProjected,
+      prevRevenue,
+      revenueTrend: prevRevenue > 0
+        ? Math.round(((revenueRealized - prevRevenue) / prevRevenue) * 100)
+        : revenueRealized > 0 ? 100 : 0,
+      overdueTotal,
+      overdueCount: overdueReceivables.length,
+      delinquencyRate,
+      avgTicket,
+      revenueByMonth,
+    },
+    operational: {
+      totalAppointments: totalAppts,
+      completed,
+      cancelled,
+      noShow,
+      occupancyRate,
+      prevTotalAppointments: prevTotal,
+      trend: prevTotal > 0
+        ? Math.round(((totalAppts - prevTotal) / prevTotal) * 100)
+        : totalAppts > 0 ? 100 : 0,
+      apptsByMonth,
+    },
+    sales: {
+      totalBookingRequests: periodBookings.length,
+      approvedBookings,
+      bookingConversion,
+      contractsGenerated: periodContracts.length,
+      contractsSigned: signedContracts,
+      newClients,
+      prevNewClients,
+      clientsTrend: prevNewClients > 0
+        ? Math.round(((newClients - prevNewClients) / prevNewClients) * 100)
+        : newClients > 0 ? 100 : 0,
+      totalSales: periodSales.length,
+      salesRevenue: periodSales.reduce((s, x) => s + x.amount_cents, 0),
+    },
   });
 });
 

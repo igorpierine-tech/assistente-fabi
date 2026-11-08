@@ -65,7 +65,7 @@
 }
 
 .summaryLabel {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -102,7 +102,7 @@
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.87rem;
+  font-size: 0.92rem;
   font-weight: 500;
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -133,7 +133,7 @@
 .table thead th {
   text-align: left;
   padding: 14px 16px;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -146,7 +146,7 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--border, rgba(184, 135, 58, 0.1));
   color: var(--text);
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   vertical-align: middle;
 }
 
@@ -197,12 +197,12 @@
 }
 
 .iconBtn {
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid var(--border, rgba(184, 135, 58, 0.3));
   background: transparent;
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   cursor: pointer;
   font-family: inherit;
   font-weight: 500;

@@ -15,6 +15,7 @@ export type View =
   | "vendas"
   | "contratos"
   | "financeiro"
+  | "dashboards"
   | "configuracoes"
   | "usuarios"
   | "empresa"
@@ -42,10 +43,10 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const ROLE_NAV_ACCESS: Record<UserRole, View[]> = {
-  admin: ["inicio", "agenda", "agendamentos", "clientes", "empresa", "produtos", "usuarios", "vendas", "contratos", "financeiro", "configuracoes"],
-  gestor: ["inicio", "agenda", "agendamentos", "clientes", "empresa", "produtos", "vendas", "contratos", "financeiro"],
+  admin: ["inicio", "agenda", "agendamentos", "clientes", "empresa", "produtos", "usuarios", "vendas", "contratos", "financeiro", "dashboards", "configuracoes"],
+  gestor: ["inicio", "agenda", "agendamentos", "clientes", "empresa", "produtos", "vendas", "contratos", "financeiro", "dashboards"],
   colaborador: ["inicio", "agenda", "clientes", "agendamentos"],
-  visualizador: ["inicio", "financeiro", "contratos"],
+  visualizador: ["inicio", "financeiro", "contratos", "dashboards"],
 };
 
 interface NavItem {
@@ -72,6 +73,7 @@ const BOTTOM_ITEMS: NavItem[] = [
   { id: "contratos", label: "Contratos", icon: "file-signature" },
   { id: "financeiro", label: "Financeiro", icon: "wallet" },
   { id: "vendas", label: "Vendas", icon: "cart" },
+  { id: "dashboards", label: "Dashboards", icon: "chart" },
 ];
 
 const CADASTROS_IDS = new Set(CADASTROS_ITEMS.map((i) => i.id));
@@ -169,6 +171,13 @@ function NavIcon({ name }: { name: string }) {
           <rect x="14" y="3" width="7" height="7" rx="1" />
           <rect x="3" y="14" width="7" height="7" rx="1" />
           <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "chart":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 3v18h18" />
+          <path d="M7 16l4-6 4 4 5-8" />
         </svg>
       );
     case "clipboard":

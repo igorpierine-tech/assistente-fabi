@@ -22,6 +22,7 @@ const PATH_TO_VIEW: Record<string, View> = {
   "/app/empresa": "empresa",
   "/app/produtos": "produtos",
   "/app/configuracoes": "configuracoes",
+  "/app/dashboards": "dashboards",
 };
 
 const VIEW_TO_PATH: Record<View, string> = {
@@ -37,6 +38,7 @@ const VIEW_TO_PATH: Record<View, string> = {
   empresa: "/app/empresa",
   produtos: "/app/produtos",
   configuracoes: "/app/configuracoes",
+  dashboards: "/app/dashboards",
   admin: "/admin",
 };
 
