@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import styles from "./CalendarView.module.css";
 import { isoToLocalInput } from "@/lib/timezone";
+import { getEventTypeLabel, getEventTypeCalendarColors, EVENT_TYPE_CALENDAR_COLORS } from "@/lib/event-types";
 
 export interface CalendarEvent {
   id: string;
@@ -34,15 +35,6 @@ type ViewMode = "mes" | "semana" | "dia";
 
 const WEEKDAYS = ["DOM.", "SEG.", "TER.", "QUA.", "QUI.", "SEX.", "SÁB."];
 
-const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  constelacao: { bg: "#FFF3E0", border: "#F57C00", text: "#E65100" },
-  consultoria_financeira: { bg: "#FFF8E1", border: "#FFC107", text: "#F57F17" },
-  planejamento: { bg: "#E8F5E9", border: "#66BB6A", text: "#2E7D32" },
-  reuniao: { bg: "#E3F2FD", border: "#42A5F5", text: "#1565C0" },
-  bloqueio_pessoal: { bg: "#F5F5F5", border: "#BDBDBD", text: "#616161" },
-  evento_curso: { bg: "#F3E5F5", border: "#AB47BC", text: "#6A1B9A" },
-  outro: { bg: "#ECEFF1", border: "#78909C", text: "#37474F" },
-};
 
 const STATUS_DOT: Record<string, string> = {
   previsto: "#FFA726",
@@ -334,7 +326,7 @@ export function CalendarView({ events, onEventClick, onNewEvent, onEventMove }: 
                   </span>
                   <div className={styles.dayEvents}>
                     {dayEvents.slice(0, maxShow).map((ev) => {
-                      const colors = TYPE_COLORS[ev.type] || TYPE_COLORS.outro;
+                      const colors = getEventTypeCalendarColors(ev.type);
                       const isDragging = draggingId === ev.id;
                       return (
                         <div
@@ -402,17 +394,10 @@ export function CalendarView({ events, onEventClick, onNewEvent, onEventMove }: 
 
       {/* Legend */}
       <div className={styles.legend}>
-        {Object.entries(TYPE_COLORS).map(([type, colors]) => (
+        {Object.entries(EVENT_TYPE_CALENDAR_COLORS).map(([type, colors]) => (
           <div key={type} className={styles.legendItem}>
             <span className={styles.legendDot} style={{ background: colors.border }} />
-            <span className={styles.legendLabel}>
-              {type === "constelacao" ? "Constelação" :
-               type === "consultoria_financeira" ? "Consultoria" :
-               type === "planejamento" ? "Planejamento" :
-               type === "reuniao" ? "Reunião" :
-               type === "bloqueio_pessoal" ? "Bloqueio" :
-               type === "evento_curso" ? "Evento/Curso" : "Outro"}
-            </span>
+            <span className={styles.legendLabel}>{getEventTypeLabel(type)}</span>
           </div>
         ))}
         <div className={styles.legendDivider} />
@@ -548,7 +533,7 @@ function TimeGridView({
                   ((endMin - startMin) / 30) * SLOT_HEIGHT_PX - 2
                 );
                 if (endMin <= viewStartMin) return null;
-                const colors = TYPE_COLORS[ev.type] || TYPE_COLORS.outro;
+                const colors = getEventTypeCalendarColors(ev.type);
                 const isDragging = draggingId === ev.id;
                 return (
                   <div

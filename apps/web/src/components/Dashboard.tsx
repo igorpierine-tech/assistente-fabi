@@ -55,28 +55,7 @@ interface DashboardProps {
   onNavigate: (view: string) => void;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  constelacao: "Constelação",
-  consultoria_financeira: "Consultoria",
-  planejamento: "Planejamento",
-  reuniao: "Reunião",
-  bloqueio_pessoal: "Bloqueio",
-  evento_curso: "Evento",
-  mentoria_individual: "Mentoria Individual",
-  mentoria_grupo: "Mentoria Grupo",
-  outro: "Outro",
-};
-
-const BORDER_COLORS: Record<string, string> = {
-  constelacao: "#b8873a",
-  consultoria_financeira: "#d9b268",
-  planejamento: "#2f4a2b",
-  reuniao: "#6b6152",
-  bloqueio_pessoal: "#8a7f6a",
-  evento_curso: "#1a2e18",
-  mentoria_individual: "#7c5e2c",
-  mentoria_grupo: "#5a7a3b",
-};
+import { getEventTypeLabel, getEventTypeColor } from "@/lib/event-types";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -121,7 +100,7 @@ function getInitials(name: string) {
 }
 
 function getTypeLabel(type: string) {
-  return TYPE_LABELS[type] || type.replace(/_/g, " ");
+  return getEventTypeLabel(type);
 }
 
 function getTimeUntilNext(events: CalendarEvent[]) {
@@ -452,7 +431,7 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
               <div className={styles.appointmentsList}>
                 {kpis.upcoming.map((appt) => {
                   const displayName = appt.clientName || appt.title.split(" — ")[0];
-                  const typeColor = BORDER_COLORS[appt.type] || "#b8873a";
+                  const typeColor = getEventTypeColor(appt.type);
                   return (
                     <div key={appt.id} className={styles.appointmentItem}>
                       <div

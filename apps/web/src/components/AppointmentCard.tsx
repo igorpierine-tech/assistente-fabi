@@ -11,6 +11,7 @@ import {
 } from "@/lib/timezone";
 
 import { apiFetch } from "@/lib/api";
+import { getEventTypeLabel } from "@/lib/event-types";
 
 interface AppointmentCardProps {
   event: CalendarEvent | null;
@@ -41,11 +42,11 @@ interface CatalogItem {
 
 // Non-catalog internal types (always available)
 const INTERNAL_TYPES = [
-  { value: "bloqueio_pessoal", label: "Bloqueio pessoal" },
-  { value: "reuniao", label: "Reunião" },
-  { value: "planejamento", label: "Planejamento" },
-  { value: "evento_curso", label: "Evento / Curso" },
-  { value: "outro", label: "Outro" },
+  { value: "bloqueio_pessoal", label: getEventTypeLabel("bloqueio_pessoal") },
+  { value: "reuniao", label: getEventTypeLabel("reuniao") },
+  { value: "planejamento", label: getEventTypeLabel("planejamento") },
+  { value: "evento_curso", label: getEventTypeLabel("evento_curso") },
+  { value: "outro", label: getEventTypeLabel("outro") },
 ];
 
 function slugify(input: string): string {

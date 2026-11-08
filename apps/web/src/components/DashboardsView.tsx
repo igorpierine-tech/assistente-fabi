@@ -142,29 +142,7 @@ function DonutChart({ segments, size = 120 }: { segments: { label: string; value
   );
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  constelacao: "Constelação",
-  consultoria_financeira: "Consultoria",
-  planejamento: "Planejamento",
-  reuniao: "Reunião",
-  bloqueio_pessoal: "Bloqueio",
-  evento_curso: "Evento",
-  mentoria_individual: "Mentoria Individual",
-  mentoria_grupo: "Mentoria Grupo",
-  outro: "Outro",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  constelacao: "#b8873a",
-  consultoria_financeira: "#d9b268",
-  planejamento: "#2f4a2b",
-  reuniao: "#6b6152",
-  bloqueio_pessoal: "#8a7f6a",
-  evento_curso: "#4a7a3e",
-  mentoria_individual: "#6b8f5e",
-  mentoria_grupo: "#3f6635",
-  outro: "#999",
-};
+import { getEventTypeLabel, getEventTypeColor } from "@/lib/event-types";
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -184,12 +162,12 @@ function TypeBreakdownChart({ data, total }: { data: { type: string; count: numb
     <div className={styles.typeBreakdown}>
       {data.map((d) => {
         const pct = Math.round((d.count / total) * 100);
-        const color = TYPE_COLORS[d.type] || "#999";
+        const color = getEventTypeColor(d.type);
         return (
           <div key={d.type} className={styles.typeRow}>
             <div className={styles.typeLabel}>
               <span className={styles.typeDot} style={{ background: color }} />
-              <span className={styles.typeName}>{TYPE_LABELS[d.type] || d.type.replace(/_/g, " ")}</span>
+              <span className={styles.typeName}>{getEventTypeLabel(d.type)}</span>
             </div>
             <div className={styles.typeBarWrap}>
               <div className={styles.typeBar} style={{ width: `${Math.max(3, (d.count / maxCount) * 100)}%`, background: color }} />

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import styles from "./DaySummary.module.css";
 import type { CalendarEvent } from "./CalendarView";
 import { apiFetch } from "@/lib/api";
+import { getEventTypeColor, getEventTypeLabel } from "@/lib/event-types";
 
 interface DaySummaryProps {
   userId: string;
@@ -18,13 +19,6 @@ interface Event {
   start: string;
   end: string;
 }
-
-const TYPE_COLORS: Record<string, string> = {
-  constelacao: "#8B5E3C",
-  consultoria: "#C8A951",
-  planejamento: "#6B8F5E",
-  reuniao: "#5E7E8B",
-};
 
 export function DaySummary({ userId, events: calendarEvents, onEventClick }: DaySummaryProps) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -124,7 +118,7 @@ export function DaySummary({ userId, events: calendarEvents, onEventClick }: Day
               <div
                 key={event.id}
                 className={`${styles.eventCard} ${clickable ? styles.eventCardClickable : ""} animate-fade-in`}
-                style={{ borderLeftColor: TYPE_COLORS[event.type] || "var(--secondary)" }}
+                style={{ borderLeftColor: getEventTypeColor(event.type) }}
                 onClick={clickable ? () => onEventClick(calEvent) : undefined}
               >
                 <div className={styles.eventTime}>
