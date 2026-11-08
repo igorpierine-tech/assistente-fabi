@@ -141,6 +141,9 @@ export function FinanceiroView() {
     amountInput: string;
   }>({ method: "pix", paidAt: new Date().toISOString().slice(0, 10), amountInput: "" });
   const [saving, setSaving] = useState(false);
+  const [nfseEmitting, setNfseEmitting] = useState<Receivable | null>(null);
+  const [nfseLoading, setNfseLoading] = useState(false);
+  const [nfseMessage, setNfseMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -288,6 +291,38 @@ export function FinanceiroView() {
     await fetchAll();
   }
 
+  function openNfse(r: Receivable) {
+    setNfseMessage(null);
+    setNfseEmitting(r);
+  }
+
+  async function handleEmitirNfse() {
+    if (!nfseEmitting) return;
+    setNfseLoading(true);
+    setNfseMessage(null);
+    try {
+      const res = await apiFetch("/nfse/emitir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: nfseEmitting.client_id || undefined,
+          descricaoServico: nfseEmitting.item_name,
+          valorServicoCents: nfseEmitting.amount_cents,
+          tomadorNome: nfseEmitting.client_name,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNfseMessage({ type: "success", text: `NFS-e emitida com sucesso! Numero: ${data.invoice?.numero_nfse || "—"}` });
+      } else {
+        setNfseMessage({ type: "error", text: data.error || "Erro ao emitir NFS-e" });
+      }
+    } catch {
+      setNfseMessage({ type: "error", text: "Erro de conexao ao emitir NFS-e" });
+    }
+    setNfseLoading(false);
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -419,6 +454,13 @@ export function FinanceiroView() {
                             Marcar pago
                           </button>
                         )}
+                        <button
+                          className={`${styles.iconBtn} ${styles.iconBtnNfse}`}
+                          onClick={() => openNfse(r)}
+                          type="button"
+                        >
+                          Emitir NFS-e
+                        </button>
                         {r.status === "pago" && (
                           <button
                             className={styles.iconBtn}
@@ -665,6 +707,64 @@ export function FinanceiroView() {
                 type="button"
               >
                 {saving ? "Salvando..." : "Confirmar pagamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {nfseEmitting && (
+        <div className={styles.overlay} onClick={() => setNfseEmitting(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>Emitir NFS-e</h3>
+            <p className={styles.subtitle} style={{ marginBottom: 16 }}>
+              {nfseEmitting.client_name} · {nfseEmitting.item_name}
+            </p>
+            <div className={styles.formGrid}>
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label>Tomador (Cliente)</label>
+                  <input type="text" value={nfseEmitting.client_name} disabled />
+                </div>
+                <div className={styles.field}>
+                  <label>Valor do servico</label>
+                  <input type="text" value={formatBRL(nfseEmitting.amount_cents)} disabled />
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label>Descricao do servico</label>
+                <input type="text" value={nfseEmitting.item_name} disabled />
+              </div>
+            </div>
+            {nfseMessage && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  fontSize: "0.9rem",
+                  background: nfseMessage.type === "success" ? "#e8f5e9" : "#fbe9e7",
+                  color: nfseMessage.type === "success" ? "#2e7d32" : "#c62828",
+                }}
+              >
+                {nfseMessage.text}
+              </div>
+            )}
+            <div className={styles.modalActions}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setNfseEmitting(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className={styles.btnPrimary}
+                onClick={handleEmitirNfse}
+                disabled={nfseLoading}
+                type="button"
+              >
+                {nfseLoading ? "Emitindo..." : "Confirmar emissao"}
               </button>
             </div>
           </div>

@@ -224,6 +224,18 @@
   color: var(--gold, #d9b268);
 }
 
+.iconBtnNfse {
+  background: #1565c0;
+  color: #fff;
+  border-color: #1565c0;
+}
+
+.iconBtnNfse:hover {
+  background: #0d47a1;
+  border-color: #0d47a1;
+  color: #fff;
+}
+
 .iconBtnDanger:hover {
   background: rgba(192, 74, 42, 0.08);
   border-color: #c04a2a;

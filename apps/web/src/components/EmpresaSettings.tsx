@@ -10,6 +10,11 @@ interface EmpresaData {
   inscricaoEstadual: string;
   inscricaoMunicipal: string;
   endereco: string;
+  enderecoLogradouro: string;
+  enderecoNumero: string;
+  enderecoComplemento: string;
+  enderecoBairro: string;
+  enderecoUf: string;
   cep: string;
   telefone: string;
   email: string;
@@ -22,11 +27,21 @@ const emptyData: EmpresaData = {
   inscricaoEstadual: "",
   inscricaoMunicipal: "",
   endereco: "",
+  enderecoLogradouro: "",
+  enderecoNumero: "",
+  enderecoComplemento: "",
+  enderecoBairro: "",
+  enderecoUf: "",
   cep: "",
   telefone: "",
   email: "",
   representanteQualificacao: "",
 };
+
+const UF_OPTIONS = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
+  "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
+];
 
 export function EmpresaSettings() {
   const [form, setForm] = useState<EmpresaData>(emptyData);
@@ -74,6 +89,11 @@ export function EmpresaSettings() {
         razaoSocial: data.razao_social || f.razaoSocial,
         cnpj: data.cnpj ? data.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : f.cnpj,
         endereco: fullAddr || f.endereco,
+        enderecoLogradouro: data.logradouro || f.enderecoLogradouro,
+        enderecoNumero: data.numero || f.enderecoNumero,
+        enderecoComplemento: data.complemento || f.enderecoComplemento,
+        enderecoBairro: data.bairro || f.enderecoBairro,
+        enderecoUf: data.uf || f.enderecoUf,
         cep: data.cep || f.cep,
         telefone: data.telefone || f.telefone,
         email: data.email || f.email,
@@ -109,7 +129,7 @@ export function EmpresaSettings() {
 
   if (loading) return <div className={styles.wrap}>Carregando...</div>;
 
-  const isComplete = !!(form.razaoSocial && form.cnpj && form.inscricaoMunicipal && form.endereco && form.cep);
+  const isComplete = !!(form.razaoSocial && form.cnpj && form.inscricaoMunicipal && form.enderecoLogradouro && form.enderecoNumero && form.enderecoBairro && form.enderecoUf && form.cep);
 
   return (
     <div className={styles.wrap}>
@@ -187,13 +207,53 @@ export function EmpresaSettings() {
         <h4 className={styles.sectionTitle}>Endereço</h4>
         <div className={styles.fieldGrid}>
           <div className={`${styles.field} ${styles.fieldFull}`}>
-            <label>Endereço completo *</label>
+            <label>Logradouro *</label>
             <input
               type="text"
-              value={form.endereco}
-              onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-              placeholder="Rua, número, bairro — Cidade/UF"
+              value={form.enderecoLogradouro}
+              onChange={(e) => setForm({ ...form, enderecoLogradouro: e.target.value })}
+              placeholder="Rua, Avenida, etc."
             />
+          </div>
+          <div className={styles.field}>
+            <label>Numero *</label>
+            <input
+              type="text"
+              value={form.enderecoNumero}
+              onChange={(e) => setForm({ ...form, enderecoNumero: e.target.value })}
+              placeholder="123"
+              maxLength={20}
+            />
+          </div>
+          <div className={styles.field}>
+            <label>Complemento</label>
+            <input
+              type="text"
+              value={form.enderecoComplemento}
+              onChange={(e) => setForm({ ...form, enderecoComplemento: e.target.value })}
+              placeholder="Sala, Andar, Bloco..."
+            />
+          </div>
+          <div className={styles.field}>
+            <label>Bairro *</label>
+            <input
+              type="text"
+              value={form.enderecoBairro}
+              onChange={(e) => setForm({ ...form, enderecoBairro: e.target.value })}
+              placeholder="Bairro"
+            />
+          </div>
+          <div className={styles.field}>
+            <label>UF *</label>
+            <select
+              value={form.enderecoUf}
+              onChange={(e) => setForm({ ...form, enderecoUf: e.target.value })}
+            >
+              <option value="">Selecione</option>
+              {UF_OPTIONS.map(uf => (
+                <option key={uf} value={uf}>{uf}</option>
+              ))}
+            </select>
           </div>
           <div className={styles.field}>
             <label>CEP *</label>

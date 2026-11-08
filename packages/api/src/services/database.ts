@@ -406,6 +406,24 @@ function initTables(db: Database.Database) {
     }
   })();
 
+  // Structured empresa address columns on tenant_config
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    const addrCols: [string, string][] = [
+      ["endereco_logradouro", "TEXT"],
+      ["endereco_numero", "TEXT"],
+      ["endereco_complemento", "TEXT"],
+      ["endereco_bairro", "TEXT"],
+      ["endereco_uf", "TEXT"],
+    ];
+    for (const [col, type] of addrCols) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE tenant_config ADD COLUMN ${col} ${type}`);
+      }
+    }
+  })();
+
   // NFS-e Nacional columns on tenant_config
   (() => {
     const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
@@ -657,6 +675,21 @@ function migrateToWorkspace(db: Database.Database) {
     if (!names.has("inscricao_estadual")) {
       db.exec(`ALTER TABLE clients ADD COLUMN inscricao_estadual TEXT`);
     }
+    const addrCols: [string, string][] = [
+      ["endereco_logradouro", "TEXT"],
+      ["endereco_numero", "TEXT"],
+      ["endereco_complemento", "TEXT"],
+      ["endereco_bairro", "TEXT"],
+      ["endereco_cidade", "TEXT"],
+      ["endereco_uf", "TEXT"],
+      ["endereco_cep", "TEXT"],
+      ["endereco_codigo_municipio", "TEXT"],
+    ];
+    for (const [col, type] of addrCols) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE clients ADD COLUMN ${col} ${type}`);
+      }
+    }
   })();
 
   try {
@@ -729,6 +762,14 @@ export interface ClientRow {
   tipo_pessoa: string | null;
   address: string | null;
   inscricao_estadual: string | null;
+  endereco_logradouro: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  endereco_cidade: string | null;
+  endereco_uf: string | null;
+  endereco_cep: string | null;
+  endereco_codigo_municipio: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -765,15 +806,15 @@ export function getClientByName(userId: string | null, name: string): ClientRow 
   return getDb().prepare(`SELECT * FROM clients WHERE user_id = ? AND LOWER(name) = LOWER(?)`).get(userId, name) as ClientRow | undefined;
 }
 
-export function createClient(userId: string, data: { name: string; phone?: string; email?: string; notes?: string; document?: string; tipo_pessoa?: string; address?: string; inscricao_estadual?: string }): ClientRow {
+export function createClient(userId: string, data: { name: string; phone?: string; email?: string; notes?: string; document?: string; tipo_pessoa?: string; address?: string; inscricao_estadual?: string; endereco_logradouro?: string; endereco_numero?: string; endereco_complemento?: string; endereco_bairro?: string; endereco_cidade?: string; endereco_uf?: string; endereco_cep?: string; endereco_codigo_municipio?: string }): ClientRow {
   const id = uuidv4();
   getDb().prepare(
-    `INSERT INTO clients (id, user_id, name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, userId, data.name, data.phone || null, data.email || null, data.notes || null, data.document || null, data.tipo_pessoa || "PF", data.address || null, data.inscricao_estadual || null);
+    `INSERT INTO clients (id, user_id, name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual, endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf, endereco_cep, endereco_codigo_municipio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, userId, data.name, data.phone || null, data.email || null, data.notes || null, data.document || null, data.tipo_pessoa || "PF", data.address || null, data.inscricao_estadual || null, data.endereco_logradouro || null, data.endereco_numero || null, data.endereco_complemento || null, data.endereco_bairro || null, data.endereco_cidade || null, data.endereco_uf || null, data.endereco_cep || null, data.endereco_codigo_municipio || null);
   return getClient(userId, id)!;
 }
 
-export function updateClient(userId: string, id: string, data: Partial<{ name: string; phone: string; email: string; notes: string; document: string; tipo_pessoa: string; address: string; inscricao_estadual: string }>): ClientRow | undefined {
+export function updateClient(userId: string, id: string, data: Partial<{ name: string; phone: string; email: string; notes: string; document: string; tipo_pessoa: string; address: string; inscricao_estadual: string; endereco_logradouro: string; endereco_numero: string; endereco_complemento: string; endereco_bairro: string; endereco_cidade: string; endereco_uf: string; endereco_cep: string; endereco_codigo_municipio: string }>): ClientRow | undefined {
   const fields: string[] = [];
   const values: unknown[] = [];
   for (const [key, val] of Object.entries(data)) {
@@ -1161,6 +1202,11 @@ export interface TenantConfigRow {
   inscricao_estadual: string | null;
   inscricao_municipal: string | null;
   endereco: string | null;
+  endereco_logradouro: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  endereco_uf: string | null;
   cep: string | null;
   email_comercial: string | null;
   telefone_comercial: string | null;

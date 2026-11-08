@@ -43,7 +43,15 @@ router.post("/", (req, res) => {
   const tipo_pessoa = optionalString(req.body?.tipo_pessoa, "Tipo de pessoa", 2);
   const address = optionalString(req.body?.address, "Endereço", 500);
   const inscricao_estadual = optionalString(req.body?.inscricao_estadual, "Inscrição Estadual", 20);
-  const client = createClient(sharedOwnerId(req), { name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual });
+  const endereco_logradouro = optionalString(req.body?.endereco_logradouro, "Logradouro", 200);
+  const endereco_numero = optionalString(req.body?.endereco_numero, "Número", 20);
+  const endereco_complemento = optionalString(req.body?.endereco_complemento, "Complemento", 100);
+  const endereco_bairro = optionalString(req.body?.endereco_bairro, "Bairro", 100);
+  const endereco_cidade = optionalString(req.body?.endereco_cidade, "Cidade", 100);
+  const endereco_uf = optionalString(req.body?.endereco_uf, "UF", 2);
+  const endereco_cep = optionalString(req.body?.endereco_cep, "CEP", 10);
+  const endereco_codigo_municipio = optionalString(req.body?.endereco_codigo_municipio, "Código Município", 7);
+  const client = createClient(sharedOwnerId(req), { name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual, endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf, endereco_cep, endereco_codigo_municipio });
   res.status(201).json(client);
 });
 
@@ -62,7 +70,15 @@ router.put("/:id", (req, res) => {
   const tipo_pessoa = optionalString(req.body?.tipo_pessoa, "Tipo de pessoa", 2);
   const address = optionalString(req.body?.address, "Endereço", 500);
   const inscricao_estadual = optionalString(req.body?.inscricao_estadual, "Inscrição Estadual", 20);
-  const updated = updateClient(userId, req.params.id, { name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual });
+  const endereco_logradouro = optionalString(req.body?.endereco_logradouro, "Logradouro", 200);
+  const endereco_numero = optionalString(req.body?.endereco_numero, "Número", 20);
+  const endereco_complemento = optionalString(req.body?.endereco_complemento, "Complemento", 100);
+  const endereco_bairro = optionalString(req.body?.endereco_bairro, "Bairro", 100);
+  const endereco_cidade = optionalString(req.body?.endereco_cidade, "Cidade", 100);
+  const endereco_uf = optionalString(req.body?.endereco_uf, "UF", 2);
+  const endereco_cep = optionalString(req.body?.endereco_cep, "CEP", 10);
+  const endereco_codigo_municipio = optionalString(req.body?.endereco_codigo_municipio, "Código Município", 7);
+  const updated = updateClient(userId, req.params.id, { name, phone, email, notes, document, tipo_pessoa, address, inscricao_estadual, endereco_logradouro, endereco_numero, endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf, endereco_cep, endereco_codigo_municipio });
   res.json(updated);
 });
 

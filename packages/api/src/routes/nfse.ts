@@ -1,6 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { requireUser, sharedOwnerId } from "../middleware/auth";
-import { getTenantConfig, upsertTenantConfig } from "../services/database";
+import { getTenantConfig, upsertTenantConfig, getClient } from "../services/database";
 import {
   listNfseInvoices,
   getNfseInvoice,
@@ -146,7 +146,7 @@ router.get("/invoices/:id", (req, res) => {
 
 router.post("/emitir", async (req, res) => {
   const uid = ownerId(req);
-  const { saleId, descricaoServico, valorServicoCents, tomadorNome, tomadorDocumento, tomadorEmail } = req.body || {};
+  const { saleId, clientId, descricaoServico, valorServicoCents, tomadorNome, tomadorDocumento, tomadorEmail } = req.body || {};
 
   const config = getTenantConfig(uid);
   if (!config || !isNfseConfigured(config)) {
@@ -159,6 +159,15 @@ router.post("/emitir", async (req, res) => {
   let nome = tomadorNome;
   let documento = tomadorDocumento;
   let email = tomadorEmail;
+
+  if (clientId) {
+    const client = getClient(uid, clientId);
+    if (client) {
+      nome = nome || client.name;
+      documento = documento || client.document;
+      email = email || client.email;
+    }
+  }
 
   if (saleId) {
     const existing = getNfseInvoiceBySaleId(uid, saleId);

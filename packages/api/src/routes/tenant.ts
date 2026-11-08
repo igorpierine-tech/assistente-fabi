@@ -127,6 +127,11 @@ router.get("/empresa", (req, res) => {
     inscricaoEstadual: row.inscricao_estadual || "",
     inscricaoMunicipal: row.inscricao_municipal || "",
     endereco: row.endereco || "",
+    enderecoLogradouro: row.endereco_logradouro || "",
+    enderecoNumero: row.endereco_numero || "",
+    enderecoComplemento: row.endereco_complemento || "",
+    enderecoBairro: row.endereco_bairro || "",
+    enderecoUf: row.endereco_uf || "",
     cep: row.cep || "",
     telefone: row.telefone_comercial || "",
     email: row.email_comercial || "",
@@ -148,6 +153,11 @@ router.put("/empresa", (req, res) => {
   if (body.inscricaoEstadual !== undefined) update.inscricao_estadual = String(body.inscricaoEstadual).slice(0, 20) || null;
   if (body.inscricaoMunicipal !== undefined) update.inscricao_municipal = String(body.inscricaoMunicipal).slice(0, 20) || null;
   if (body.endereco !== undefined) update.endereco = String(body.endereco).slice(0, 300) || null;
+  if (body.enderecoLogradouro !== undefined) update.endereco_logradouro = String(body.enderecoLogradouro).slice(0, 200) || null;
+  if (body.enderecoNumero !== undefined) update.endereco_numero = String(body.enderecoNumero).slice(0, 20) || null;
+  if (body.enderecoComplemento !== undefined) update.endereco_complemento = String(body.enderecoComplemento).slice(0, 100) || null;
+  if (body.enderecoBairro !== undefined) update.endereco_bairro = String(body.enderecoBairro).slice(0, 100) || null;
+  if (body.enderecoUf !== undefined) update.endereco_uf = String(body.enderecoUf).slice(0, 2) || null;
   if (body.cep !== undefined) update.cep = String(body.cep).slice(0, 10) || null;
   if (body.telefone !== undefined) update.telefone_comercial = String(body.telefone).slice(0, 20) || null;
   if (body.email !== undefined) update.email_comercial = String(body.email).slice(0, 100) || null;
@@ -160,6 +170,11 @@ router.put("/empresa", (req, res) => {
     inscricaoEstadual: updated.inscricao_estadual || "",
     inscricaoMunicipal: updated.inscricao_municipal || "",
     endereco: updated.endereco || "",
+    enderecoLogradouro: updated.endereco_logradouro || "",
+    enderecoNumero: updated.endereco_numero || "",
+    enderecoComplemento: updated.endereco_complemento || "",
+    enderecoBairro: updated.endereco_bairro || "",
+    enderecoUf: updated.endereco_uf || "",
     cep: updated.cep || "",
     telefone: updated.telefone_comercial || "",
     email: updated.email_comercial || "",
