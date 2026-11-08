@@ -36,7 +36,15 @@ import { hashPassword, updatePassword, getUserByEmail } from "../services/users-
 import { getTenantDb, upsertTenantConfig } from "../services/database";
 import { tenantContext } from "../services/tenant-context";
 import { requireUser, requirePlatformRole } from "../middleware/auth";
-import { requiredString, optionalString, optionalEmail } from "../services/validation";
+import { validateBody } from "../middleware/validate";
+import {
+  createTenantSchema, updateTenantSchema,
+  createTenantUserSchema, updateTenantUserSchema,
+  createProfileSchema, updateProfileSchema,
+  createPlanSchema, updatePlanSchema,
+  createSubscriptionSchema, updateSubscriptionSchema,
+  setPasswordSchema,
+} from "../schemas";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -75,23 +83,19 @@ router.get("/profiles", (req, res) => {
   })));
 });
 
-router.post("/profiles", (req, res) => {
+router.post("/profiles", validateBody(createProfileSchema), (req, res) => {
   const tenantId = req.session.appUser!.tenantId;
   if (!tenantId) {
     res.status(400).json({ error: "Nenhuma empresa selecionada" });
     return;
   }
-  const { name, modules } = req.body || {};
-  if (!name || !Array.isArray(modules)) {
-    res.status(400).json({ error: "name e modules são obrigatórios" });
-    return;
-  }
+  const { name, modules } = req.body;
   const validModules = modules.filter((m: string) => SYSTEM_MODULES.some(sm => sm.id === m));
   const profile = createAccessProfile({ tenantId, name, modules: validModules });
   res.status(201).json({ ...profile, modules: JSON.parse(profile.modules) });
 });
 
-router.put("/profiles/:id", (req, res) => {
+router.put("/profiles/:id", validateBody(updateProfileSchema), (req, res) => {
   const profile = getAccessProfileById(req.params.id);
   if (!profile) {
     res.status(404).json({ error: "Perfil não encontrado" });
@@ -102,7 +106,7 @@ router.put("/profiles/:id", (req, res) => {
     res.status(403).json({ error: "Sem permissão" });
     return;
   }
-  const { name, modules } = req.body || {};
+  const { name, modules } = req.body;
   const validModules = Array.isArray(modules)
     ? modules.filter((m: string) => SYSTEM_MODULES.some(sm => sm.id === m))
     : undefined;
@@ -156,27 +160,10 @@ router.get("/tenants/:id", (req, res) => {
   });
 });
 
-router.post("/tenants", async (req, res) => {
-  const body = req.body || {};
-  const name = requiredString(body.name, "name", 200);
-  const rawSlug = requiredString(body.slug, "slug", 100);
-  const adminName = optionalString(body.adminName, "adminName", 200);
-  const adminEmail = optionalEmail(body.adminEmail);
-  const adminPassword = optionalString(body.adminPassword, "adminPassword", 128);
-  const cnpj = optionalString(body.cnpj, "cnpj", 30);
-  const inscricaoMunicipal = optionalString(body.inscricaoMunicipal, "inscricaoMunicipal", 30);
-  const endereco = optionalString(body.endereco, "endereco", 500);
-  const cep = optionalString(body.cep, "cep", 20);
-  const municipio = optionalString(body.municipio, "municipio", 100);
-  const uf = optionalString(body.uf, "uf", 2);
-  const telefone = optionalString(body.telefone, "telefone", 30);
-  const emailEmpresa = optionalEmail(body.emailEmpresa);
+router.post("/tenants", validateBody(createTenantSchema), async (req, res) => {
+  const { name, slug: safeSlug, adminName, adminEmail, adminPassword,
+    cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = req.body;
 
-  const safeSlug = rawSlug.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-  if (safeSlug.length < 2) {
-    res.status(400).json({ error: "Slug deve ter pelo menos 2 caracteres" });
-    return;
-  }
   if (getTenantBySlug(safeSlug)) {
     res.status(409).json({ error: "Já existe uma empresa com esse slug" });
     return;
@@ -253,13 +240,13 @@ router.get("/tenants/:id/empresa", (req, res) => {
   });
 });
 
-router.put("/tenants/:id", (req, res) => {
+router.put("/tenants/:id", validateBody(updateTenantSchema), (req, res) => {
   const tenant = getTenantById(req.params.id);
   if (!tenant) {
     res.status(404).json({ error: "Empresa não encontrada" });
     return;
   }
-  const { name, slug, cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = req.body || {};
+  const { name, slug, cnpj, inscricaoMunicipal, endereco, cep, municipio, uf, telefone, emailEmpresa } = req.body;
   const updated = updateTenant(req.params.id, { name, slug });
   if (!updated) {
     res.status(404).json({ error: "Empresa não encontrada" });
@@ -326,21 +313,13 @@ router.get("/tenants/:id/users", (req, res) => {
   res.json(result);
 });
 
-router.post("/tenants/:id/users", async (req, res) => {
+router.post("/tenants/:id/users", validateBody(createTenantUserSchema), async (req, res) => {
   const tenant = getTenantById(req.params.id);
   if (!tenant) {
     res.status(404).json({ error: "Empresa não encontrada" });
     return;
   }
-  const body = req.body || {};
-  const name = requiredString(body.name, "name", 200);
-  const email = requiredString(body.email, "email", 254).toLowerCase();
-  const password = requiredString(body.password, "password", 128);
-  const profileId = optionalString(body.profileId, "profileId", 128);
-  if (password.length < 8) {
-    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
-    return;
-  }
+  const { name, email, password, profileId } = req.body;
 
   const existingUser = getMasterUserByEmail(email);
   if (existingUser) {
@@ -373,8 +352,8 @@ router.put("/tenants/:tenantId/users/:userId/profile", (req, res) => {
   res.json({ success: true });
 });
 
-router.put("/tenants/:tenantId/users/:userId", (req, res) => {
-  const { active, name, email } = req.body || {};
+router.put("/tenants/:tenantId/users/:userId", validateBody(updateTenantUserSchema), (req, res) => {
+  const { active, name, email } = req.body;
   const updates: Record<string, unknown> = {};
   if (active !== undefined) updates.active = active ? 1 : 0;
   if (name !== undefined) updates.name = name;
@@ -398,13 +377,8 @@ router.get("/plans", (_req, res) => {
   res.json(plans.map(p => ({ ...p, modules: JSON.parse(p.modules) })));
 });
 
-router.post("/plans", (req, res) => {
-  const { name, slug, modules, maxUsers, priceCents } = req.body || {};
-  if (!name || !slug || !Array.isArray(modules)) {
-    res.status(400).json({ error: "name, slug e modules são obrigatórios" });
-    return;
-  }
-  const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+router.post("/plans", validateBody(createPlanSchema), (req, res) => {
+  const { name, slug: safeSlug, modules, maxUsers, priceCents } = req.body;
   if (getPlanBySlug(safeSlug)) {
     res.status(409).json({ error: "Já existe um plano com esse slug" });
     return;
@@ -414,16 +388,15 @@ router.post("/plans", (req, res) => {
   res.status(201).json({ ...plan, modules: JSON.parse(plan.modules) });
 });
 
-router.put("/plans/:id", (req, res) => {
+router.put("/plans/:id", validateBody(updatePlanSchema), (req, res) => {
   const plan = getPlanById(req.params.id);
   if (!plan) {
     res.status(404).json({ error: "Plano não encontrado" });
     return;
   }
-  const { name, slug, modules, maxUsers, priceCents, active } = req.body || {};
+  const { name, slug, modules, maxUsers, priceCents, active } = req.body;
   if (slug !== undefined) {
-    const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]/g, "");
-    const existing = getPlanBySlug(safeSlug);
+    const existing = getPlanBySlug(slug);
     if (existing && existing.id !== plan.id) {
       res.status(409).json({ error: "Já existe um plano com esse slug" });
       return;
@@ -467,12 +440,8 @@ router.get("/subscriptions/:tenantId", (req, res) => {
   res.json({ ...sub, planName: plan?.name || "—", planModules: plan ? JSON.parse(plan.modules) : [] });
 });
 
-router.post("/subscriptions", (req, res) => {
-  const { tenantId, planId, status, trialEndsAt } = req.body || {};
-  if (!tenantId || !planId) {
-    res.status(400).json({ error: "tenantId e planId são obrigatórios" });
-    return;
-  }
+router.post("/subscriptions", validateBody(createSubscriptionSchema), (req, res) => {
+  const { tenantId, planId, status, trialEndsAt } = req.body;
   const tenant = getTenantById(tenantId);
   if (!tenant) {
     res.status(404).json({ error: "Empresa não encontrada" });
@@ -492,13 +461,8 @@ router.post("/subscriptions", (req, res) => {
   res.status(201).json({ ...sub, planName: plan.name });
 });
 
-router.put("/subscriptions/:id", (req, res) => {
-  const { planId, status, blockedReason } = req.body || {};
-  const validStatuses = ["trial", "ativo", "bloqueado", "cancelado"];
-  if (status && !validStatuses.includes(status)) {
-    res.status(400).json({ error: `Status inválido. Use: ${validStatuses.join(", ")}` });
-    return;
-  }
+router.put("/subscriptions/:id", validateBody(updateSubscriptionSchema), (req, res) => {
+  const { planId, status, blockedReason } = req.body;
   if (planId) {
     const plan = getPlanById(planId);
     if (!plan) {
@@ -517,16 +481,8 @@ router.put("/subscriptions/:id", (req, res) => {
 
 // --- Set password (moved from legacy /admin) ---
 
-router.post("/set-password", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || typeof email !== "string") {
-    res.status(400).json({ error: "E-mail é obrigatório" });
-    return;
-  }
-  if (!password || typeof password !== "string" || password.length < 8) {
-    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
-    return;
-  }
+router.post("/set-password", validateBody(setPasswordSchema), async (req, res) => {
+  const { email, password } = req.body;
   const user = getUserByEmail(email);
   if (!user) {
     res.status(404).json({ error: "Usuário não encontrado" });

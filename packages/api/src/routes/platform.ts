@@ -10,7 +10,8 @@ import { getTenantDb, upsertTenantConfig } from "../services/database";
 import { consultarCnpj } from "../services/cnpj-lookup";
 import { rateLimit } from "../middleware/security";
 import { tenantContext } from "../services/tenant-context";
-import { requiredString, optionalString, optionalEmail } from "../services/validation";
+import { validateBody } from "../middleware/validate";
+import { registerSchema } from "../schemas";
 
 const router: ExpressRouter = Router();
 
@@ -27,24 +28,9 @@ router.get("/cnpj/:cnpj", cnpjLimiter, async (req, res) => {
   }
 });
 
-router.post("/register", registerLimiter, async (req, res) => {
-  const body = req.body || {};
-  const cnpj = requiredString(body.cnpj, "cnpj", 30);
-  const razaoSocial = requiredString(body.razaoSocial, "razaoSocial", 300);
-  const nomeFantasia = optionalString(body.nomeFantasia, "nomeFantasia", 300);
-  const endereco = optionalString(body.endereco, "endereco", 500);
-  const cep = optionalString(body.cep, "cep", 20);
-  const municipio = optionalString(body.municipio, "municipio", 100);
-  const uf = optionalString(body.uf, "uf", 2);
-  const telefone = optionalString(body.telefone, "telefone", 30);
-  const emailEmpresa = optionalEmail(body.emailEmpresa);
-  const adminName = requiredString(body.adminName, "adminName", 200);
-  const adminEmail = requiredString(body.adminEmail, "adminEmail", 254).toLowerCase();
-  const adminPassword = requiredString(body.adminPassword, "adminPassword", 128);
-  if (adminPassword.length < 8) {
-    res.status(400).json({ error: "Senha deve ter no mínimo 8 caracteres" });
-    return;
-  }
+router.post("/register", registerLimiter, validateBody(registerSchema), async (req, res) => {
+  const { cnpj, razaoSocial, nomeFantasia, endereco, cep, municipio, uf, telefone,
+    emailEmpresa, adminName, adminEmail, adminPassword } = req.body;
 
   const cleanCnpj = String(cnpj).replace(/\D/g, "");
   if (cleanCnpj.length !== 14) {

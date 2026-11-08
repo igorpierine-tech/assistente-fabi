@@ -102,7 +102,7 @@ importers:
         version: link:../shared
       openai:
         specifier: ^4.85.0
-        version: 4.104.0(ws@8.21.3)
+        version: 4.104.0(ws@8.21.3)(zod@4.6.7)
     devDependencies:
       '@types/node':
         specifier: 20.17.6
@@ -151,7 +151,7 @@ importers:
         version: 1.4.5-lts.2
       openai:
         specifier: ^4.85.0
-        version: 4.104.0(ws@8.21.3)
+        version: 4.104.0(ws@8.21.3)(zod@4.6.7)
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -167,6 +167,9 @@ importers:
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@types/bcryptjs':
         specifier: ^3.0.0
@@ -4861,6 +4864,9 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
+
 snapshots:
 
   '@0no-co/graphql.web@1.3.3': {}
@@ -9067,7 +9073,7 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@4.104.0(ws@8.21.3):
+  openai@4.104.0(ws@8.21.3)(zod@4.6.7):
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -9078,6 +9084,7 @@ snapshots:
       node-fetch: 2.7.0
     optionalDependencies:
       ws: 8.21.3
+      zod: 4.6.7
     transitivePeerDependencies:
       - encoding
 
@@ -10210,3 +10217,5 @@ snapshots:
       yargs-parser: 21.1.1
 
   yocto-queue@0.1.0: {}
+
+  zod@4.6.7: {}

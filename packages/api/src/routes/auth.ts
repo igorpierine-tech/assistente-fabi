@@ -6,6 +6,8 @@ import { rateLimit } from "../middleware/security";
 import { getUserByEmail, verifyPassword } from "../services/users-db";
 import { getMasterUserByEmail, getMasterUserById, getUserTenants, getTenantById, getTenantBySlug, getUserModules } from "../services/master-db";
 import { saveGoogleTokens, getGoogleTokenRow, deleteGoogleTokens } from "../services/google-tokens-db";
+import { validateBody } from "../middleware/validate";
+import { loginSchema, selectTenantSchema } from "../schemas";
 import "../session-types";
 
 const router: ExpressRouter = Router();
@@ -44,12 +46,8 @@ function verifyCalendarState(state: unknown): string | null {
 
 // --- Email/password login ---
 
-router.post("/login", authLimiter, async (req, res) => {
-  const { email, password, tenantSlug } = req.body || {};
-  if (typeof email !== "string" || typeof password !== "string") {
-    res.status(400).json({ error: "E-mail e senha são obrigatórios" });
-    return;
-  }
+router.post("/login", authLimiter, validateBody(loginSchema), async (req, res) => {
+  const { email, password, tenantSlug } = req.body;
 
   const user = getUserByEmail(email);
   if (!user || !user.password_hash) {
@@ -166,18 +164,14 @@ router.post("/login", authLimiter, async (req, res) => {
 });
 
 // Select tenant (after login when user has multiple companies)
-router.post("/select-tenant", (req, res) => {
+router.post("/select-tenant", validateBody(selectTenantSchema), (req, res) => {
   const appUser = req.session.appUser;
   if (!appUser) {
     res.status(401).json({ error: "Não autenticado" });
     return;
   }
 
-  const { tenantSlug } = req.body || {};
-  if (!tenantSlug) {
-    res.status(400).json({ error: "tenantSlug é obrigatório" });
-    return;
-  }
+  const { tenantSlug } = req.body;
 
   const userTenants = getUserTenants(appUser.id);
   const match = userTenants.find((ut) => ut.tenant_slug === tenantSlug);
