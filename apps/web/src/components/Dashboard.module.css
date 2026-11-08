@@ -713,7 +713,7 @@
   padding: 14px 20px;
   border-radius: 12px;
   background: linear-gradient(135deg, #1a2e18 0%, #2f4a2b 100%);
-  color: var(--text-light, #f4ede0);
+  color: var(--text-light, #fff);
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
