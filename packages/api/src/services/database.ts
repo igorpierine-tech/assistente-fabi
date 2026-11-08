@@ -334,11 +334,11 @@ function initTables(db: Database.Database) {
       timezone TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
       locale TEXT NOT NULL DEFAULT 'pt-BR',
       logo_url TEXT,
-      primary_color TEXT NOT NULL DEFAULT '#7c3aed',
-      secondary_color TEXT NOT NULL DEFAULT '#c8a951',
-      accent_color TEXT NOT NULL DEFAULT '#6b8f5e',
-      heading_font TEXT NOT NULL DEFAULT '''Playfair Display'', serif',
-      body_font TEXT NOT NULL DEFAULT '''Inter'', sans-serif',
+      primary_color TEXT NOT NULL DEFAULT '#1a2e18',
+      secondary_color TEXT NOT NULL DEFAULT '#b8873a',
+      accent_color TEXT NOT NULL DEFAULT '#d9b268',
+      heading_font TEXT NOT NULL DEFAULT '''Instrument Serif'', serif',
+      body_font TEXT NOT NULL DEFAULT '''Geist'', system-ui, sans-serif',
       custom_prompt TEXT,
       onboarding_completed INTEGER NOT NULL DEFAULT 0,
       razao_social TEXT,
@@ -442,7 +442,7 @@ function initTables(db: Database.Database) {
   })();
 
   // Migrate old default colors to the correct Raízes e Riquezas palette
-  db.prepare(`UPDATE tenant_config SET primary_color = '#1a2e18', secondary_color = '#b8873a', accent_color = '#d9b268' WHERE primary_color = '#7c3aed' AND secondary_color = '#c8a951'`).run();
+  db.prepare(`UPDATE tenant_config SET primary_color = '#1a2e18', secondary_color = '#b8873a', accent_color = '#d9b268' WHERE primary_color IN ('#7c3aed', '#7C3AED') OR (secondary_color = '#c8a951' OR accent_color = '#6b8f5e' OR accent_color = '#2f4a2b')`).run();
   db.prepare(`UPDATE tenant_config SET heading_font = '''Instrument Serif'', serif' WHERE heading_font = '''Playfair Display'', serif'`).run();
 
   // NFS-e Nacional columns on tenant_config
@@ -728,9 +728,9 @@ function seedFirstTenant(db: Database.Database) {
     SET business_name = COALESCE(business_name, 'Minha Empresa'),
         tagline = COALESCE(tagline, 'Agenda, clientes e assistente inteligente'),
         timezone = COALESCE(timezone, 'America/Sao_Paulo'),
-        primary_color = COALESCE(primary_color, '#7c3aed'),
-        secondary_color = COALESCE(secondary_color, '#d9b268'),
-        accent_color = COALESCE(accent_color, '#2f4a2b'),
+        primary_color = COALESCE(primary_color, '#1a2e18'),
+        secondary_color = COALESCE(secondary_color, '#b8873a'),
+        accent_color = COALESCE(accent_color, '#d9b268'),
         updated_at = datetime('now')
     WHERE business_name IS NULL
   `).run();
