@@ -140,6 +140,14 @@ function initMasterTables(db: Database.Database) {
 
   seedDefaultPlans(db);
 
+  // Bootstrap super admin from env var
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+  if (superAdminEmail) {
+    db.prepare(
+      "UPDATE users SET platform_role = 'super_admin', updated_at = datetime('now') WHERE email = ? COLLATE NOCASE AND platform_role != 'super_admin'"
+    ).run(superAdminEmail.toLowerCase());
+  }
+
   // Add profile_id column to user_tenants if not present
   try {
     db.exec("ALTER TABLE user_tenants ADD COLUMN profile_id TEXT REFERENCES access_profiles(id)");
