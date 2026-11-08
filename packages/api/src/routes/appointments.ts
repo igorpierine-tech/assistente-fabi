@@ -159,11 +159,12 @@ router.post("/", async (req, res) => {
     res.status(201).json(appointment);
   } catch (error) {
     if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error.message, source: "validation" });
       return;
     }
+    const msg = error instanceof Error ? error.message : String(error);
     console.error("Erro ao criar agendamento:", error);
-    res.status(500).json({ error: "Erro ao criar agendamento" });
+    res.status(500).json({ error: `Erro ao criar agendamento: ${msg}`, source: "server" });
   }
 });
 
@@ -201,17 +202,40 @@ router.put("/:id", async (req, res) => {
       if (endTime) updates.endTime = endTime;
       if (notes !== undefined) updates.description = notes;
       if (Object.keys(updates).length > 0) {
-        await calendar.updateEvent(existing.google_event_id, updates);
+        try {
+          await calendar.updateEvent(existing.google_event_id, updates);
+        } catch (calErr) {
+          console.error("Falha ao atualizar Google Calendar:", calErr);
+          res.status(502).json({
+            error: `Falha ao sincronizar com Google Calendar: ${(calErr as Error).message}`,
+            source: "google_calendar",
+          });
+          return;
+        }
       }
     }
 
-    const updated = updateAppointment(ownerId, req.params.id, {
-      title, type, clientId, clientName, startTime, endTime, notes, status,
-    });
+    let updated;
+    try {
+      updated = updateAppointment(ownerId, req.params.id, {
+        title, type, clientId, clientName, startTime, endTime, notes, status,
+      });
+    } catch (dbErr) {
+      console.error("Falha ao atualizar no banco de dados:", dbErr);
+      res.status(500).json({
+        error: `Falha ao salvar no banco de dados: ${(dbErr as Error).message}`,
+        source: "database",
+      });
+      return;
+    }
+
+    if (!updated) {
+      res.status(404).json({ error: "Agendamento não encontrado após atualização", source: "database" });
+      return;
+    }
 
     // Auto-create receivable when appointment transitions to "concluido"
     if (
-      updated &&
       status === "concluido" &&
       existing.status !== "concluido"
     ) {
@@ -237,11 +261,12 @@ router.put("/:id", async (req, res) => {
     res.json(updated);
   } catch (error) {
     if (error instanceof ValidationError) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: error.message, source: "validation" });
       return;
     }
+    const msg = error instanceof Error ? error.message : String(error);
     console.error("Erro ao atualizar agendamento:", error);
-    res.status(500).json({ error: "Erro ao atualizar agendamento" });
+    res.status(500).json({ error: `Erro ao atualizar agendamento: ${msg}`, source: "server" });
   }
 });
 
@@ -266,8 +291,9 @@ router.delete("/:id", async (req, res) => {
     deleteAppointment(ownerId, req.params.id);
     res.status(204).end();
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error("Erro ao excluir agendamento:", error);
-    res.status(500).json({ error: "Erro ao excluir agendamento" });
+    res.status(500).json({ error: `Erro ao excluir agendamento: ${msg}`, source: "server" });
   }
 });
 

@@ -66,14 +66,15 @@ export default function AgendaPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || "Não foi possível salvar o agendamento.");
+        const source = err.source ? ` [${err.source}]` : "";
+        alert(`${err.error || "Não foi possível salvar o agendamento."}${source}\n\nStatus: ${res.status}`);
         return;
       }
       await fetchAppointments();
       setSelectedEvent(null);
       setShowNewEvent(false);
-    } catch {
-      alert("Erro de rede ao salvar o agendamento.");
+    } catch (e) {
+      alert(`Erro de rede ao salvar o agendamento.\n\nDetalhes: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -88,22 +89,35 @@ export default function AgendaPage() {
     const newEnd = shiftToDay(event.endDate);
     setEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, startDate: newStart, endDate: newEnd } : e));
     try {
-      await apiFetch(`/appointments/${event.id}`, {
+      const moveRes = await apiFetch(`/appointments/${event.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startTime: newStart, endTime: newEnd }),
       });
-    } catch { /* silent */ }
+      if (!moveRes.ok) {
+        const err = await moveRes.json().catch(() => ({}));
+        const source = err.source ? ` [${err.source}]` : "";
+        alert(`Erro ao mover agendamento: ${err.error || "falha desconhecida"}${source}\n\nStatus: ${moveRes.status}`);
+      }
+    } catch (e) {
+      alert(`Erro de rede ao mover agendamento.\n\nDetalhes: ${e instanceof Error ? e.message : String(e)}`);
+    }
     await fetchAppointments();
   }
 
   async function handleDeleteEvent(eventId: string) {
     try {
-      await apiFetch(`/appointments/${eventId}`, { method: "DELETE" });
+      const res = await apiFetch(`/appointments/${eventId}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) {
+        const err = await res.json().catch(() => ({}));
+        const source = err.source ? ` [${err.source}]` : "";
+        alert(`${err.error || "Não foi possível excluir o agendamento."}${source}\n\nStatus: ${res.status}`);
+        return;
+      }
       await fetchAppointments();
       setSelectedEvent(null);
-    } catch {
-      alert("Erro de rede ao excluir o agendamento.");
+    } catch (e) {
+      alert(`Erro de rede ao excluir o agendamento.\n\nDetalhes: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
