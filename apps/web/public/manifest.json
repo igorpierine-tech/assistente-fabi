@@ -1,0 +1,24 @@
+{
+  "name": "Raízes e Riquezas",
+  "short_name": "Raízes",
+  "description": "Assistente de Agenda — Gestão para profissionais de serviços",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#1a2e18",
+  "theme_color": "#1a2e18",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-raizes.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

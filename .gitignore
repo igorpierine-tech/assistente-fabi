@@ -12,4 +12,6 @@ data/
 .expo-build/
 android/
 ios/
+out/
+*.apk
 package-lock.json
