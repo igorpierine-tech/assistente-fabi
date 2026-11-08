@@ -131,6 +131,36 @@
   font-weight: 600;
 }
 
+.navGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.navGroupToggle {
+  justify-content: flex-start;
+}
+
+.navChevron {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.chevron {
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.navGroupItems {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 16px;
+}
+
 .planCard {
   margin: 12px;
   padding: 14px 16px;

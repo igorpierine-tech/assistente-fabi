@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTenant } from "@/lib/tenant-context";
 import styles from "./Sidebar.module.css";
 
@@ -16,6 +17,8 @@ export type View =
   | "financeiro"
   | "configuracoes"
   | "usuarios"
+  | "empresa"
+  | "produtos"
   | "admin";
 
 interface SidebarProps {
@@ -39,24 +42,39 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const ROLE_NAV_ACCESS: Record<UserRole, View[]> = {
-  admin: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro", "configuracoes", "usuarios"],
-  gestor: ["inicio", "agenda", "clientes", "agendamentos", "vendas", "contratos", "financeiro"],
+  admin: ["inicio", "agenda", "agendamentos", "clientes", "empresa", "produtos", "usuarios", "vendas", "contratos", "financeiro", "configuracoes"],
+  gestor: ["inicio", "agenda", "agendamentos", "clientes", "empresa", "produtos", "vendas", "contratos", "financeiro"],
   colaborador: ["inicio", "agenda", "clientes", "agendamentos"],
   visualizador: ["inicio", "financeiro", "contratos"],
 };
 
+interface NavItem {
+  id: View;
+  label: string;
+  icon: string;
+}
 
-const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
+const TOP_ITEMS: NavItem[] = [
   { id: "inicio", label: "Início", icon: "home" },
   { id: "agenda", label: "Agenda", icon: "calendar" },
-  { id: "clientes", label: "Clientes", icon: "people" },
   { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
+];
+
+const CADASTROS_ITEMS: NavItem[] = [
+  { id: "clientes", label: "Clientes", icon: "people" },
+  { id: "empresa", label: "Empresa", icon: "building" },
+  { id: "produtos", label: "Produtos e Serviços", icon: "box" },
+  { id: "usuarios", label: "Usuários", icon: "users" },
+];
+
+const BOTTOM_ITEMS: NavItem[] = [
   { id: "vendas", label: "Vendas", icon: "tag" },
   { id: "contratos", label: "Contratos", icon: "contract" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
-  { id: "usuarios", label: "Usuários", icon: "users" },
   { id: "configuracoes", label: "Configurações", icon: "gear" },
 ];
+
+const CADASTROS_IDS = new Set(CADASTROS_ITEMS.map((i) => i.id));
 
 function NavIcon({ name }: { name: string }) {
   const props = { width: 18, height: 18, viewBox: "0 0 20 20", fill: "none", stroke: "currentColor", strokeWidth: 1.6 };
@@ -143,9 +161,58 @@ function NavIcon({ name }: { name: string }) {
           <path d="M7 10l2 2 4-4" />
         </svg>
       );
+    case "building":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 18V6l7-4 7 4v12" />
+          <line x1="3" y1="18" x2="17" y2="18" />
+          <line x1="7" y1="8" x2="7" y2="8.01" />
+          <line x1="10" y1="8" x2="10" y2="8.01" />
+          <line x1="13" y1="8" x2="13" y2="8.01" />
+          <line x1="7" y1="12" x2="7" y2="12.01" />
+          <line x1="10" y1="12" x2="10" y2="12.01" />
+          <line x1="13" y1="12" x2="13" y2="12.01" />
+          <rect x="8" y="14" width="4" height="4" />
+        </svg>
+      );
+    case "box":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 7l8-4 8 4-8 4-8-4z" />
+          <path d="M2 7v8l8 4V11" />
+          <path d="M18 7v8l-8 4V11" />
+        </svg>
+      );
+    case "clipboard":
+      return (
+        <svg {...props} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 4H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2h-2" />
+          <rect x="7" y="2" width="6" height="3" rx="1" />
+          <line x1="7" y1="9" x2="13" y2="9" />
+          <line x1="7" y1="12" x2="11" y2="12" />
+        </svg>
+      );
     default:
       return null;
   }
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`${styles.chevron} ${open ? styles.chevronOpen : ""}`}
+    >
+      <path d="M6 8l4 4 4-4" />
+    </svg>
+  );
 }
 
 export function Sidebar({
@@ -165,11 +232,38 @@ export function Sidebar({
   const allowedViews = allowedModules
     ? allowedModules as View[]
     : (ROLE_NAV_ACCESS[userRole] || ROLE_NAV_ACCESS.colaborador);
-  const visibleItems = NAV_ITEMS.filter((item) => allowedViews.includes(item.id));
+
+  const cadastrosVisible = CADASTROS_ITEMS.filter((item) => allowedViews.includes(item.id));
+  const hasCadastrosActive = CADASTROS_IDS.has(activeView);
+  const [cadastrosOpen, setCadastrosOpen] = useState(hasCadastrosActive);
+
+  const topVisible = TOP_ITEMS.filter((item) => allowedViews.includes(item.id));
+  const bottomVisible = BOTTOM_ITEMS.filter((item) => allowedViews.includes(item.id));
 
   function handleNav(view: View) {
     onChangeView(view);
     onMobileClose?.();
+  }
+
+  function renderItem(item: NavItem) {
+    return (
+      <button
+        key={item.id}
+        className={`${styles.navItem} ${activeView === item.id ? styles.navItemActive : ""}`}
+        onClick={() => handleNav(item.id)}
+      >
+        <span className={styles.navIcon}>
+          <NavIcon name={item.icon} />
+        </span>
+        {item.label}
+        {item.id === "clientes" && clientCount > 0 && (
+          <span className={styles.navBadge}>{clientCount}</span>
+        )}
+        {item.id === "agendamentos" && pendingBookingCount > 0 && (
+          <span className={styles.navBadge}>{pendingBookingCount}</span>
+        )}
+      </button>
+    );
   }
 
   return (
@@ -187,24 +281,31 @@ export function Sidebar({
       </div>
 
       <nav className={styles.nav}>
-        {visibleItems.map((item) => (
-          <button
-            key={item.id}
-            className={`${styles.navItem} ${activeView === item.id ? styles.navItemActive : ""}`}
-            onClick={() => handleNav(item.id)}
-          >
-            <span className={styles.navIcon}>
-              <NavIcon name={item.icon} />
-            </span>
-            {item.label}
-            {item.id === "clientes" && clientCount > 0 && (
-              <span className={styles.navBadge}>{clientCount}</span>
+        {topVisible.map(renderItem)}
+
+        {cadastrosVisible.length > 0 && (
+          <div className={styles.navGroup}>
+            <button
+              className={`${styles.navItem} ${styles.navGroupToggle} ${hasCadastrosActive ? styles.navItemActive : ""}`}
+              onClick={() => setCadastrosOpen((o) => !o)}
+            >
+              <span className={styles.navIcon}>
+                <NavIcon name="clipboard" />
+              </span>
+              Cadastros
+              <span className={styles.navChevron}>
+                <ChevronIcon open={cadastrosOpen} />
+              </span>
+            </button>
+            {cadastrosOpen && (
+              <div className={styles.navGroupItems}>
+                {cadastrosVisible.map(renderItem)}
+              </div>
             )}
-            {item.id === "agendamentos" && pendingBookingCount > 0 && (
-              <span className={styles.navBadge}>{pendingBookingCount}</span>
-            )}
-          </button>
-        ))}
+          </div>
+        )}
+
+        {bottomVisible.map(renderItem)}
       </nav>
 
       {onLogout && (
