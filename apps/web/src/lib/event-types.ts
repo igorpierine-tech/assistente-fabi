@@ -52,17 +52,22 @@ export const EVENT_TYPE_CALENDAR_COLORS: Record<string, { bg: string; border: st
   outro: { bg: "#FAFAFA", border: "#999", text: "#555" },
 };
 
+function normalize(type: string): string {
+  return type.replace(/-/g, "_");
+}
+
 export function getEventTypeLabel(type: string): string {
-  if (EVENT_TYPE_LABELS[type]) return EVENT_TYPE_LABELS[type];
+  const key = normalize(type);
+  if (EVENT_TYPE_LABELS[key]) return EVENT_TYPE_LABELS[key];
   return type
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function getEventTypeColor(type: string): string {
-  return EVENT_TYPE_COLORS[type] || "#777";
+  return EVENT_TYPE_COLORS[normalize(type)] || "#777";
 }
 
 export function getEventTypeCalendarColors(type: string): { bg: string; border: string; text: string } {
-  return EVENT_TYPE_CALENDAR_COLORS[type] || { bg: "#FAFAFA", border: "#999", text: "#555" };
+  return EVENT_TYPE_CALENDAR_COLORS[normalize(type)] || { bg: "#FAFAFA", border: "#999", text: "#555" };
 }
