@@ -107,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.token) setAuthToken(data.token);
 
       if (data.requireTenantSelection && data.tenants) {
+        setAuthMarker(true);
         setState(prev => ({
           ...prev,
           isAuthenticated: true,
