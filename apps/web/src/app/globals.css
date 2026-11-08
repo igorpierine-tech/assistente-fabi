@@ -220,6 +220,7 @@ input, textarea {
   .app-main {
     margin-left: 0;
     height: 100vh;
+    height: 100dvh;
     padding-top: 56px;
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
@@ -265,6 +266,7 @@ input, textarea {
     flex-direction: column;
     padding: 0 8px;
     gap: 0;
+    height: 100%;
   }
 
   .sidebar-summary {
@@ -282,6 +284,12 @@ input, textarea {
   .main-calendar,
   .main-scrollable {
     padding: 8px;
+    height: 100%;
+  }
+
+  .main-scrollable {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
