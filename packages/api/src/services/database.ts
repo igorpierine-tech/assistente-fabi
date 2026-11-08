@@ -441,6 +441,10 @@ function initTables(db: Database.Database) {
     }
   })();
 
+  // Migrate old default colors to the correct Raízes e Riquezas palette
+  db.prepare(`UPDATE tenant_config SET primary_color = '#1a2e18', secondary_color = '#b8873a', accent_color = '#d9b268' WHERE primary_color = '#7c3aed' AND secondary_color = '#c8a951'`).run();
+  db.prepare(`UPDATE tenant_config SET heading_font = '''Instrument Serif'', serif' WHERE heading_font = '''Playfair Display'', serif'`).run();
+
   // NFS-e Nacional columns on tenant_config
   (() => {
     const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;

@@ -23,8 +23,8 @@ export const DEFAULT_TENANT_CONFIG: TenantConfig = {
   timezone: "America/Sao_Paulo",
   locale: "pt-BR",
   logoUrl: null,
-  colors: { primary: "#7c3aed", secondary: "#d9b268", accent: "#2f4a2b" },
-  fonts: { heading: "'Playfair Display', serif", body: "'Inter', sans-serif" },
+  colors: { primary: "#1a2e18", secondary: "#b8873a", accent: "#d9b268" },
+  fonts: { heading: "'Instrument Serif', serif", body: "'Geist', system-ui, sans-serif" },
   onboardingCompleted: false,
 };
 

@@ -49,28 +49,38 @@ function hexToRgb(hex: string): string {
   return `${r}, ${g}, ${b}`;
 }
 
+const CSS_DEFAULTS = {
+  primary: "#1a2e18",
+  secondary: "#b8873a",
+  accent: "#d9b268",
+  heading: "'Instrument Serif', serif",
+  body: "'Geist', system-ui, sans-serif",
+};
+
 function applyBranding(config: TenantConfig) {
   const root = document.documentElement;
   const { colors, fonts } = config;
 
-  if (colors.primary) {
+  if (colors.primary && colors.primary.toLowerCase() !== CSS_DEFAULTS.primary) {
     root.style.setProperty("--primary", colors.primary);
     root.style.setProperty("--primary-light", colors.primary + "cc");
+    root.style.setProperty("--text", colors.primary);
+    root.style.setProperty("--surface-dark", colors.primary);
   }
-  if (colors.secondary) {
+  if (colors.secondary && colors.secondary.toLowerCase() !== CSS_DEFAULTS.secondary) {
     root.style.setProperty("--secondary", colors.secondary);
     root.style.setProperty("--secondary-light", `rgba(${hexToRgb(colors.secondary)}, 0.15)`);
     root.style.setProperty("--gold", colors.secondary);
     root.style.setProperty("--gold-light", colors.secondary + "dd");
   }
-  if (colors.accent) {
+  if (colors.accent && colors.accent.toLowerCase() !== CSS_DEFAULTS.accent) {
     root.style.setProperty("--accent", colors.accent);
     root.style.setProperty("--accent-light", colors.accent + "dd");
   }
-  if (fonts.heading) {
+  if (fonts.heading && fonts.heading !== CSS_DEFAULTS.heading) {
     root.style.setProperty("--font-heading", fonts.heading);
   }
-  if (fonts.body) {
+  if (fonts.body && fonts.body !== CSS_DEFAULTS.body) {
     root.style.setProperty("--font-body", fonts.body);
   }
 }

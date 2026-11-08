@@ -272,17 +272,19 @@ export function Sidebar({
       {mobileOpen && <div className={styles.overlay} onClick={onMobileClose} />}
       <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`}>
       <div className={styles.brand}>
-        <div className={styles.avatar}>
-          {tenant.logoUrl ? (
+        {tenant.logoUrl ? (
+          <div className={styles.avatarWithLogo}>
             <img
               src={`${API_URL}${tenant.logoUrl}`}
               alt={brandName}
               className={styles.avatarLogo}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute("style"); }}
             />
-          ) : null}
-          <span className={styles.avatarLetter} style={tenant.logoUrl ? { display: "none" } : undefined}>{brandName[0]?.toUpperCase() || "A"}</span>
-        </div>
+          </div>
+        ) : (
+          <div className={styles.avatar}>
+            <span className={styles.avatarLetter}>{brandName[0]?.toUpperCase() || "A"}</span>
+          </div>
+        )}
         <div className={styles.brandInfo}>
           <div className={styles.brandName}>{brandName}</div>
           <div className={styles.brandSub}>{userName} · {ROLE_LABELS[userRole] || userRole}</div>
