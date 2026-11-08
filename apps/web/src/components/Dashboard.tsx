@@ -144,8 +144,38 @@ function TrendBadge({ value }: { value: number }) {
   );
 }
 
+function getApptProgress(startTime: string, now: Date) {
+  const start = new Date(startTime).getTime();
+  const current = now.getTime();
+  if (current >= start) return 100;
+  const WINDOW = 24 * 60 * 60 * 1000;
+  const remaining = start - current;
+  if (remaining >= WINDOW) return 0;
+  return Math.round(((WINDOW - remaining) / WINDOW) * 100);
+}
+
+function getApptCountdown(startTime: string, now: Date) {
+  const start = new Date(startTime).getTime();
+  const diff = start - now.getTime();
+  if (diff <= 0) return "agora";
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    return `${days}d ${hours % 24}h`;
+  }
+  if (hours > 0) return `${hours}h${minutes > 0 ? ` ${minutes}min` : ""}`;
+  return `${minutes}min`;
+}
+
 export function Dashboard({ userName, events, clients, onNavigate }: DashboardProps) {
   const [kpis, setKpis] = useState<KPIs | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchKPIs = useCallback(async () => {
     try {
@@ -335,6 +365,25 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
                           {getTypeLabel(appt.type)}
                         </span>
                       </div>
+                      {(() => {
+                        const progress = getApptProgress(appt.startTime, now);
+                        const countdown = getApptCountdown(appt.startTime, now);
+                        const isUrgent = progress >= 96;
+                        const isSoon = progress >= 83;
+                        return (
+                          <div className={styles.appointmentProgressWrap}>
+                            <div className={styles.appointmentProgressTrack}>
+                              <div
+                                className={`${styles.appointmentProgressFill} ${isUrgent ? styles.progressUrgent : isSoon ? styles.progressSoon : ""}`}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className={`${styles.appointmentCountdown} ${isUrgent ? styles.countdownUrgent : isSoon ? styles.countdownSoon : ""}`}>
+                              {countdown}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className={styles.appointmentTime}>
                       <div className={styles.appointmentDate}>{formatShortDate(appt.startTime)}</div>

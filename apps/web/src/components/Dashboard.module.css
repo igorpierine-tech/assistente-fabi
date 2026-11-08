@@ -314,6 +314,55 @@
   font-weight: 500;
 }
 
+/* === Appointment Progress Bar === */
+.appointmentProgressWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.appointmentProgressTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(26, 46, 24, 0.07);
+  overflow: hidden;
+}
+
+.appointmentProgressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transition: width 1s ease;
+  min-width: 0;
+}
+
+.progressSoon {
+  background: linear-gradient(90deg, #d9b268, #b8873a);
+}
+
+.progressUrgent {
+  background: linear-gradient(90deg, #e05a2b, #dc2626);
+}
+
+.appointmentCountdown {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 40px;
+  text-align: right;
+}
+
+.countdownSoon {
+  color: var(--secondary);
+}
+
+.countdownUrgent {
+  color: #dc2626;
+}
+
 .appointmentTime {
   text-align: right;
   flex-shrink: 0;
