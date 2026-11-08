@@ -29,7 +29,7 @@ interface AnalyticsData {
     prevTotalAppointments: number;
     trend: number;
     apptsByMonth: Record<string, { completed: number; cancelled: number; total: number }>;
-    apptsByTypeByWeek: Record<string, Record<string, number>>;
+    apptsByType: Record<string, number>;
   };
   sales: {
     totalBookingRequests: number;
@@ -165,73 +165,33 @@ const TYPE_COLORS: Record<string, string> = {
   outro: "#999",
 };
 
-function LineChart({ data }: { data: { weeks: string[]; series: { type: string; values: number[] }[] } }) {
-  if (data.weeks.length === 0 || data.series.length === 0) {
+function TypeBreakdownChart({ data, total }: { data: { type: string; count: number }[]; total: number }) {
+  if (data.length === 0 || total === 0) {
     return <div className={styles.empty}>Sem dados no período</div>;
   }
-
-  const allValues = data.series.flatMap((s) => s.values);
-  const maxVal = Math.max(...allValues, 1);
-  const chartW = 500;
-  const chartH = 200;
-  const padL = 32;
-  const padR = 16;
-  const padT = 16;
-  const padB = 40;
-  const plotW = chartW - padL - padR;
-  const plotH = chartH - padT - padB;
-  const stepX = data.weeks.length > 1 ? plotW / (data.weeks.length - 1) : plotW;
-
-  const gridLines = 4;
-  const gridStep = maxVal / gridLines;
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
 
   return (
-    <div className={styles.lineChartWrap}>
-      <svg viewBox={`0 0 ${chartW} ${chartH}`} className={styles.lineChartSvg}>
-        {Array.from({ length: gridLines + 1 }, (_, i) => {
-          const y = padT + plotH - (plotH * (i * gridStep)) / maxVal;
-          return (
-            <g key={i}>
-              <line x1={padL} y1={y} x2={chartW - padR} y2={y} stroke="var(--text-muted)" strokeOpacity={0.15} strokeWidth={0.5} />
-              <text x={padL - 6} y={y + 3} textAnchor="end" fill="var(--text-muted)" fontSize="8">{Math.round(i * gridStep)}</text>
-            </g>
-          );
-        })}
-        {data.weeks.map((w, i) => {
-          const x = padL + i * stepX;
-          const d = new Date(w + "T00:00:00");
-          const label = `${d.getDate()}/${d.getMonth() + 1}`;
-          return (
-            <text key={w} x={x} y={chartH - 8} textAnchor="middle" fill="var(--text-muted)" fontSize="8">{label}</text>
-          );
-        })}
-        {data.series.map((s) => {
-          const color = TYPE_COLORS[s.type] || "#999";
-          const points = s.values.map((v, i) => {
-            const x = padL + i * stepX;
-            const y = padT + plotH - (plotH * v) / maxVal;
-            return `${x},${y}`;
-          });
-          return (
-            <g key={s.type}>
-              <polyline points={points.join(" ")} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              {s.values.map((v, i) => {
-                const x = padL + i * stepX;
-                const y = padT + plotH - (plotH * v) / maxVal;
-                return v > 0 ? <circle key={i} cx={x} cy={y} r={3} fill={color} /> : null;
-              })}
-            </g>
-          );
-        })}
-      </svg>
-      <div className={styles.lineChartLegend}>
-        {data.series.map((s) => (
-          <div key={s.type} className={styles.legendItem}>
-            <span className={styles.legendDot} style={{ background: TYPE_COLORS[s.type] || "#999" }} />
-            {TYPE_LABELS[s.type] || s.type.replace(/_/g, " ")}
+    <div className={styles.typeBreakdown}>
+      {data.map((d) => {
+        const pct = Math.round((d.count / total) * 100);
+        const color = TYPE_COLORS[d.type] || "#999";
+        return (
+          <div key={d.type} className={styles.typeRow}>
+            <div className={styles.typeLabel}>
+              <span className={styles.typeDot} style={{ background: color }} />
+              <span className={styles.typeName}>{TYPE_LABELS[d.type] || d.type.replace(/_/g, " ")}</span>
+            </div>
+            <div className={styles.typeBarWrap}>
+              <div className={styles.typeBar} style={{ width: `${Math.max(3, (d.count / maxCount) * 100)}%`, background: color }} />
+            </div>
+            <div className={styles.typeStats}>
+              <span className={styles.typeCount}>{d.count}</span>
+              <span className={styles.typePct}>{pct}%</span>
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -364,20 +324,13 @@ function OperationalTab({ data }: { data: AnalyticsData }) {
 
       <div className={styles.chartsRow}>
         <div className={`${styles.chartCard} ${styles.fullWidthChart}`}>
-          <div className={styles.chartTitle}>Evolução por Tipo de Atendimento</div>
+          <div className={styles.chartTitle}>Atendimentos por Tipo de Evento</div>
           {(() => {
-            const byWeek = operational.apptsByTypeByWeek || {};
-            const weeks = Object.keys(byWeek).sort();
-            const allTypes = new Set<string>();
-            for (const w of weeks) {
-              for (const t of Object.keys(byWeek[w])) allTypes.add(t);
-            }
-            const series = Array.from(allTypes).map((type) => ({
-              type,
-              values: weeks.map((w) => byWeek[w][type] || 0),
-            }));
-            series.sort((a, b) => b.values.reduce((s, v) => s + v, 0) - a.values.reduce((s, v) => s + v, 0));
-            return <LineChart data={{ weeks, series }} />;
+            const byType = operational.apptsByType || {};
+            const entries = Object.entries(byType)
+              .map(([type, count]) => ({ type, count }))
+              .sort((a, b) => b.count - a.count);
+            return <TypeBreakdownChart data={entries} total={operational.totalAppointments} />;
           })()}
         </div>
       </div>

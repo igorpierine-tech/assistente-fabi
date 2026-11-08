@@ -332,21 +332,75 @@
   background: #c04a2a;
 }
 
-.lineChartWrap {
+.typeBreakdown {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.lineChartSvg {
-  width: 100%;
-  height: auto;
+.typeRow {
+  display: grid;
+  grid-template-columns: 160px 1fr 90px;
+  align-items: center;
+  gap: 12px;
 }
 
-.lineChartLegend {
+.typeLabel {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.typeDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.typeName {
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.typeBarWrap {
+  height: 22px;
+  background: rgba(184, 135, 58, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.typeBar {
+  height: 100%;
+  border-radius: 6px;
+  min-width: 4px;
+  transition: width 0.4s ease;
+}
+
+.typeStats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.typeCount {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.typePct {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
 }
 
 @media (max-width: 900px) {
