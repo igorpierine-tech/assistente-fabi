@@ -55,7 +55,6 @@ interface NavItem {
 }
 
 const TOP_ITEMS: NavItem[] = [
-  { id: "inicio", label: "Início", icon: "home" },
   { id: "agenda", label: "Agenda", icon: "calendar" },
   { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
 ];
@@ -68,10 +67,11 @@ const CADASTROS_ITEMS: NavItem[] = [
 ];
 
 const BOTTOM_ITEMS: NavItem[] = [
-  { id: "vendas", label: "Vendas", icon: "tag" },
+  { id: "configuracoes", label: "Configurações", icon: "gear" },
   { id: "contratos", label: "Contratos", icon: "contract" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
-  { id: "configuracoes", label: "Configurações", icon: "gear" },
+  { id: "inicio", label: "Início", icon: "home" },
+  { id: "vendas", label: "Vendas", icon: "tag" },
 ];
 
 const CADASTROS_IDS = new Set(CADASTROS_ITEMS.map((i) => i.id));
