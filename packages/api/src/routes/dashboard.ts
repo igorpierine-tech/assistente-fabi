@@ -244,9 +244,14 @@ router.get("/analytics", (req, res) => {
   });
 
   const apptsByType: Record<string, number> = {};
+  const minutesByType: Record<string, number> = {};
   periodAppts.forEach((a) => {
     const t = a.type || "outro";
     apptsByType[t] = (apptsByType[t] || 0) + 1;
+    if (a.start_time && a.end_time) {
+      const mins = Math.round((new Date(a.end_time).getTime() - new Date(a.start_time).getTime()) / 60000);
+      if (mins > 0) minutesByType[t] = (minutesByType[t] || 0) + mins;
+    }
   });
 
   // --- Sales ---
@@ -294,6 +299,7 @@ router.get("/analytics", (req, res) => {
         : totalAppts > 0 ? 100 : 0,
       apptsByMonth,
       apptsByType,
+      minutesByType,
     },
     sales: {
       totalBookingRequests: periodBookings.length,

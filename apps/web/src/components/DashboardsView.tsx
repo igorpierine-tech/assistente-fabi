@@ -30,6 +30,7 @@ interface AnalyticsData {
     trend: number;
     apptsByMonth: Record<string, { completed: number; cancelled: number; total: number }>;
     apptsByType: Record<string, number>;
+    minutesByType: Record<string, number>;
   };
   sales: {
     totalBookingRequests: number;
@@ -165,7 +166,15 @@ const TYPE_COLORS: Record<string, string> = {
   outro: "#999",
 };
 
-function TypeBreakdownChart({ data, total }: { data: { type: string; count: number }[]; total: number }) {
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h${m}min`;
+}
+
+function TypeBreakdownChart({ data, total }: { data: { type: string; count: number; minutes: number }[]; total: number }) {
   if (data.length === 0 || total === 0) {
     return <div className={styles.empty}>Sem dados no período</div>;
   }
@@ -188,6 +197,7 @@ function TypeBreakdownChart({ data, total }: { data: { type: string; count: numb
             <div className={styles.typeStats}>
               <span className={styles.typeCount}>{d.count}</span>
               <span className={styles.typePct}>{pct}%</span>
+              <span className={styles.typeDuration}>{formatDuration(d.minutes)}</span>
             </div>
           </div>
         );
@@ -327,8 +337,9 @@ function OperationalTab({ data }: { data: AnalyticsData }) {
           <div className={styles.chartTitle}>Atendimentos por Tipo de Evento</div>
           {(() => {
             const byType = operational.apptsByType || {};
+            const minsByType = operational.minutesByType || {};
             const entries = Object.entries(byType)
-              .map(([type, count]) => ({ type, count }))
+              .map(([type, count]) => ({ type, count, minutes: minsByType[type] || 0 }))
               .sort((a, b) => b.count - a.count);
             return <TypeBreakdownChart data={entries} total={operational.totalAppointments} />;
           })()}
