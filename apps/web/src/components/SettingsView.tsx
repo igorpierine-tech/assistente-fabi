@@ -1,19 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { BrandingSettings } from "./BrandingSettings";
 import { BookingSettingsPanel } from "./BookingSettingsPanel";
 import { GoogleCalendarSettings } from "./GoogleCalendarSettings";
 import { NfseSettings } from "./NfseSettings";
 import styles from "./SettingsView.module.css";
 
-type Section = "booking" | "calendar" | "nfse";
+type Section = "branding" | "booking" | "calendar" | "nfse";
 
 export function SettingsView() {
-  const [section, setSection] = useState<Section>("booking");
+  const [section, setSection] = useState<Section>("branding");
 
   return (
     <div className={styles.wrap}>
       <nav className={styles.tabs}>
+        <button
+          type="button"
+          className={`${styles.tab} ${section === "branding" ? styles.tabActive : ""}`}
+          onClick={() => setSection("branding")}
+        >
+          Identidade Visual
+        </button>
         <button
           type="button"
           className={`${styles.tab} ${section === "booking" ? styles.tabActive : ""}`}
@@ -38,6 +46,7 @@ export function SettingsView() {
       </nav>
 
       <div className={styles.content}>
+        {section === "branding" && <BrandingSettings />}
         {section === "booking" && <BookingSettingsPanel />}
         {section === "calendar" && <GoogleCalendarSettings />}
         {section === "nfse" && <NfseSettings />}

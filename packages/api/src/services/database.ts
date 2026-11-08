@@ -424,6 +424,23 @@ function initTables(db: Database.Database) {
     }
   })();
 
+  // Branding / white-label columns on tenant_config
+  (() => {
+    const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    const brandingCols: [string, string][] = [
+      ["logo_data", "BLOB"],
+      ["logo_mime", "TEXT"],
+      ["favicon_data", "BLOB"],
+      ["favicon_mime", "TEXT"],
+    ];
+    for (const [col, type] of brandingCols) {
+      if (!names.has(col)) {
+        db.exec(`ALTER TABLE tenant_config ADD COLUMN ${col} ${type}`);
+      }
+    }
+  })();
+
   // NFS-e Nacional columns on tenant_config
   (() => {
     const cols = db.prepare("PRAGMA table_info(tenant_config)").all() as Array<{ name: string }>;
@@ -1222,6 +1239,10 @@ export interface TenantConfigRow {
   email_comercial: string | null;
   telefone_comercial: string | null;
   representante_qualificacao: string | null;
+  logo_data: Buffer | null;
+  logo_mime: string | null;
+  favicon_data: Buffer | null;
+  favicon_mime: string | null;
   nfse_certificado_base64: string | null;
   nfse_certificado_senha: string | null;
   nfse_ambiente: string | null;

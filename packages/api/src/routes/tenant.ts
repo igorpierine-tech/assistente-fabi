@@ -1,9 +1,19 @@
 import { Router, type Router as ExpressRouter } from "express";
+import multer from "multer";
 import { requireUser, sharedOwnerId } from "../middleware/auth";
-import { getTenantConfig, upsertTenantConfig, type TenantConfigRow } from "../services/database";
+import { getTenantConfig, upsertTenantConfig, getDb, type TenantConfigRow } from "../services/database";
 import { requiredString, ValidationError } from "../services/validation";
 import type { TenantConfig } from "@assistente-fabi/shared";
 import "../session-types";
+
+const logoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 const router: ExpressRouter = Router();
 router.use(requireUser);
@@ -110,6 +120,65 @@ router.put("/config", (req, res) => {
 
   const updated = upsertTenantConfig(ownerId, update);
   res.json(toPublicConfig(updated));
+});
+
+// --- Branding / White-label ---
+
+router.get("/branding/logo", (req, res) => {
+  const ownerId = sharedOwnerId(req);
+  const row = getTenantConfig(ownerId);
+  if (!row?.logo_data || !row.logo_mime) {
+    res.status(404).json({ error: "Logo não configurado" });
+    return;
+  }
+  res.set("Content-Type", row.logo_mime);
+  res.set("Cache-Control", "public, max-age=3600");
+  res.send(row.logo_data);
+});
+
+router.post("/branding/logo", logoUpload.single("logo"), (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "Nenhum arquivo enviado ou formato inválido. Use PNG, JPG, WebP ou SVG (máx 2MB)." });
+    return;
+  }
+  const ownerId = sharedOwnerId(req);
+  getDb().prepare(
+    `UPDATE tenant_config SET logo_data = ?, logo_mime = ?, updated_at = datetime('now') WHERE user_id = ?`
+  ).run(req.file.buffer, req.file.mimetype, ownerId);
+  upsertTenantConfig(ownerId, { logo_url: `/tenant/branding/logo?t=${Date.now()}` });
+  res.json({ ok: true, logoUrl: `/tenant/branding/logo?t=${Date.now()}` });
+});
+
+router.delete("/branding/logo", (req, res) => {
+  const ownerId = sharedOwnerId(req);
+  getDb().prepare(
+    `UPDATE tenant_config SET logo_data = NULL, logo_mime = NULL, logo_url = NULL, updated_at = datetime('now') WHERE user_id = ?`
+  ).run(ownerId);
+  res.json({ ok: true });
+});
+
+router.get("/branding/favicon", (req, res) => {
+  const ownerId = sharedOwnerId(req);
+  const row = getTenantConfig(ownerId);
+  if (!row?.favicon_data || !row.favicon_mime) {
+    res.status(404).json({ error: "Favicon não configurado" });
+    return;
+  }
+  res.set("Content-Type", row.favicon_mime);
+  res.set("Cache-Control", "public, max-age=3600");
+  res.send(row.favicon_data);
+});
+
+router.post("/branding/favicon", logoUpload.single("favicon"), (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "Nenhum arquivo enviado ou formato inválido. Use PNG, ICO ou SVG (máx 2MB)." });
+    return;
+  }
+  const ownerId = sharedOwnerId(req);
+  getDb().prepare(
+    `UPDATE tenant_config SET favicon_data = ?, favicon_mime = ?, updated_at = datetime('now') WHERE user_id = ?`
+  ).run(req.file.buffer, req.file.mimetype, ownerId);
+  res.json({ ok: true });
 });
 
 // --- Company / Empresa data (for NFS-e and contracts) ---

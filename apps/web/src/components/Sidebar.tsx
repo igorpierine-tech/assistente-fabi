@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTenant } from "@/lib/tenant-context";
+import { API_URL } from "@/lib/api";
 import styles from "./Sidebar.module.css";
 
 export type UserRole = "admin" | "gestor" | "colaborador" | "visualizador";
@@ -272,7 +273,15 @@ export function Sidebar({
       <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ""}`}>
       <div className={styles.brand}>
         <div className={styles.avatar}>
-          <span className={styles.avatarLetter}>{brandName[0]?.toUpperCase() || "A"}</span>
+          {tenant.logoUrl ? (
+            <img
+              src={`${API_URL}${tenant.logoUrl}`}
+              alt={brandName}
+              className={styles.avatarLogo}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute("style"); }}
+            />
+          ) : null}
+          <span className={styles.avatarLetter} style={tenant.logoUrl ? { display: "none" } : undefined}>{brandName[0]?.toUpperCase() || "A"}</span>
         </div>
         <div className={styles.brandInfo}>
           <div className={styles.brandName}>{brandName}</div>

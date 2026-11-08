@@ -42,6 +42,39 @@ const VIEW_TO_PATH: Record<View, string> = {
   admin: "/admin",
 };
 
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+function applyBranding(config: TenantConfig) {
+  const root = document.documentElement;
+  const { colors, fonts } = config;
+
+  if (colors.primary) {
+    root.style.setProperty("--primary", colors.primary);
+    root.style.setProperty("--primary-light", colors.primary + "cc");
+  }
+  if (colors.secondary) {
+    root.style.setProperty("--secondary", colors.secondary);
+    root.style.setProperty("--secondary-light", `rgba(${hexToRgb(colors.secondary)}, 0.15)`);
+    root.style.setProperty("--gold", colors.secondary);
+    root.style.setProperty("--gold-light", colors.secondary + "dd");
+  }
+  if (colors.accent) {
+    root.style.setProperty("--accent", colors.accent);
+    root.style.setProperty("--accent-light", colors.accent + "dd");
+  }
+  if (fonts.heading) {
+    root.style.setProperty("--font-heading", fonts.heading);
+  }
+  if (fonts.body) {
+    root.style.setProperty("--font-body", fonts.body);
+  }
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,7 +90,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchTenantConfig = useCallback(async () => {
     try {
       const res = await apiFetch("/tenant/config");
-      if (res.ok) setTenantConfig(await res.json());
+      if (res.ok) {
+        const config: TenantConfig = await res.json();
+        setTenantConfig(config);
+        applyBranding(config);
+      }
     } catch { /* silent */ }
   }, []);
 
