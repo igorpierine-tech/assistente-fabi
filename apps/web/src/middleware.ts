@@ -3,11 +3,11 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get("fabi.sid");
+  const authMarker = request.cookies.get("fabi.auth");
 
   const isProtected = pathname.startsWith("/app") || pathname.startsWith("/admin");
 
-  if (isProtected && !sessionCookie) {
+  if (isProtected && !authMarker) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);

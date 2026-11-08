@@ -39,6 +39,14 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function setAuthMarker(on: boolean) {
+  try {
+    document.cookie = on
+      ? "fabi.auth=1; path=/; max-age=2592000; SameSite=Lax"
+      : "fabi.auth=; path=/; max-age=0; SameSite=Lax";
+  } catch {}
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -55,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiFetch("/auth/status");
       const data = await res.json();
       if (data.authenticated && data.user?.id) {
+        setAuthMarker(true);
         setState({
           user: {
             id: data.user.id,
@@ -71,9 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           pendingTenants: data.requireTenantSelection ? data.tenants : null,
         });
       } else {
+        setAuthMarker(false);
         setState(prev => ({ ...prev, isAuthenticated: false, user: null, loading: false }));
       }
     } catch {
+      setAuthMarker(false);
       setState(prev => ({ ...prev, isAuthenticated: false, user: null, loading: false }));
     }
   }, []);
@@ -121,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
     clearAuthToken();
+    setAuthMarker(false);
     setState({
       user: null,
       isAuthenticated: false,
