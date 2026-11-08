@@ -375,108 +375,8 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
 
       {/* Main Grid */}
       <div className={styles.mainGrid}>
-        {/* Left column */}
+        {/* Left column: Devocional */}
         <div className={styles.leftColumn}>
-        <div className={styles.appointmentsCard}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>Próximos atendimentos</h2>
-            <button className={styles.viewAllBtn} onClick={() => onNavigate("agenda")} type="button">
-              Ver agenda →
-            </button>
-          </div>
-
-          {(!kpis || kpis.upcoming.length === 0) ? (
-            <div className={styles.emptyState}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
-                <rect x="3" y="4" width="18" height="17" rx="2" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-              </svg>
-              <div className={styles.emptyText}>Nenhum atendimento agendado</div>
-              <div className={styles.emptySubtext}>Aproveite para organizar sua semana</div>
-              <div className={styles.emptyActions}>
-                <button className={styles.emptyActionBtn} onClick={() => onNavigate("agenda")} type="button">Ver agenda</button>
-                <button className={styles.emptyActionBtn} onClick={() => onNavigate("clientes")} type="button">Novo cliente</button>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.appointmentsList}>
-              {kpis.upcoming.map((appt) => {
-                const displayName = appt.clientName || appt.title.split(" — ")[0];
-                const typeColor = BORDER_COLORS[appt.type] || "#b8873a";
-                return (
-                  <div key={appt.id} className={styles.appointmentItem}>
-                    <div
-                      className={styles.appointmentAvatar}
-                      style={{ background: `linear-gradient(135deg, ${typeColor}, ${typeColor}88)` }}
-                    >
-                      <span>{getInitials(displayName)}</span>
-                    </div>
-                    <div className={styles.appointmentInfo} onClick={() => onNavigate("agenda")}>
-                      <div className={styles.appointmentName}>{displayName}</div>
-                      <div className={styles.appointmentMeta}>
-                        <span className={styles.appointmentType} style={{ color: typeColor }}>
-                          {getTypeLabel(appt.type)}
-                        </span>
-                      </div>
-                      {(() => {
-                        const progress = getApptProgress(appt.startTime, now);
-                        const countdown = getApptCountdown(appt.startTime, now);
-                        const isUrgent = progress >= 96;
-                        const isSoon = progress >= 83;
-                        return (
-                          <div className={styles.appointmentProgressWrap}>
-                            <div className={styles.appointmentProgressTrack}>
-                              <div
-                                className={`${styles.appointmentProgressFill} ${isUrgent ? styles.progressUrgent : isSoon ? styles.progressSoon : ""}`}
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                            <span className={`${styles.appointmentCountdown} ${isUrgent ? styles.countdownUrgent : isSoon ? styles.countdownSoon : ""}`}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                <path d="M6 2h12" /><path d="M6 22h12" /><path d="M7 2v4l5 6-5 6v4" /><path d="M17 2v4l-5 6 5 6v4" />
-                              </svg>
-                              {countdown}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <div className={styles.appointmentTime}>
-                      <div className={styles.appointmentDate}>{formatShortDate(appt.startTime)}</div>
-                      <div className={styles.appointmentHour}>{formatTime(appt.startTime)}</div>
-                    </div>
-                    <div className={styles.appointmentActions}>
-                      <button
-                        className={styles.appointmentActionBtn}
-                        onClick={() => handleMarkCompleted(appt.id)}
-                        title="Marcar como concluído"
-                        type="button"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </button>
-                      <button
-                        className={styles.appointmentActionBtn}
-                        onClick={() => onNavigate("agenda")}
-                        title="Ver detalhes"
-                        type="button"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M9 18l6-6-6-6" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-          {/* Milagre da Cocriação */}
           {(() => {
             const devotion = getDailyDevotion();
             const today = new Date();
@@ -523,8 +423,107 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
           })()}
         </div>
 
-        {/* Right column */}
+        {/* Right column: Atendimentos + Destaques + Ações */}
         <div className={styles.rightColumn}>
+          <div className={styles.appointmentsCard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Próximos atendimentos</h2>
+              <button className={styles.viewAllBtn} onClick={() => onNavigate("agenda")} type="button">
+                Ver agenda →
+              </button>
+            </div>
+
+            {(!kpis || kpis.upcoming.length === 0) ? (
+              <div className={styles.emptyState}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                  <rect x="3" y="4" width="18" height="17" rx="2" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                </svg>
+                <div className={styles.emptyText}>Nenhum atendimento agendado</div>
+                <div className={styles.emptySubtext}>Aproveite para organizar sua semana</div>
+                <div className={styles.emptyActions}>
+                  <button className={styles.emptyActionBtn} onClick={() => onNavigate("agenda")} type="button">Ver agenda</button>
+                  <button className={styles.emptyActionBtn} onClick={() => onNavigate("clientes")} type="button">Novo cliente</button>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.appointmentsList}>
+                {kpis.upcoming.map((appt) => {
+                  const displayName = appt.clientName || appt.title.split(" — ")[0];
+                  const typeColor = BORDER_COLORS[appt.type] || "#b8873a";
+                  return (
+                    <div key={appt.id} className={styles.appointmentItem}>
+                      <div
+                        className={styles.appointmentAvatar}
+                        style={{ background: `linear-gradient(135deg, ${typeColor}, ${typeColor}88)` }}
+                      >
+                        <span>{getInitials(displayName)}</span>
+                      </div>
+                      <div className={styles.appointmentInfo} onClick={() => onNavigate("agenda")}>
+                        <div className={styles.appointmentName}>{displayName}</div>
+                        <div className={styles.appointmentMeta}>
+                          <span className={styles.appointmentType} style={{ color: typeColor }}>
+                            {getTypeLabel(appt.type)}
+                          </span>
+                        </div>
+                        {(() => {
+                          const progress = getApptProgress(appt.startTime, now);
+                          const countdown = getApptCountdown(appt.startTime, now);
+                          const isUrgent = progress >= 96;
+                          const isSoon = progress >= 83;
+                          return (
+                            <div className={styles.appointmentProgressWrap}>
+                              <div className={styles.appointmentProgressTrack}>
+                                <div
+                                  className={`${styles.appointmentProgressFill} ${isUrgent ? styles.progressUrgent : isSoon ? styles.progressSoon : ""}`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className={`${styles.appointmentCountdown} ${isUrgent ? styles.countdownUrgent : isSoon ? styles.countdownSoon : ""}`}>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                  <path d="M6 2h12" /><path d="M6 22h12" /><path d="M7 2v4l5 6-5 6v4" /><path d="M17 2v4l-5 6 5 6v4" />
+                                </svg>
+                                {countdown}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <div className={styles.appointmentTime}>
+                        <div className={styles.appointmentDate}>{formatShortDate(appt.startTime)}</div>
+                        <div className={styles.appointmentHour}>{formatTime(appt.startTime)}</div>
+                      </div>
+                      <div className={styles.appointmentActions}>
+                        <button
+                          className={styles.appointmentActionBtn}
+                          onClick={() => handleMarkCompleted(appt.id)}
+                          title="Marcar como concluído"
+                          type="button"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        </button>
+                        <button
+                          className={styles.appointmentActionBtn}
+                          onClick={() => onNavigate("agenda")}
+                          title="Ver detalhes"
+                          type="button"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 18l6-6-6-6" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Destaques do mês */}
           {kpis && (
             <div className={styles.insightsCard}>
