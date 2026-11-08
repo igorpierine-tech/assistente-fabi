@@ -80,10 +80,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace("/login");
       return;
     }
-    if (!loading && user?.platformRole === "super_admin" && pathname === "/app") {
-      router.replace("/admin");
-      return;
-    }
     if (isAuthenticated) {
       fetchTenantConfig();
       fetchBookingCount();

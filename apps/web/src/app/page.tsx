@@ -21,11 +21,7 @@ export default function RootPage() {
       return;
     }
 
-    if (user?.platformRole === "super_admin") {
-      router.replace("/admin");
-    } else {
-      router.replace("/app");
-    }
+    router.replace("/app");
   }, [loading, isAuthenticated, user, pendingTenants, router]);
 
   return (
