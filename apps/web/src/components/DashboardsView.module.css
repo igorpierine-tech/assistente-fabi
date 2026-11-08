@@ -332,6 +332,23 @@
   background: #c04a2a;
 }
 
+.lineChartWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lineChartSvg {
+  width: 100%;
+  height: auto;
+}
+
+.lineChartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
 @media (max-width: 900px) {
   .kpiGrid {
     grid-template-columns: repeat(2, 1fr);

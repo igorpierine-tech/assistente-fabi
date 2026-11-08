@@ -243,6 +243,18 @@ router.get("/analytics", (req, res) => {
     if (a.status === "cancelado") apptsByMonth[m].cancelled++;
   });
 
+  const apptsByTypeByWeek: Record<string, Record<string, number>> = {};
+  periodAppts.forEach((a) => {
+    const d = new Date(a.start_time);
+    const day = d.getDay();
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - ((day + 6) % 7));
+    const weekKey = monday.toISOString().slice(0, 10);
+    const t = a.type || "outro";
+    if (!apptsByTypeByWeek[weekKey]) apptsByTypeByWeek[weekKey] = {};
+    apptsByTypeByWeek[weekKey][t] = (apptsByTypeByWeek[weekKey][t] || 0) + 1;
+  });
+
   // --- Sales ---
   const bookingRequests = listBookingRequests(shared);
   const periodBookings = bookingRequests.filter((b) => inRange(b.created_at.slice(0, 10)));
@@ -287,6 +299,7 @@ router.get("/analytics", (req, res) => {
         ? Math.round(((totalAppts - prevTotal) / prevTotal) * 100)
         : totalAppts > 0 ? 100 : 0,
       apptsByMonth,
+      apptsByTypeByWeek,
     },
     sales: {
       totalBookingRequests: periodBookings.length,

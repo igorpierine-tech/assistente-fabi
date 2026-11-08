@@ -29,6 +29,7 @@ interface AnalyticsData {
     prevTotalAppointments: number;
     trend: number;
     apptsByMonth: Record<string, { completed: number; cancelled: number; total: number }>;
+    apptsByTypeByWeek: Record<string, Record<string, number>>;
   };
   sales: {
     totalBookingRequests: number;
@@ -133,6 +134,101 @@ function DonutChart({ segments, size = 120 }: { segments: { label: string; value
             <span className={styles.legendDot} style={{ background: seg.color }} />
             {seg.label}
             <span className={styles.legendValue}>{seg.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  constelacao: "Constelação",
+  consultoria_financeira: "Consultoria",
+  planejamento: "Planejamento",
+  reuniao: "Reunião",
+  bloqueio_pessoal: "Bloqueio",
+  evento_curso: "Evento",
+  mentoria_individual: "Mentoria Individual",
+  mentoria_grupo: "Mentoria Grupo",
+  outro: "Outro",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  constelacao: "#b8873a",
+  consultoria_financeira: "#d9b268",
+  planejamento: "#2f4a2b",
+  reuniao: "#6b6152",
+  bloqueio_pessoal: "#8a7f6a",
+  evento_curso: "#4a7a3e",
+  mentoria_individual: "#6b8f5e",
+  mentoria_grupo: "#3f6635",
+  outro: "#999",
+};
+
+function LineChart({ data }: { data: { weeks: string[]; series: { type: string; values: number[] }[] } }) {
+  if (data.weeks.length === 0 || data.series.length === 0) {
+    return <div className={styles.empty}>Sem dados no período</div>;
+  }
+
+  const allValues = data.series.flatMap((s) => s.values);
+  const maxVal = Math.max(...allValues, 1);
+  const chartW = 500;
+  const chartH = 200;
+  const padL = 32;
+  const padR = 16;
+  const padT = 16;
+  const padB = 40;
+  const plotW = chartW - padL - padR;
+  const plotH = chartH - padT - padB;
+  const stepX = data.weeks.length > 1 ? plotW / (data.weeks.length - 1) : plotW;
+
+  const gridLines = 4;
+  const gridStep = maxVal / gridLines;
+
+  return (
+    <div className={styles.lineChartWrap}>
+      <svg viewBox={`0 0 ${chartW} ${chartH}`} className={styles.lineChartSvg}>
+        {Array.from({ length: gridLines + 1 }, (_, i) => {
+          const y = padT + plotH - (plotH * (i * gridStep)) / maxVal;
+          return (
+            <g key={i}>
+              <line x1={padL} y1={y} x2={chartW - padR} y2={y} stroke="var(--text-muted)" strokeOpacity={0.15} strokeWidth={0.5} />
+              <text x={padL - 6} y={y + 3} textAnchor="end" fill="var(--text-muted)" fontSize="8">{Math.round(i * gridStep)}</text>
+            </g>
+          );
+        })}
+        {data.weeks.map((w, i) => {
+          const x = padL + i * stepX;
+          const d = new Date(w + "T00:00:00");
+          const label = `${d.getDate()}/${d.getMonth() + 1}`;
+          return (
+            <text key={w} x={x} y={chartH - 8} textAnchor="middle" fill="var(--text-muted)" fontSize="8">{label}</text>
+          );
+        })}
+        {data.series.map((s) => {
+          const color = TYPE_COLORS[s.type] || "#999";
+          const points = s.values.map((v, i) => {
+            const x = padL + i * stepX;
+            const y = padT + plotH - (plotH * v) / maxVal;
+            return `${x},${y}`;
+          });
+          return (
+            <g key={s.type}>
+              <polyline points={points.join(" ")} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              {s.values.map((v, i) => {
+                const x = padL + i * stepX;
+                const y = padT + plotH - (plotH * v) / maxVal;
+                return v > 0 ? <circle key={i} cx={x} cy={y} r={3} fill={color} /> : null;
+              })}
+            </g>
+          );
+        })}
+      </svg>
+      <div className={styles.lineChartLegend}>
+        {data.series.map((s) => (
+          <div key={s.type} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ background: TYPE_COLORS[s.type] || "#999" }} />
+            {TYPE_LABELS[s.type] || s.type.replace(/_/g, " ")}
           </div>
         ))}
       </div>
@@ -263,6 +359,26 @@ function OperationalTab({ data }: { data: AnalyticsData }) {
             { label: "Faltas", value: operational.noShow, color: "#b8873a" },
             { label: "Outras", value: Math.max(0, operational.totalAppointments - operational.completed - operational.cancelled - operational.noShow), color: "rgba(184,135,58,0.25)" },
           ]} />
+        </div>
+      </div>
+
+      <div className={styles.chartsRow}>
+        <div className={`${styles.chartCard} ${styles.fullWidthChart}`}>
+          <div className={styles.chartTitle}>Evolução por Tipo de Atendimento</div>
+          {(() => {
+            const byWeek = operational.apptsByTypeByWeek || {};
+            const weeks = Object.keys(byWeek).sort();
+            const allTypes = new Set<string>();
+            for (const w of weeks) {
+              for (const t of Object.keys(byWeek[w])) allTypes.add(t);
+            }
+            const series = Array.from(allTypes).map((type) => ({
+              type,
+              values: weeks.map((w) => byWeek[w][type] || 0),
+            }));
+            series.sort((a, b) => b.values.reduce((s, v) => s + v, 0) - a.values.reduce((s, v) => s + v, 0));
+            return <LineChart data={{ weeks, series }} />;
+          })()}
         </div>
       </div>
     </>
