@@ -682,6 +682,15 @@
   background: rgba(245, 158, 11, 0.02);
 }
 
+.insightItemPrimary {
+  border-color: rgba(26, 46, 24, 0.15);
+}
+
+.insightItemPrimary:hover {
+  border-color: rgba(26, 46, 24, 0.4);
+  background: rgba(26, 46, 24, 0.02);
+}
+
 .insightItemSuccess {
   border-color: rgba(22, 163, 74, 0.2);
 }
@@ -704,6 +713,11 @@
 .insightIconDanger {
   background: rgba(220, 38, 38, 0.1);
   color: #dc2626;
+}
+
+.insightIconPrimary {
+  background: rgba(26, 46, 24, 0.1);
+  color: var(--primary);
 }
 
 .insightIconWarning {
@@ -745,6 +759,57 @@
 .insightItem:hover .insightArrow {
   transform: translateX(3px);
   color: var(--secondary);
+}
+
+/* === Verse Card === */
+.verseCard {
+  background: linear-gradient(135deg, #1a2e18 0%, #2f4a2b 100%);
+  border-radius: 14px;
+  padding: 20px;
+  color: #fff;
+}
+
+.verseHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--gold);
+}
+
+.verseCard .cardTitle {
+  color: var(--gold);
+  font-size: 0.88rem;
+}
+
+.verseText {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0 0 8px;
+  padding: 0;
+  border: none;
+}
+
+.verseRef {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--gold);
+  letter-spacing: 0.3px;
+  margin-bottom: 14px;
+}
+
+.verseCta {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* === Quick Actions === */

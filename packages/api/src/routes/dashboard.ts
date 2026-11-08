@@ -78,6 +78,21 @@ router.get("/kpis", (req, res) => {
       status: a.status,
     }));
 
+  const contracts = listContracts(shared);
+  const contractsThisMonth = contracts.filter(
+    (c) => new Date(c.created_at) >= startOfMonth
+  );
+  const contractsSigned = contractsThisMonth.filter(
+    (c) => c.zapsign_status === "signed" || c.status === "completed"
+  ).length;
+
+  const typeCounts: Record<string, number> = {};
+  for (const a of thisMonthAppts) {
+    const t = a.type || "outro";
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  }
+  const topTypeEntry = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+
   res.json({
     today: { count: todayAppts.length },
     week: { count: weekAppts.length },
@@ -102,6 +117,11 @@ router.get("/kpis", (req, res) => {
       overdue: receivables.em_atraso_cents,
       overdueCount: receivables.em_atraso_count,
     },
+    contracts: {
+      thisMonth: contractsThisMonth.length,
+      signed: contractsSigned,
+    },
+    topType: topTypeEntry ? { type: topTypeEntry[0], count: topTypeEntry[1] } : null,
     upcoming,
   });
 });

@@ -35,6 +35,8 @@ interface KPIs {
     overdue: number;
     overdueCount: number;
   };
+  contracts: { thisMonth: number; signed: number };
+  topType: { type: string; count: number } | null;
   upcoming: Array<{
     id: string;
     title: string;
@@ -142,6 +144,47 @@ function TrendBadge({ value }: { value: number }) {
       {isUp ? "↑" : "↓"} {Math.abs(value)}%
     </span>
   );
+}
+
+const DAILY_VERSES = [
+  { text: "Tudo posso naquele que me fortalece.", ref: "Filipenses 4:13" },
+  { text: "O Senhor é o meu pastor, nada me faltará.", ref: "Salmos 23:1" },
+  { text: "Porque eu sei os planos que tenho para vocês, planos de prosperidade e não de calamidade, para dar-lhes um futuro e uma esperança.", ref: "Jeremias 29:11" },
+  { text: "Confie no Senhor de todo o seu coração e não se apoie em seu próprio entendimento.", ref: "Provérbios 3:5" },
+  { text: "Mas os que esperam no Senhor renovarão as suas forças; subirão com asas como águias.", ref: "Isaías 40:31" },
+  { text: "Não temas, porque eu sou contigo; não te assombres, porque eu sou o teu Deus.", ref: "Isaías 41:10" },
+  { text: "Em tudo dai graças, porque esta é a vontade de Deus em Cristo Jesus para convosco.", ref: "1 Tessalonicenses 5:18" },
+  { text: "O amor é paciente, o amor é bondoso. Não inveja, não se vangloria, não se orgulha.", ref: "1 Coríntios 13:4" },
+  { text: "Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.", ref: "Salmos 37:5" },
+  { text: "Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito.", ref: "João 3:16" },
+  { text: "Alegrem-se sempre no Senhor. Novamente direi: alegrem-se!", ref: "Filipenses 4:4" },
+  { text: "Sede fortes e corajosos. Não temais, nem vos espanteis, porque o Senhor, o vosso Deus, é convosco por onde quer que andeis.", ref: "Josué 1:9" },
+  { text: "O Senhor é a minha luz e a minha salvação; a quem temerei?", ref: "Salmos 27:1" },
+  { text: "Tudo tem o seu tempo determinado, e há tempo para todo propósito debaixo do céu.", ref: "Eclesiastes 3:1" },
+  { text: "Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.", ref: "Mateus 11:28" },
+  { text: "O Senhor abençoe e guarde vocês; o Senhor faça resplandecer o rosto dele sobre vocês e tenha misericórdia de vocês.", ref: "Números 6:24-25" },
+  { text: "Peçam, e lhes será dado; busquem, e encontrarão; batam, e a porta lhes será aberta.", ref: "Mateus 7:7" },
+  { text: "Sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus.", ref: "Romanos 8:28" },
+  { text: "Sejam bondosos e compassivos uns para com os outros, perdoando-se mutuamente, assim como Deus os perdoou em Cristo.", ref: "Efésios 4:32" },
+  { text: "Delight-se no Senhor, e ele atenderá aos desejos do seu coração.", ref: "Salmos 37:4" },
+  { text: "Porque onde estiver o vosso tesouro, aí estará também o vosso coração.", ref: "Mateus 6:21" },
+  { text: "A paz vos deixo, a minha paz vos dou; não vo-la dou como o mundo a dá.", ref: "João 14:27" },
+  { text: "Grande é a sua fidelidade; as suas misericórdias se renovam cada manhã.", ref: "Lamentações 3:23" },
+  { text: "Quem habita no abrigo do Altíssimo, à sombra do Todo-Poderoso descansará.", ref: "Salmos 91:1" },
+  { text: "Eu sou a videira; vocês são os ramos. Se alguém permanecer em mim e eu nele, esse dará muito fruto.", ref: "João 15:5" },
+  { text: "Lança o teu pão sobre as águas, porque depois de muitos dias o acharás.", ref: "Eclesiastes 11:1" },
+  { text: "O coração do homem traça o seu caminho, mas o Senhor lhe dirige os passos.", ref: "Provérbios 16:9" },
+  { text: "Ensina-nos a contar os nossos dias, para que alcancemos coração sábio.", ref: "Salmos 90:12" },
+  { text: "Não se amoldem ao padrão deste mundo, mas transformem-se pela renovação da sua mente.", ref: "Romanos 12:2" },
+  { text: "O fruto do Espírito é amor, alegria, paz, paciência, amabilidade, bondade, fidelidade, mansidão e domínio próprio.", ref: "Gálatas 5:22-23" },
+  { text: "Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.", ref: "Salmos 46:1" },
+];
+
+function getDailyVerse() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
 }
 
 function getApptProgress(startTime: string, now: Date) {
@@ -420,23 +463,36 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
 
         {/* Right column */}
         <div className={styles.rightColumn}>
-          {/* Actionable Insights / Alerts */}
-          {kpis && (kpis.month.cancelled > 0 || newClientsThisMonth > 0 || (kpis.month.completionRate >= 80 && kpis.month.completed > 0)) && (
+          {/* Destaques do mês */}
+          {kpis && (
             <div className={styles.insightsCard}>
-              <h3 className={styles.cardTitle}>Destaques</h3>
+              <h3 className={styles.cardTitle}>Destaques do mês</h3>
               <div className={styles.insightsList}>
-                {kpis.month.cancelled > 0 && (
-                  <button className={`${styles.insightItem} ${styles.insightItemWarning}`} onClick={() => onNavigate("agenda")} type="button">
-                    <span className={`${styles.insightIcon} ${styles.insightIconWarning}`}>
+                {kpis.topType && (
+                  <button className={`${styles.insightItem} ${styles.insightItemPrimary}`} onClick={() => onNavigate("dashboards")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconPrimary}`}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="15" y1="9" x2="9" y2="15" />
-                        <line x1="9" y1="9" x2="15" y2="15" />
+                        <path d="M12 20V10M18 20V4M6 20v-4" />
                       </svg>
                     </span>
                     <div className={styles.insightText}>
-                      <strong>{kpis.month.cancelled} {kpis.month.cancelled === 1 ? "cancelamento" : "cancelamentos"}</strong>
-                      <span>este mês</span>
+                      <strong>{getTypeLabel(kpis.topType.type)}</strong>
+                      <span>{kpis.topType.count} {kpis.topType.count === 1 ? "atendimento" : "atendimentos"} — mais realizado</span>
+                    </div>
+                    <span className={styles.insightArrow}>→</span>
+                  </button>
+                )}
+                {kpis.contracts.thisMonth > 0 && (
+                  <button className={`${styles.insightItem} ${styles.insightItemSuccess}`} onClick={() => onNavigate("contratos")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconSuccess}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" />
+                        <path d="M14 2v6h6" />
+                      </svg>
+                    </span>
+                    <div className={styles.insightText}>
+                      <strong>{kpis.contracts.thisMonth} {kpis.contracts.thisMonth === 1 ? "contrato" : "contratos"}</strong>
+                      <span>{kpis.contracts.signed > 0 ? `${kpis.contracts.signed} assinado${kpis.contracts.signed > 1 ? "s" : ""}` : "este mês"}</span>
                     </div>
                     <span className={styles.insightArrow}>→</span>
                   </button>
@@ -456,11 +512,27 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
                     <span className={styles.insightArrow}>→</span>
                   </button>
                 )}
+                {kpis.month.cancelled > 0 && (
+                  <button className={`${styles.insightItem} ${styles.insightItemWarning}`} onClick={() => onNavigate("agenda")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconWarning}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                      </svg>
+                    </span>
+                    <div className={styles.insightText}>
+                      <strong>{kpis.month.cancelled} {kpis.month.cancelled === 1 ? "cancelamento" : "cancelamentos"}</strong>
+                      <span>este mês</span>
+                    </div>
+                    <span className={styles.insightArrow}>→</span>
+                  </button>
+                )}
                 {kpis.month.completionRate >= 80 && kpis.month.completed > 0 && (
                   <button className={`${styles.insightItem} ${styles.insightItemSuccess}`} onClick={() => onNavigate("dashboards")} type="button">
                     <span className={`${styles.insightIcon} ${styles.insightIconSuccess}`}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 20V10M18 20V4M6 20v-4" />
+                        <path d="M20 6L9 17l-5-5" />
                       </svg>
                     </span>
                     <div className={styles.insightText}>
@@ -473,6 +545,29 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
               </div>
             </div>
           )}
+
+          {/* Palavra do Dia */}
+          {(() => {
+            const verse = getDailyVerse();
+            return (
+              <div className={styles.verseCard}>
+                <div className={styles.verseHeader}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+                  </svg>
+                  <h3 className={styles.cardTitle}>Palavra do Dia</h3>
+                </div>
+                <blockquote className={styles.verseText}>
+                  &ldquo;{verse.text}&rdquo;
+                </blockquote>
+                <cite className={styles.verseRef}>{verse.ref}</cite>
+                <p className={styles.verseCta}>
+                  Leve esta palavra no coração durante seus atendimentos de hoje.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Quick Actions */}
           <div className={styles.quickActionsCard}>
