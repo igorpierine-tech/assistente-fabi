@@ -4,7 +4,7 @@ import { ClientsPanel } from "@/components/ClientsPanel";
 
 export default function ClientesPage() {
   return (
-    <div className="main-calendar">
+    <div className="main-scrollable">
       <ClientsPanel />
     </div>
   );

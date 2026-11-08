@@ -4,7 +4,7 @@ import { CatalogPanel } from "@/components/CatalogPanel";
 
 export default function ProdutosPage() {
   return (
-    <div className="main-calendar">
+    <div className="main-scrollable">
       <CatalogPanel />
     </div>
   );

@@ -4,7 +4,7 @@ import { SettingsView } from "@/components/SettingsView";
 
 export default function ConfiguracoesPage() {
   return (
-    <div className="main-calendar">
+    <div className="main-scrollable">
       <SettingsView />
     </div>
   );

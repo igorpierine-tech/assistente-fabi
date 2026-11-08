@@ -4,7 +4,7 @@ import { VendasView } from "@/components/VendasView";
 
 export default function VendasPage() {
   return (
-    <div className="main-calendar">
+    <div className="main-scrollable">
       <VendasView />
     </div>
   );

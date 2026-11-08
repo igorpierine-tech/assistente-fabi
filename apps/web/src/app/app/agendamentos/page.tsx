@@ -4,7 +4,7 @@ import { BookingRequestsPanel } from "@/components/BookingRequestsPanel";
 
 export default function AgendamentosPage() {
   return (
-    <div className="main-calendar">
+    <div className="main-scrollable">
       <BookingRequestsPanel />
     </div>
   );

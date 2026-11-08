@@ -188,10 +188,27 @@ input, textarea {
 
 .main-scrollable {
   height: calc(100vh - 0px);
-  overflow-y: auto;
+  overflow-y: scroll;
   padding: 16px 24px;
   max-width: 1600px;
   width: 100%;
+}
+
+.main-scrollable::-webkit-scrollbar {
+  width: 10px;
+}
+
+.main-scrollable::-webkit-scrollbar-track {
+  background: rgba(200, 191, 174, 0.15);
+}
+
+.main-scrollable::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+
+.main-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* Mobile header bar */
