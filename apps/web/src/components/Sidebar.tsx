@@ -229,9 +229,12 @@ export function Sidebar({
 }: SidebarProps) {
   const tenant = useTenant();
   const brandName = tenant.businessName;
-  const allowedViews = allowedModules
+  const baseViews = allowedModules
     ? allowedModules as View[]
     : (ROLE_NAV_ACCESS[userRole] || ROLE_NAV_ACCESS.colaborador);
+  const allowedViews = baseViews.includes("configuracoes")
+    ? [...new Set([...baseViews, "empresa" as View, "produtos" as View])]
+    : baseViews;
 
   const cadastrosVisible = CADASTROS_ITEMS.filter((item) => allowedViews.includes(item.id));
   const hasCadastrosActive = CADASTROS_IDS.has(activeView);
