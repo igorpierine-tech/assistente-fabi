@@ -206,7 +206,7 @@
 /* === Main Grid === */
 .mainGrid {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 380px 1fr;
   gap: 24px;
 }
 
