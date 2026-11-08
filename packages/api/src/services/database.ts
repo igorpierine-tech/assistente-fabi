@@ -954,7 +954,7 @@ export function createAppointment(userId: string, data: {
   return getAppointment(userId, id)!;
 }
 
-export function updateAppointment(userId: string, id: string, data: Partial<{
+export function updateAppointment(userId: string | null, id: string, data: Partial<{
   title: string;
   type: string;
   clientId: string;
@@ -985,22 +985,33 @@ export function updateAppointment(userId: string, id: string, data: Partial<{
   if (fields.length === 0) return getAppointment(userId, id);
   fields.push(`updated_at = datetime('now')`);
   const ids = appointmentOwnerIds(userId);
-  const placeholders = ids.map(() => "?").join(", ");
-  values.push(...ids, id);
-  getDb()
-    .prepare(
-      `UPDATE appointments SET ${fields.join(", ")} WHERE user_id IN (${placeholders}) AND id = ?`
-    )
-    .run(...values);
+  if (ids) {
+    const placeholders = ids.map(() => "?").join(", ");
+    values.push(...ids, id);
+    getDb()
+      .prepare(
+        `UPDATE appointments SET ${fields.join(", ")} WHERE user_id IN (${placeholders}) AND id = ?`
+      )
+      .run(...values);
+  } else {
+    values.push(id);
+    getDb()
+      .prepare(`UPDATE appointments SET ${fields.join(", ")} WHERE id = ?`)
+      .run(...values);
+  }
   return getAppointment(userId, id);
 }
 
-export function deleteAppointment(userId: string, id: string): boolean {
+export function deleteAppointment(userId: string | null, id: string): boolean {
   const ids = appointmentOwnerIds(userId);
-  const placeholders = ids.map(() => "?").join(", ");
-  const result = getDb()
-    .prepare(`DELETE FROM appointments WHERE user_id IN (${placeholders}) AND id = ?`)
-    .run(...ids, id);
+  if (ids) {
+    const placeholders = ids.map(() => "?").join(", ");
+    const result = getDb()
+      .prepare(`DELETE FROM appointments WHERE user_id IN (${placeholders}) AND id = ?`)
+      .run(...ids, id);
+    return result.changes > 0;
+  }
+  const result = getDb().prepare(`DELETE FROM appointments WHERE id = ?`).run(id);
   return result.changes > 0;
 }
 

@@ -169,8 +169,8 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const userId = req.session.appUser!.id;
-    const existing = getAppointment(userId, req.params.id);
+    const ownerId = personalReadOwnerId(req);
+    const existing = getAppointment(ownerId, req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Agendamento não encontrado" });
       return;
@@ -205,7 +205,7 @@ router.put("/:id", async (req, res) => {
       }
     }
 
-    const updated = updateAppointment(userId, req.params.id, {
+    const updated = updateAppointment(ownerId, req.params.id, {
       title, type, clientId, clientName, startTime, endTime, notes, status,
     });
 
@@ -247,8 +247,8 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const userId = req.session.appUser!.id;
-    const existing = getAppointment(userId, req.params.id);
+    const ownerId = personalReadOwnerId(req);
+    const existing = getAppointment(ownerId, req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Agendamento não encontrado" });
       return;
@@ -263,7 +263,7 @@ router.delete("/:id", async (req, res) => {
       }
     }
 
-    deleteAppointment(userId, req.params.id);
+    deleteAppointment(ownerId, req.params.id);
     res.status(204).end();
   } catch (error) {
     console.error("Erro ao excluir agendamento:", error);
