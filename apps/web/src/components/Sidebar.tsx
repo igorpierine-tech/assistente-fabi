@@ -55,6 +55,7 @@ interface NavItem {
 }
 
 const TOP_ITEMS: NavItem[] = [
+  { id: "inicio", label: "Início", icon: "home" },
   { id: "agenda", label: "Agenda", icon: "calendar" },
   { id: "agendamentos", label: "Agendamentos", icon: "handshake" },
 ];
@@ -70,7 +71,6 @@ const BOTTOM_ITEMS: NavItem[] = [
   { id: "configuracoes", label: "Configurações", icon: "gear" },
   { id: "contratos", label: "Contratos", icon: "contract" },
   { id: "financeiro", label: "Financeiro", icon: "dollar" },
-  { id: "inicio", label: "Início", icon: "home" },
   { id: "vendas", label: "Vendas", icon: "tag" },
 ];
 
