@@ -99,6 +99,7 @@ export default function DashboardPage() {
     vendas: "/app/vendas",
     contratos: "/app/contratos",
     financeiro: "/app/financeiro",
+    dashboards: "/app/dashboards",
   };
 
   return (
