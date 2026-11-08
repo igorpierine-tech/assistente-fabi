@@ -22,6 +22,15 @@ import {
   deleteAccessProfile,
   getUserModules,
   SYSTEM_MODULES,
+  listPlans,
+  getPlanById,
+  getPlanBySlug,
+  createPlan,
+  updatePlan,
+  listSubscriptions,
+  getSubscriptionByTenant,
+  createSubscription,
+  updateSubscription,
 } from "../services/master-db";
 import { hashPassword, updatePassword, getUserByEmail } from "../services/users-db";
 import { getTenantDb, upsertTenantConfig } from "../services/database";
@@ -380,6 +389,130 @@ router.put("/tenants/:tenantId/users/:userId", (req, res) => {
 router.delete("/tenants/:tenantId/users/:userId", (req, res) => {
   removeUserFromTenant(req.params.userId, req.params.tenantId);
   res.status(204).end();
+});
+
+// --- Plans ---
+
+router.get("/plans", (_req, res) => {
+  const plans = listPlans();
+  res.json(plans.map(p => ({ ...p, modules: JSON.parse(p.modules) })));
+});
+
+router.post("/plans", (req, res) => {
+  const { name, slug, modules, maxUsers, priceCents } = req.body || {};
+  if (!name || !slug || !Array.isArray(modules)) {
+    res.status(400).json({ error: "name, slug e modules são obrigatórios" });
+    return;
+  }
+  const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  if (getPlanBySlug(safeSlug)) {
+    res.status(409).json({ error: "Já existe um plano com esse slug" });
+    return;
+  }
+  const validModules = modules.filter((m: string) => SYSTEM_MODULES.some(sm => sm.id === m));
+  const plan = createPlan({ name, slug: safeSlug, modules: validModules, maxUsers, priceCents });
+  res.status(201).json({ ...plan, modules: JSON.parse(plan.modules) });
+});
+
+router.put("/plans/:id", (req, res) => {
+  const plan = getPlanById(req.params.id);
+  if (!plan) {
+    res.status(404).json({ error: "Plano não encontrado" });
+    return;
+  }
+  const { name, slug, modules, maxUsers, priceCents, active } = req.body || {};
+  if (slug !== undefined) {
+    const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    const existing = getPlanBySlug(safeSlug);
+    if (existing && existing.id !== plan.id) {
+      res.status(409).json({ error: "Já existe um plano com esse slug" });
+      return;
+    }
+  }
+  const validModules = Array.isArray(modules)
+    ? modules.filter((m: string) => SYSTEM_MODULES.some(sm => sm.id === m))
+    : undefined;
+  const updated = updatePlan(req.params.id, {
+    name, slug, modules: validModules, maxUsers, priceCents,
+    active: active !== undefined ? (active ? 1 : 0) : undefined,
+  });
+  if (updated) {
+    res.json({ ...updated, modules: JSON.parse(updated.modules) });
+  } else {
+    res.status(404).json({ error: "Plano não encontrado" });
+  }
+});
+
+// --- Subscriptions ---
+
+router.get("/subscriptions", (_req, res) => {
+  const subs = listSubscriptions();
+  const tenants = listTenants();
+  const plans = listPlans();
+  res.json(subs.map(s => ({
+    ...s,
+    tenantName: tenants.find(t => t.id === s.tenant_id)?.name || "—",
+    planName: plans.find(p => p.id === s.plan_id)?.name || "—",
+    planModules: (() => { const p = plans.find(p2 => p2.id === s.plan_id); return p ? JSON.parse(p.modules) : []; })(),
+  })));
+});
+
+router.get("/subscriptions/:tenantId", (req, res) => {
+  const sub = getSubscriptionByTenant(req.params.tenantId);
+  if (!sub) {
+    res.status(404).json({ error: "Assinatura não encontrada" });
+    return;
+  }
+  const plan = getPlanById(sub.plan_id);
+  res.json({ ...sub, planName: plan?.name || "—", planModules: plan ? JSON.parse(plan.modules) : [] });
+});
+
+router.post("/subscriptions", (req, res) => {
+  const { tenantId, planId, status, trialEndsAt } = req.body || {};
+  if (!tenantId || !planId) {
+    res.status(400).json({ error: "tenantId e planId são obrigatórios" });
+    return;
+  }
+  const tenant = getTenantById(tenantId);
+  if (!tenant) {
+    res.status(404).json({ error: "Empresa não encontrada" });
+    return;
+  }
+  const plan = getPlanById(planId);
+  if (!plan) {
+    res.status(404).json({ error: "Plano não encontrado" });
+    return;
+  }
+  const existing = getSubscriptionByTenant(tenantId);
+  if (existing) {
+    res.status(409).json({ error: "Esta empresa já possui uma assinatura. Use PUT para atualizar." });
+    return;
+  }
+  const sub = createSubscription({ tenantId, planId, status, trialEndsAt });
+  res.status(201).json({ ...sub, planName: plan.name });
+});
+
+router.put("/subscriptions/:id", (req, res) => {
+  const { planId, status, blockedReason } = req.body || {};
+  const validStatuses = ["trial", "ativo", "bloqueado", "cancelado"];
+  if (status && !validStatuses.includes(status)) {
+    res.status(400).json({ error: `Status inválido. Use: ${validStatuses.join(", ")}` });
+    return;
+  }
+  if (planId) {
+    const plan = getPlanById(planId);
+    if (!plan) {
+      res.status(404).json({ error: "Plano não encontrado" });
+      return;
+    }
+  }
+  const updated = updateSubscription(req.params.id, { planId, status, blockedReason });
+  if (!updated) {
+    res.status(404).json({ error: "Assinatura não encontrada" });
+    return;
+  }
+  const plan = getPlanById(updated.plan_id);
+  res.json({ ...updated, planName: plan?.name || "—" });
 });
 
 // --- Set password (moved from legacy /admin) ---

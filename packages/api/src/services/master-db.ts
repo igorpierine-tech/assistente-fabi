@@ -107,7 +107,38 @@ function initMasterTables(db: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_access_profiles_tenant ON access_profiles(tenant_id);
+
+    CREATE TABLE IF NOT EXISTS plans (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      modules TEXT NOT NULL DEFAULT '[]',
+      max_users INTEGER,
+      price_cents INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) UNIQUE,
+      plan_id TEXT NOT NULL REFERENCES plans(id),
+      status TEXT NOT NULL DEFAULT 'trial',
+      trial_ends_at TEXT,
+      started_at TEXT NOT NULL DEFAULT (datetime('now')),
+      blocked_at TEXT,
+      blocked_reason TEXT,
+      cancelled_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant ON subscriptions(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_plan ON subscriptions(plan_id);
   `);
+
+  seedDefaultPlans(db);
 
   // Add profile_id column to user_tenants if not present
   try {
@@ -406,6 +437,7 @@ export function deleteAccessProfile(id: string): boolean {
 }
 
 export function getUserModules(userId: string, tenantId: string): string[] {
+  // Get profile modules
   const row = getMasterDb().prepare(`
     SELECT ap.modules
     FROM user_tenants ut
@@ -413,19 +445,180 @@ export function getUserModules(userId: string, tenantId: string): string[] {
     WHERE ut.user_id = ? AND ut.tenant_id = ? AND ut.active = 1
   `).get(userId, tenantId) as { modules: string } | undefined;
 
+  let profileModules: string[];
   if (row) {
-    return JSON.parse(row.modules) as string[];
+    profileModules = JSON.parse(row.modules) as string[];
+  } else {
+    const defaultProfile = getMasterDb().prepare(
+      "SELECT modules FROM access_profiles WHERE tenant_id = ? AND is_default = 1 LIMIT 1"
+    ).get(tenantId) as { modules: string } | undefined;
+    profileModules = defaultProfile
+      ? JSON.parse(defaultProfile.modules) as string[]
+      : SYSTEM_MODULES.map(m => m.id);
   }
 
-  // Fallback: if no profile assigned, use the default profile for the tenant
-  const defaultProfile = getMasterDb().prepare(
-    "SELECT modules FROM access_profiles WHERE tenant_id = ? AND is_default = 1 LIMIT 1"
-  ).get(tenantId) as { modules: string } | undefined;
+  // Get plan modules for this tenant's subscription
+  const planModules = getTenantPlanModules(tenantId);
+  if (!planModules) return profileModules;
 
-  if (defaultProfile) {
-    return JSON.parse(defaultProfile.modules) as string[];
+  // Return intersection of plan modules and profile modules
+  return profileModules.filter(m => planModules.includes(m));
+}
+
+function getTenantPlanModules(tenantId: string): string[] | null {
+  const sub = getMasterDb().prepare(`
+    SELECT p.modules FROM subscriptions s
+    JOIN plans p ON p.id = s.plan_id
+    WHERE s.tenant_id = ? AND s.status IN ('trial', 'ativo')
+  `).get(tenantId) as { modules: string } | undefined;
+  if (!sub) return null;
+  return JSON.parse(sub.modules) as string[];
+}
+
+// --- Plans ---
+
+export interface PlanRow {
+  id: string;
+  name: string;
+  slug: string;
+  modules: string; // JSON array
+  max_users: number | null;
+  price_cents: number;
+  active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+const DEFAULT_PLANS = [
+  {
+    slug: "starter",
+    name: "Starter",
+    modules: ["inicio", "agenda", "clientes", "agendamentos"],
+    max_users: 3,
+    price_cents: 0,
+  },
+  {
+    slug: "professional",
+    name: "Professional",
+    modules: ["inicio", "agenda", "assistente", "clientes", "agendamentos", "vendas", "contratos", "financeiro"],
+    max_users: 10,
+    price_cents: 9900,
+  },
+  {
+    slug: "enterprise",
+    name: "Enterprise",
+    modules: SYSTEM_MODULES.map(m => m.id),
+    max_users: null,
+    price_cents: 19900,
+  },
+] as const;
+
+function seedDefaultPlans(db: Database.Database) {
+  const count = db.prepare("SELECT COUNT(*) as c FROM plans").get() as { c: number };
+  if (count.c > 0) return;
+  const stmt = db.prepare(
+    "INSERT INTO plans (id, slug, name, modules, max_users, price_cents) VALUES (?, ?, ?, ?, ?, ?)"
+  );
+  for (const p of DEFAULT_PLANS) {
+    stmt.run(uuidv4(), p.slug, p.name, JSON.stringify(p.modules), p.max_users, p.price_cents);
   }
+}
 
-  // Ultimate fallback: all modules
-  return SYSTEM_MODULES.map(m => m.id);
+export function listPlans(): PlanRow[] {
+  return getMasterDb()
+    .prepare("SELECT * FROM plans ORDER BY price_cents ASC")
+    .all() as PlanRow[];
+}
+
+export function getPlanById(id: string): PlanRow | undefined {
+  return getMasterDb()
+    .prepare("SELECT * FROM plans WHERE id = ?")
+    .get(id) as PlanRow | undefined;
+}
+
+export function getPlanBySlug(slug: string): PlanRow | undefined {
+  return getMasterDb()
+    .prepare("SELECT * FROM plans WHERE slug = ?")
+    .get(slug) as PlanRow | undefined;
+}
+
+export function createPlan(data: { name: string; slug: string; modules: string[]; maxUsers?: number | null; priceCents?: number }): PlanRow {
+  const id = uuidv4();
+  getMasterDb()
+    .prepare("INSERT INTO plans (id, slug, name, modules, max_users, price_cents) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(id, data.slug, data.name, JSON.stringify(data.modules), data.maxUsers ?? null, data.priceCents ?? 0);
+  return getPlanById(id)!;
+}
+
+export function updatePlan(id: string, data: { name?: string; slug?: string; modules?: string[]; maxUsers?: number | null; priceCents?: number; active?: number }): PlanRow | undefined {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.name !== undefined) { fields.push("name = ?"); values.push(data.name); }
+  if (data.slug !== undefined) { fields.push("slug = ?"); values.push(data.slug); }
+  if (data.modules !== undefined) { fields.push("modules = ?"); values.push(JSON.stringify(data.modules)); }
+  if (data.maxUsers !== undefined) { fields.push("max_users = ?"); values.push(data.maxUsers); }
+  if (data.priceCents !== undefined) { fields.push("price_cents = ?"); values.push(data.priceCents); }
+  if (data.active !== undefined) { fields.push("active = ?"); values.push(data.active); }
+  if (fields.length === 0) return getPlanById(id);
+  fields.push("updated_at = datetime('now')");
+  values.push(id);
+  getMasterDb().prepare(`UPDATE plans SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+  return getPlanById(id);
+}
+
+// --- Subscriptions ---
+
+export interface SubscriptionRow {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  status: string; // trial | ativo | bloqueado | cancelado
+  trial_ends_at: string | null;
+  started_at: string;
+  blocked_at: string | null;
+  blocked_reason: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getSubscriptionByTenant(tenantId: string): SubscriptionRow | undefined {
+  return getMasterDb()
+    .prepare("SELECT * FROM subscriptions WHERE tenant_id = ?")
+    .get(tenantId) as SubscriptionRow | undefined;
+}
+
+export function listSubscriptions(): SubscriptionRow[] {
+  return getMasterDb()
+    .prepare("SELECT * FROM subscriptions ORDER BY created_at DESC")
+    .all() as SubscriptionRow[];
+}
+
+export function createSubscription(data: { tenantId: string; planId: string; status?: string; trialEndsAt?: string }): SubscriptionRow {
+  const id = uuidv4();
+  getMasterDb()
+    .prepare("INSERT INTO subscriptions (id, tenant_id, plan_id, status, trial_ends_at) VALUES (?, ?, ?, ?, ?)")
+    .run(id, data.tenantId, data.planId, data.status || "trial", data.trialEndsAt || null);
+  return getMasterDb().prepare("SELECT * FROM subscriptions WHERE id = ?").get(id) as SubscriptionRow;
+}
+
+export function updateSubscription(id: string, data: { planId?: string; status?: string; blockedReason?: string }): SubscriptionRow | undefined {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.planId !== undefined) { fields.push("plan_id = ?"); values.push(data.planId); }
+  if (data.status !== undefined) {
+    fields.push("status = ?");
+    values.push(data.status);
+    if (data.status === "bloqueado") {
+      fields.push("blocked_at = datetime('now')");
+      if (data.blockedReason) { fields.push("blocked_reason = ?"); values.push(data.blockedReason); }
+    }
+    if (data.status === "cancelado") { fields.push("cancelled_at = datetime('now')"); }
+    if (data.status === "ativo") { fields.push("blocked_at = NULL, blocked_reason = NULL, cancelled_at = NULL"); }
+  }
+  if (fields.length === 0) return getMasterDb().prepare("SELECT * FROM subscriptions WHERE id = ?").get(id) as SubscriptionRow | undefined;
+  fields.push("updated_at = datetime('now')");
+  values.push(id);
+  getMasterDb().prepare(`UPDATE subscriptions SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+  return getMasterDb().prepare("SELECT * FROM subscriptions WHERE id = ?").get(id) as SubscriptionRow | undefined;
 }
