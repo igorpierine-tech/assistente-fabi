@@ -143,9 +143,16 @@ function initMasterTables(db: Database.Database) {
   // Bootstrap super admin from env var
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
   if (superAdminEmail) {
-    db.prepare(
+    const trimmed = superAdminEmail.trim().toLowerCase();
+    console.log(`[bootstrap] SUPER_ADMIN_EMAIL set, looking for: ${trimmed}`);
+    const existing = db.prepare("SELECT id, email, platform_role FROM users WHERE email = ? COLLATE NOCASE").get(trimmed) as { id: string; email: string; platform_role: string } | undefined;
+    console.log(`[bootstrap] Master DB user lookup:`, existing ? `found id=${existing.id} email=${existing.email} platform_role=${existing.platform_role}` : "NOT FOUND");
+    const result = db.prepare(
       "UPDATE users SET platform_role = 'super_admin', updated_at = datetime('now') WHERE email = ? COLLATE NOCASE AND platform_role != 'super_admin'"
-    ).run(superAdminEmail.toLowerCase());
+    ).run(trimmed);
+    console.log(`[bootstrap] UPDATE result: changes=${result.changes}`);
+  } else {
+    console.log("[bootstrap] SUPER_ADMIN_EMAIL not set, skipping bootstrap");
   }
 
   // Add profile_id column to user_tenants if not present
