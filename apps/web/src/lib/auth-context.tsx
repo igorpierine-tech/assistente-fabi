@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: data.user.name || "",
             email: data.user.email || "",
             role: data.user.role || "colaborador",
-            platformRole: "user",
+            platformRole: data.platformRole || "user",
           },
           pendingTenants: data.tenants,
         }));

@@ -102,6 +102,7 @@ router.post("/login", authLimiter, validateBody(loginSchema), async (req, res) =
         res.json({
           requireTenantSelection: true,
           token,
+          platformRole,
           user: { id: user.id, name: user.name, email: user.email, role: user.role },
           tenants: userTenants.map((ut) => ({
             id: ut.tenant_id,

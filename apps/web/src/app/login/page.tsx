@@ -11,9 +11,12 @@ export default function LoginPage() {
   const { isAuthenticated, user, loading, pendingTenants, login, selectTenant } = useAuth();
 
   useEffect(() => {
-    if (!loading && isAuthenticated && !pendingTenants) {
-      const dest = user?.platformRole === "super_admin" ? "/admin" : "/app";
-      router.replace(dest);
+    if (!loading && isAuthenticated) {
+      if (user?.platformRole === "super_admin") {
+        router.replace("/admin");
+      } else if (!pendingTenants) {
+        router.replace("/app");
+      }
     }
   }, [loading, isAuthenticated, pendingTenants, user, router]);
 
@@ -27,7 +30,7 @@ export default function LoginPage() {
     );
   }
 
-  if (isAuthenticated && pendingTenants) {
+  if (isAuthenticated && pendingTenants && user?.platformRole !== "super_admin") {
     return (
       <TenantSelector
         userName={user?.name || ""}
