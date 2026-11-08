@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LoginScreen } from "@/components/LoginScreen";
 import { useAuth } from "@/lib/auth-context";
@@ -9,10 +9,11 @@ import { TenantSelector } from "@/components/TenantSelector";
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, user, loading, pendingTenants, login, selectTenant } = useAuth();
+  const usedAdminLogin = useRef(false);
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      if (user?.platformRole === "super_admin") {
+      if (usedAdminLogin.current && user?.platformRole === "super_admin") {
         router.replace("/admin");
       } else if (!pendingTenants) {
         router.replace("/app");
@@ -30,7 +31,7 @@ export default function LoginPage() {
     );
   }
 
-  if (isAuthenticated && pendingTenants && user?.platformRole !== "super_admin") {
+  if (isAuthenticated && pendingTenants) {
     return (
       <TenantSelector
         userName={user?.name || ""}
@@ -48,6 +49,7 @@ export default function LoginPage() {
     <LoginScreen
       onPasswordLogin={login}
       onAdminLogin={async (email, password) => {
+        usedAdminLogin.current = true;
         const err = await login(email, password);
         return err;
       }}
