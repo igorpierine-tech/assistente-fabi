@@ -59,6 +59,7 @@ const TOP_ITEMS: NavItem[] = [
   { id: "inicio", label: "Início", icon: "home" },
   { id: "agenda", label: "Agenda", icon: "calendar" },
   { id: "agendamentos", label: "Agendamentos", icon: "clock-check" },
+  { id: "dashboards", label: "Dashboards", icon: "chart" },
 ];
 
 const CADASTROS_ITEMS: NavItem[] = [
@@ -73,7 +74,6 @@ const BOTTOM_ITEMS: NavItem[] = [
   { id: "contratos", label: "Contratos", icon: "file-signature" },
   { id: "financeiro", label: "Financeiro", icon: "wallet" },
   { id: "vendas", label: "Vendas", icon: "cart" },
-  { id: "dashboards", label: "Dashboards", icon: "chart" },
 ];
 
 const CADASTROS_IDS = new Set(CADASTROS_ITEMS.map((i) => i.id));

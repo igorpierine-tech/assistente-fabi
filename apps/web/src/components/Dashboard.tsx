@@ -53,6 +53,29 @@ interface DashboardProps {
   onNavigate: (view: string) => void;
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  constelacao: "Constelação",
+  consultoria_financeira: "Consultoria",
+  planejamento: "Planejamento",
+  reuniao: "Reunião",
+  bloqueio_pessoal: "Bloqueio",
+  evento_curso: "Evento",
+  mentoria_individual: "Mentoria Individual",
+  mentoria_grupo: "Mentoria Grupo",
+  outro: "Outro",
+};
+
+const BORDER_COLORS: Record<string, string> = {
+  constelacao: "#b8873a",
+  consultoria_financeira: "#d9b268",
+  planejamento: "#2f4a2b",
+  reuniao: "#6b6152",
+  bloqueio_pessoal: "#8a7f6a",
+  evento_curso: "#1a2e18",
+  mentoria_individual: "#7c5e2c",
+  mentoria_grupo: "#5a7a3b",
+};
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return "Bom dia";
@@ -90,9 +113,31 @@ function formatShortDate(iso: string) {
 }
 
 function getInitials(name: string) {
-  const parts = name.split(" ");
+  const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.substring(0, 2).toUpperCase();
+}
+
+function getTypeLabel(type: string) {
+  return TYPE_LABELS[type] || type.replace(/_/g, " ");
+}
+
+function getTimeUntilNext(events: CalendarEvent[]) {
+  const now = new Date();
+  const upcoming = events.filter(e => new Date(e.startDate) > now);
+  if (upcoming.length === 0) return null;
+  const diff = new Date(upcoming[0].startDate).getTime() - now.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `em ${hours}h${minutes > 0 ? ` ${minutes}min` : ""}`;
+  if (minutes > 0) return `em ${minutes}min`;
+  return "agora";
+}
+
+function getDayProgress() {
+  const now = new Date();
+  const h = now.getHours() + now.getMinutes() / 60;
+  return Math.min(100, Math.max(0, ((h - 7) / 14) * 100));
 }
 
 function TrendBadge({ value }: { value: number }) {
@@ -102,23 +147,6 @@ function TrendBadge({ value }: { value: number }) {
     <span className={`${styles.trend} ${isUp ? styles.trendUp : styles.trendDown}`}>
       {isUp ? "↑" : "↓"} {Math.abs(value)}%
     </span>
-  );
-}
-
-const BORDER_COLORS: Record<string, string> = {
-  constelacao: "#b8873a",
-  consultoria_financeira: "#d9b268",
-  planejamento: "#2f4a2b",
-  reuniao: "#6b6152",
-  bloqueio_pessoal: "#8a7f6a",
-  evento_curso: "#1a2e18",
-};
-
-function QuickActionBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button className={styles.quickActionBtn} onClick={onClick} type="button">
-      {label}
-    </button>
   );
 }
 
@@ -169,8 +197,13 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
         : kpis.month.appointments > 0 ? 100 : 0)
     : 0;
 
+  const timeUntilNext = useMemo(() => getTimeUntilNext(todayEvents), [todayEvents]);
+  const dayProgress = getDayProgress();
+  const hasOverdue = kpis && kpis.receivables.overdueCount > 0;
+
   return (
     <div className={styles.container}>
+      {/* Header */}
       <div className={styles.topBar}>
         <div className={styles.greeting}>
           <div className={styles.dateLabel}>{formatDateLabel()}</div>
@@ -187,52 +220,88 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
         </div>
       </div>
 
-      {/* Consolidated KPI strip */}
+      {/* KPI Strip */}
       <div className={styles.statsRow}>
         <div className={`${styles.statCard} ${styles.statCardPrimary}`}>
+          <div className={styles.statIcon}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="17" rx="2" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
           <div className={styles.statLabel}>HOJE</div>
           <div className={styles.statValue}>{todayEvents.length}</div>
-          <div className={styles.statSub}>atendimentos</div>
+          <div className={styles.statSub}>
+            {todayEvents.length === 1 ? "atendimento" : "atendimentos"}
+            {timeUntilNext && <span className={styles.statHint}> · próximo {timeUntilNext}</span>}
+          </div>
         </div>
+
         <div className={styles.statCard}>
+          <div className={styles.statIcon}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 3" />
+            </svg>
+          </div>
           <div className={styles.statLabel}>SEMANA</div>
           <div className={styles.statValue}>{kpis?.week.count ?? 0}</div>
-          <div className={styles.statSub}>sessões</div>
+          <div className={styles.statSub}>
+            sessões
+            {monthTrend !== 0 && <> <TrendBadge value={monthTrend} /></>}
+          </div>
         </div>
-        <div className={styles.statCard}>
+
+        <div className={`${styles.statCard} ${kpis && kpis.revenue.trend < 0 ? styles.statCardWarning : ""}`}>
+          <div className={styles.statIcon}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+          </div>
           <div className={styles.statLabel}>RECEBIDO</div>
           <div className={styles.statValue} style={{ fontSize: "1.6rem" }}>
             {kpis ? formatCurrency(kpis.receivables.received) : "—"}
           </div>
           <div className={styles.statSub}>
-            {kpis && kpis.revenue.trend !== 0 && <TrendBadge value={kpis.revenue.trend} />}
-            {kpis ? " no mês" : "no mês"}
+            no mês {kpis && kpis.revenue.trend !== 0 && <TrendBadge value={kpis.revenue.trend} />}
           </div>
         </div>
-        <div className={styles.statCard}>
-          <div className={styles.statLabel}>
-            {kpis && kpis.receivables.overdueCount > 0 ? "EM ATRASO" : "A RECEBER"}
+
+        <div className={`${styles.statCard} ${hasOverdue ? styles.statCardDanger : ""}`}>
+          <div className={`${styles.statIcon} ${hasOverdue ? styles.statIconDanger : ""}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {hasOverdue ? (
+                <>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </>
+              ) : (
+                <>
+                  <rect x="2" y="6" width="20" height="14" rx="2" />
+                  <path d="M2 10h20" />
+                </>
+              )}
+            </svg>
           </div>
-          <div className={`${styles.statValue} ${kpis && kpis.receivables.overdueCount > 0 ? styles.statValueDanger : ""}`}
-            style={{ fontSize: "1.6rem" }}>
-            {kpis
-              ? formatCurrency(kpis.receivables.overdueCount > 0 ? kpis.receivables.overdue : kpis.receivables.pending)
-              : "—"}
+          <div className={styles.statLabel}>{hasOverdue ? "EM ATRASO" : "A RECEBER"}</div>
+          <div className={`${styles.statValue} ${hasOverdue ? styles.statValueDanger : ""}`} style={{ fontSize: "1.6rem" }}>
+            {kpis ? formatCurrency(hasOverdue ? kpis.receivables.overdue : kpis.receivables.pending) : "—"}
           </div>
           <div className={styles.statSub}>
-            {kpis && kpis.receivables.overdueCount > 0
-              ? `${kpis.receivables.overdueCount} cobranças`
+            {hasOverdue
+              ? `${kpis!.receivables.overdueCount} cobranças`
               : kpis ? `${kpis.receivables.pendingCount} pendentes` : "pendentes"}
           </div>
         </div>
       </div>
 
-      {/* Main grid */}
+      {/* Main Grid */}
       <div className={styles.mainGrid}>
         {/* Left: Upcoming appointments */}
-        <div className={styles.clientsCard}>
-          <div className={styles.clientsHeader}>
-            <h2 className={styles.clientsTitle}>Próximos atendimentos</h2>
+        <div className={styles.appointmentsCard}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Próximos atendimentos</h2>
             <button className={styles.viewAllBtn} onClick={() => onNavigate("agenda")} type="button">
               Ver agenda →
             </button>
@@ -249,147 +318,218 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
               <div className={styles.emptyText}>Nenhum atendimento agendado</div>
               <div className={styles.emptySubtext}>Aproveite para organizar sua semana</div>
               <div className={styles.emptyActions}>
-                <QuickActionBtn label="Ver agenda da semana" onClick={() => onNavigate("agenda")} />
-                <QuickActionBtn label="Cadastrar cliente" onClick={() => onNavigate("clientes")} />
-                <QuickActionBtn label="Novo serviço" onClick={() => onNavigate("produtos")} />
+                <button className={styles.emptyActionBtn} onClick={() => onNavigate("agenda")} type="button">Ver agenda</button>
+                <button className={styles.emptyActionBtn} onClick={() => onNavigate("clientes")} type="button">Novo cliente</button>
               </div>
             </div>
           ) : (
-            kpis.upcoming.map((appt) => (
-              <div key={appt.id} className={styles.upcomingItem}>
-                <div
-                  className={styles.upcomingBar}
-                  style={{ background: BORDER_COLORS[appt.type] || "#b8873a" }}
-                />
-                <div className={styles.upcomingInfo} onClick={() => onNavigate("agenda")}>
-                  <div className={styles.upcomingName}>
-                    {appt.clientName || appt.title.split(" — ")[0]}
+            <div className={styles.appointmentsList}>
+              {kpis.upcoming.map((appt) => {
+                const displayName = appt.clientName || appt.title.split(" — ")[0];
+                const typeColor = BORDER_COLORS[appt.type] || "#b8873a";
+                return (
+                  <div key={appt.id} className={styles.appointmentItem}>
+                    <div
+                      className={styles.appointmentAvatar}
+                      style={{ background: `linear-gradient(135deg, ${typeColor}, ${typeColor}88)` }}
+                    >
+                      <span>{getInitials(displayName)}</span>
+                    </div>
+                    <div className={styles.appointmentInfo} onClick={() => onNavigate("agenda")}>
+                      <div className={styles.appointmentName}>{displayName}</div>
+                      <div className={styles.appointmentMeta}>
+                        <span className={styles.appointmentType} style={{ color: typeColor }}>
+                          {getTypeLabel(appt.type)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.appointmentTime}>
+                      <div className={styles.appointmentDate}>{formatShortDate(appt.startTime)}</div>
+                      <div className={styles.appointmentHour}>{formatTime(appt.startTime)}</div>
+                    </div>
+                    <div className={styles.appointmentActions}>
+                      <button
+                        className={styles.appointmentActionBtn}
+                        onClick={() => handleMarkCompleted(appt.id)}
+                        title="Marcar como concluído"
+                        type="button"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </button>
+                      <button
+                        className={styles.appointmentActionBtn}
+                        onClick={() => onNavigate("agenda")}
+                        title="Ver detalhes"
+                        type="button"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <div className={styles.upcomingSub}>
-                    {appt.title.includes(" — ") ? appt.title.split(" — ")[0] : appt.type}
-                  </div>
-                </div>
-                <div className={styles.upcomingTime}>
-                  <div className={styles.upcomingDate}>{formatShortDate(appt.startTime)}</div>
-                  <div className={styles.upcomingHour}>{formatTime(appt.startTime)}</div>
-                </div>
-                <div className={styles.upcomingActions}>
-                  <button
-                    className={styles.upcomingActionBtn}
-                    onClick={() => handleMarkCompleted(appt.id)}
-                    title="Marcar como concluído"
-                    type="button"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
-                  </button>
-                  <button
-                    className={styles.upcomingActionBtn}
-                    onClick={() => onNavigate("agenda")}
-                    title="Ver detalhes"
-                    type="button"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))
+                );
+              })}
+            </div>
           )}
         </div>
 
         {/* Right column */}
         <div className={styles.rightColumn}>
-          {/* Today schedule */}
+          {/* Today timeline */}
           <div className={styles.todayCard}>
-            <h2 className={styles.todayTitle}>Hoje</h2>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Sua agenda hoje</h2>
+              {todayEvents.length > 0 && (
+                <span className={styles.todayCount}>{todayEvents.length}</span>
+              )}
+            </div>
+
             {todayEvents.length === 0 ? (
               <div className={styles.todayEmpty}>
-                <div className={styles.todayEmptyText}>Nenhum compromisso hoje</div>
+                <div className={styles.todayEmptyText}>Dia livre</div>
                 <button className={styles.todayEmptyBtn} onClick={() => onNavigate("agenda")} type="button">
                   Ver agenda da semana →
                 </button>
               </div>
             ) : (
-              todayEvents.slice(0, 5).map((e) => (
-                <div
-                  key={e.id}
-                  className={styles.todayItem}
-                  style={{ borderLeftColor: BORDER_COLORS[e.type] || "#b8873a" }}
-                >
-                  <div className={styles.todayItemName}>
-                    {e.clientName || e.title.split(" — ")[0]} · <span className={styles.todayItemTime}>{formatTime(e.startDate)}</span>
+              <>
+                <div className={styles.dayProgressWrap}>
+                  <div className={styles.dayProgressBar}>
+                    <div className={styles.dayProgressFill} style={{ width: `${dayProgress}%` }} />
                   </div>
-                  <div className={styles.todayItemSub}>
-                    {e.status === "concluido" ? "✓ Concluído" : e.status === "cancelado" ? "✗ Cancelado" : e.type}
-                  </div>
+                  <span className={styles.dayProgressLabel}>
+                    {timeUntilNext ? `Próximo ${timeUntilNext}` : "Concluído"}
+                  </span>
                 </div>
-              ))
+                <div className={styles.timeline}>
+                  {todayEvents.slice(0, 6).map((e) => {
+                    const isPast = new Date(e.endDate) < new Date();
+                    const isCurrent = new Date(e.startDate) <= new Date() && new Date(e.endDate) >= new Date();
+                    return (
+                      <div
+                        key={e.id}
+                        className={`${styles.timelineItem} ${isPast ? styles.timelineItemPast : ""} ${isCurrent ? styles.timelineItemCurrent : ""}`}
+                      >
+                        <div
+                          className={styles.timelineDot}
+                          style={{ borderColor: BORDER_COLORS[e.type] || "#b8873a" }}
+                        />
+                        <div className={styles.timelineContent}>
+                          <span className={styles.timelineTime}>{formatTime(e.startDate)}</span>
+                          <span className={styles.timelineName}>
+                            {e.clientName || e.title.split(" — ")[0]}
+                          </span>
+                        </div>
+                        {e.status === "concluido" && <span className={styles.timelineDone}>✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
 
-          {/* Quick insights */}
-          {kpis && (kpis.month.cancelled > 0 || kpis.receivables.overdueCount > 0 || newClientsThisMonth > 0) && (
+          {/* Actionable Insights / Alerts */}
+          {kpis && (kpis.receivables.overdueCount > 0 || kpis.month.cancelled > 0 || newClientsThisMonth > 0 || (kpis.month.completionRate >= 80 && kpis.month.completed > 0)) && (
             <div className={styles.insightsCard}>
-              <h3 className={styles.insightsTitle}>Insights</h3>
-              {kpis.receivables.overdueCount > 0 && (
-                <div className={styles.insightItem} onClick={() => onNavigate("financeiro")} style={{ cursor: "pointer" }}>
-                  <span className={`${styles.insightDot} ${styles.insightDotDanger}`} />
-                  <span>{kpis.receivables.overdueCount} cobranças em atraso ({formatCurrency(kpis.receivables.overdue)})</span>
-                </div>
-              )}
-              {kpis.month.cancelled > 0 && (
-                <div className={styles.insightItem}>
-                  <span className={`${styles.insightDot} ${styles.insightDotWarning}`} />
-                  <span>{kpis.month.cancelled} cancelamentos este mês</span>
-                </div>
-              )}
-              {newClientsThisMonth > 0 && (
-                <div className={styles.insightItem} onClick={() => onNavigate("clientes")} style={{ cursor: "pointer" }}>
-                  <span className={`${styles.insightDot} ${styles.insightDotSuccess}`} />
-                  <span>{newClientsThisMonth} {newClientsThisMonth === 1 ? "novo cliente" : "novos clientes"} este mês</span>
-                </div>
-              )}
-              {kpis.month.completionRate >= 80 && (
-                <div className={styles.insightItem}>
-                  <span className={`${styles.insightDot} ${styles.insightDotSuccess}`} />
-                  <span>Taxa de conclusão excelente: {kpis.month.completionRate}%</span>
-                </div>
-              )}
+              <h3 className={styles.cardTitle}>Alertas e destaques</h3>
+              <div className={styles.insightsList}>
+                {kpis.receivables.overdueCount > 0 && (
+                  <button className={`${styles.insightItem} ${styles.insightItemDanger}`} onClick={() => onNavigate("financeiro")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconDanger}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </span>
+                    <div className={styles.insightText}>
+                      <strong>{kpis.receivables.overdueCount} cobranças em atraso</strong>
+                      <span>{formatCurrency(kpis.receivables.overdue)}</span>
+                    </div>
+                    <span className={styles.insightArrow}>→</span>
+                  </button>
+                )}
+                {kpis.month.cancelled > 0 && (
+                  <button className={`${styles.insightItem} ${styles.insightItemWarning}`} onClick={() => onNavigate("agenda")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconWarning}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                      </svg>
+                    </span>
+                    <div className={styles.insightText}>
+                      <strong>{kpis.month.cancelled} {kpis.month.cancelled === 1 ? "cancelamento" : "cancelamentos"}</strong>
+                      <span>este mês</span>
+                    </div>
+                    <span className={styles.insightArrow}>→</span>
+                  </button>
+                )}
+                {newClientsThisMonth > 0 && (
+                  <button className={`${styles.insightItem} ${styles.insightItemSuccess}`} onClick={() => onNavigate("clientes")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconSuccess}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                        <path d="M22 4L12 14.01l-3-3" />
+                      </svg>
+                    </span>
+                    <div className={styles.insightText}>
+                      <strong>{newClientsThisMonth} {newClientsThisMonth === 1 ? "novo cliente" : "novos clientes"}</strong>
+                      <span>este mês</span>
+                    </div>
+                    <span className={styles.insightArrow}>→</span>
+                  </button>
+                )}
+                {kpis.month.completionRate >= 80 && kpis.month.completed > 0 && (
+                  <button className={`${styles.insightItem} ${styles.insightItemSuccess}`} onClick={() => onNavigate("dashboards")} type="button">
+                    <span className={`${styles.insightIcon} ${styles.insightIconSuccess}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20V10M18 20V4M6 20v-4" />
+                      </svg>
+                    </span>
+                    <div className={styles.insightText}>
+                      <strong>Taxa de conclusão: {kpis.month.completionRate}%</strong>
+                      <span>excelente desempenho</span>
+                    </div>
+                    <span className={styles.insightArrow}>→</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Quick actions */}
+          {/* Quick Actions */}
           <div className={styles.quickActionsCard}>
-            <h3 className={styles.insightsTitle}>Atalhos rápidos</h3>
-            <div className={styles.quickActionsGrid}>
-              <button className={styles.quickAction} onClick={() => onNavigate("agenda")} type="button">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="17" rx="2" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                  <line x1="12" y1="14" x2="12" y2="18" />
-                  <line x1="10" y1="16" x2="14" y2="16" />
-                </svg>
-                <span>Nova sessão</span>
-              </button>
-              <button className={styles.quickAction} onClick={() => onNavigate("clientes")} type="button">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <button className={styles.primaryAction} onClick={() => onNavigate("agenda")} type="button">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="17" rx="2" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+                <line x1="12" y1="14" x2="12" y2="18" />
+                <line x1="10" y1="16" x2="14" y2="16" />
+              </svg>
+              Nova sessão
+            </button>
+            <div className={styles.secondaryActions}>
+              <button className={styles.secondaryAction} onClick={() => onNavigate("clientes")} type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="7" r="4" />
                   <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
                 <span>Novo cliente</span>
               </button>
-              <button className={styles.quickAction} onClick={() => onNavigate("financeiro")} type="button">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <button className={styles.secondaryAction} onClick={() => onNavigate("financeiro")} type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="6" width="20" height="14" rx="2" />
                   <path d="M2 10h20" />
                 </svg>
                 <span>Financeiro</span>
               </button>
-              <button className={styles.quickAction} onClick={() => onNavigate("dashboards")} type="button">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <button className={styles.secondaryAction} onClick={() => onNavigate("dashboards")} type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 3v18h18" />
                   <path d="M7 16l4-6 4 4 5-8" />
                 </svg>
