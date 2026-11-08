@@ -347,6 +347,9 @@
 }
 
 .appointmentCountdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-muted);
@@ -803,13 +806,37 @@
   margin-bottom: 14px;
 }
 
-.verseCta {
-  font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.4;
-  margin: 0;
+.devotionSection {
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.devotionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gold);
+  margin: 0 0 6px;
+}
+
+.devotionText {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.devotionDecree {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+  margin: 0;
 }
 
 /* === Quick Actions === */

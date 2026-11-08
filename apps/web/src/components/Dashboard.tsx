@@ -146,45 +146,53 @@ function TrendBadge({ value }: { value: number }) {
   );
 }
 
-const DAILY_VERSES = [
-  { text: "Tudo posso naquele que me fortalece.", ref: "Filipenses 4:13" },
-  { text: "O Senhor é o meu pastor, nada me faltará.", ref: "Salmos 23:1" },
-  { text: "Porque eu sei os planos que tenho para vocês, planos de prosperidade e não de calamidade, para dar-lhes um futuro e uma esperança.", ref: "Jeremias 29:11" },
-  { text: "Confie no Senhor de todo o seu coração e não se apoie em seu próprio entendimento.", ref: "Provérbios 3:5" },
-  { text: "Mas os que esperam no Senhor renovarão as suas forças; subirão com asas como águias.", ref: "Isaías 40:31" },
-  { text: "Não temas, porque eu sou contigo; não te assombres, porque eu sou o teu Deus.", ref: "Isaías 41:10" },
-  { text: "Em tudo dai graças, porque esta é a vontade de Deus em Cristo Jesus para convosco.", ref: "1 Tessalonicenses 5:18" },
-  { text: "O amor é paciente, o amor é bondoso. Não inveja, não se vangloria, não se orgulha.", ref: "1 Coríntios 13:4" },
-  { text: "Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.", ref: "Salmos 37:5" },
-  { text: "Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito.", ref: "João 3:16" },
-  { text: "Alegrem-se sempre no Senhor. Novamente direi: alegrem-se!", ref: "Filipenses 4:4" },
-  { text: "Sede fortes e corajosos. Não temais, nem vos espanteis, porque o Senhor, o vosso Deus, é convosco por onde quer que andeis.", ref: "Josué 1:9" },
-  { text: "O Senhor é a minha luz e a minha salvação; a quem temerei?", ref: "Salmos 27:1" },
-  { text: "Tudo tem o seu tempo determinado, e há tempo para todo propósito debaixo do céu.", ref: "Eclesiastes 3:1" },
-  { text: "Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.", ref: "Mateus 11:28" },
-  { text: "O Senhor abençoe e guarde vocês; o Senhor faça resplandecer o rosto dele sobre vocês e tenha misericórdia de vocês.", ref: "Números 6:24-25" },
-  { text: "Peçam, e lhes será dado; busquem, e encontrarão; batam, e a porta lhes será aberta.", ref: "Mateus 7:7" },
-  { text: "Sabemos que todas as coisas cooperam para o bem daqueles que amam a Deus.", ref: "Romanos 8:28" },
-  { text: "Sejam bondosos e compassivos uns para com os outros, perdoando-se mutuamente, assim como Deus os perdoou em Cristo.", ref: "Efésios 4:32" },
-  { text: "Delight-se no Senhor, e ele atenderá aos desejos do seu coração.", ref: "Salmos 37:4" },
-  { text: "Porque onde estiver o vosso tesouro, aí estará também o vosso coração.", ref: "Mateus 6:21" },
-  { text: "A paz vos deixo, a minha paz vos dou; não vo-la dou como o mundo a dá.", ref: "João 14:27" },
-  { text: "Grande é a sua fidelidade; as suas misericórdias se renovam cada manhã.", ref: "Lamentações 3:23" },
-  { text: "Quem habita no abrigo do Altíssimo, à sombra do Todo-Poderoso descansará.", ref: "Salmos 91:1" },
-  { text: "Eu sou a videira; vocês são os ramos. Se alguém permanecer em mim e eu nele, esse dará muito fruto.", ref: "João 15:5" },
-  { text: "Lança o teu pão sobre as águas, porque depois de muitos dias o acharás.", ref: "Eclesiastes 11:1" },
-  { text: "O coração do homem traça o seu caminho, mas o Senhor lhe dirige os passos.", ref: "Provérbios 16:9" },
-  { text: "Ensina-nos a contar os nossos dias, para que alcancemos coração sábio.", ref: "Salmos 90:12" },
-  { text: "Não se amoldem ao padrão deste mundo, mas transformem-se pela renovação da sua mente.", ref: "Romanos 12:2" },
-  { text: "O fruto do Espírito é amor, alegria, paz, paciência, amabilidade, bondade, fidelidade, mansidão e domínio próprio.", ref: "Gálatas 5:22-23" },
-  { text: "Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.", ref: "Salmos 46:1" },
+interface DailyDevotion {
+  verse: string;
+  ref: string;
+  reflection: string;
+  decree: string;
+  action: string;
+}
+
+const DAILY_DEVOTIONS: DailyDevotion[] = [
+  { verse: "Tudo posso naquele que me fortalece.", ref: "Filipenses 4:13", reflection: "Você é cocriador da sua realidade. Quando alinha sua força interior com o propósito divino, não há limite para o que pode manifestar.", decree: "Eu sou forte, capaz e cocriador do meu destino junto a Deus.", action: "Antes de cada atendimento hoje, respire fundo e declare sua capacidade." },
+  { verse: "O Senhor é o meu pastor, nada me faltará.", ref: "Salmos 23:1", reflection: "A abundância começa quando reconhecemos que somos guiados. Na cocriação, a confiança é o primeiro passo para manifestar provisão.", decree: "Eu confio na provisão divina e abro espaço para receber abundância.", action: "Anote 3 coisas pelas quais você é grato hoje antes de iniciar o trabalho." },
+  { verse: "Porque eu sei os planos que tenho para vocês, planos de prosperidade.", ref: "Jeremias 29:11", reflection: "Deus já traçou o caminho da prosperidade. Seu papel como cocriador é alinhar suas ações diárias com esse plano maior.", decree: "Os planos de Deus para mim são de prosperidade e eu caminho nessa direção.", action: "Defina uma intenção clara para este dia e visualize-a se concretizando." },
+  { verse: "Confie no Senhor de todo o seu coração.", ref: "Provérbios 3:5", reflection: "A mente analítica tem limites. A cocriação acontece quando entregamos o controle e confiamos no processo divino.", decree: "Eu entrego minha necessidade de controle e confio no fluxo da vida.", action: "Quando surgir ansiedade hoje, pause e repita: eu confio." },
+  { verse: "Os que esperam no Senhor renovarão as suas forças.", ref: "Isaías 40:31", reflection: "Esperar não é passividade — é preparo ativo. Na cocriação, os momentos de espera são momentos de fortalecimento interior.", decree: "Minha energia se renova a cada momento e eu subo mais alto.", action: "Reserve 5 minutos de silêncio entre seus atendimentos para recarregar." },
+  { verse: "Não temas, porque eu sou contigo.", ref: "Isaías 41:10", reflection: "O medo bloqueia a cocriação. Quando você elimina o medo, abre canais para que o extraordinário se manifeste.", decree: "Eu libero todo medo e acolho a coragem que Deus depositou em mim.", action: "Identifique um medo que está travando uma decisão e dê o primeiro passo." },
+  { verse: "Em tudo dai graças.", ref: "1 Tessalonicenses 5:18", reflection: "A gratidão é a frequência mais poderosa da cocriação. Quando agradecemos, sinalizamos ao universo que estamos prontos para mais.", decree: "Eu sou grato por tudo que tenho e tudo que está a caminho.", action: "Envie uma mensagem de agradecimento a um cliente que impactou sua semana." },
+  { verse: "O amor é paciente, o amor é bondoso.", ref: "1 Coríntios 13:4", reflection: "Todo atendimento é um ato de amor. Na cocriação, servir com amor genuíno multiplica os resultados para todos.", decree: "Eu sirvo com amor e cada atendimento transforma vidas, inclusive a minha.", action: "Dedique atenção extra ao primeiro cliente do dia, como se fosse o único." },
+  { verse: "Entrega o teu caminho ao Senhor; confia nele.", ref: "Salmos 37:5", reflection: "Entregar não é desistir — é cocriar com sabedoria. Faça sua parte e deixe Deus cuidar do que está além do seu alcance.", decree: "Eu faço minha parte com excelência e entrego o resultado a Deus.", action: "Liste suas preocupações do dia e, ao lado de cada uma, escreva: entregue." },
+  { verse: "Porque Deus amou o mundo de tal maneira que deu.", ref: "João 3:16", reflection: "Dar é o princípio fundamental da cocriação. Quanto mais valor você entrega, mais valor retorna para sua vida.", decree: "Eu sou generoso com meu conhecimento e minha generosidade me enriquece.", action: "Ofereça algo além do esperado em um atendimento hoje." },
+  { verse: "Alegrem-se sempre no Senhor.", ref: "Filipenses 4:4", reflection: "A alegria é um estado de escolha, não de circunstância. Na cocriação, escolher a alegria eleva sua frequência e atrai mais motivos para se alegrar.", decree: "Eu escolho a alegria hoje, independente das circunstâncias.", action: "Comece seu dia com uma música que eleva seu espírito." },
+  { verse: "Sede fortes e corajosos.", ref: "Josué 1:9", reflection: "A coragem é o motor da cocriação. Cada passo corajoso abre portas que antes pareciam invisíveis.", decree: "Eu sou corajoso e avanço com determinação em direção aos meus objetivos.", action: "Faça hoje aquela ligação ou proposta que você vem adiando." },
+  { verse: "O Senhor é a minha luz e a minha salvação.", ref: "Salmos 27:1", reflection: "Quando você se torna luz, ilumina o caminho dos outros. Na cocriação, sua luz interior é a ferramenta mais poderosa.", decree: "Eu sou luz e minha presença transforma os ambientes por onde passo.", action: "Ao atender cada pessoa hoje, visualize luz envolvendo vocês dois." },
+  { verse: "Tudo tem o seu tempo determinado.", ref: "Eclesiastes 3:1", reflection: "Respeitar o tempo é cocriar com sabedoria. Nem tudo precisa ser agora — o momento certo potencializa cada ação.", decree: "Eu respeito o tempo divino e confio que tudo chega na hora certa.", action: "Reorganize sua agenda priorizando o que realmente importa hoje." },
+  { verse: "Vinde a mim, todos os que estais cansados.", ref: "Mateus 11:28", reflection: "Descansar é parte da cocriação. Você não produz mais quando se esgota — produz mais quando se renova.", decree: "Eu me permito descansar e sei que meu descanso é produtivo.", action: "Programe uma pausa real hoje, sem celular, por pelo menos 15 minutos." },
+  { verse: "O Senhor abençoe e guarde vocês.", ref: "Números 6:24-25", reflection: "Abençoar é estender a cocriação para outros. Quando você abençoa, ativa uma corrente de bem que retorna multiplicada.", decree: "Eu abençoo cada pessoa que cruza meu caminho hoje.", action: "Ao encerrar cada atendimento, deseje algo genuinamente bom ao cliente." },
+  { verse: "Peçam, e lhes será dado; busquem, e encontrarão.", ref: "Mateus 7:7", reflection: "Pedir é o primeiro ato da cocriação. Deus espera que você declare o que deseja para que Ele possa agir.", decree: "Eu peço com fé, busco com persistência e recebo com gratidão.", action: "Escreva um pedido específico a Deus e leia em voz alta." },
+  { verse: "Todas as coisas cooperam para o bem.", ref: "Romanos 8:28", reflection: "Até os desafios são parte da cocriação. O que parece obstáculo é, na verdade, material de construção para algo maior.", decree: "Tudo coopera para o meu bem e eu transformo desafios em crescimento.", action: "Relembre um desafio recente e identifique o aprendizado que ele trouxe." },
+  { verse: "Sejam bondosos e compassivos uns para com os outros.", ref: "Efésios 4:32", reflection: "A compaixão é a cola da cocriação coletiva. Quando você é bondoso, cria um campo de possibilidades para todos.", decree: "Eu sou bondoso e minha compaixão cria milagres ao meu redor.", action: "Pratique um ato de bondade inesperado com alguém hoje." },
+  { verse: "Deleita-te no Senhor, e ele te concederá o que deseja o teu coração.", ref: "Salmos 37:4", reflection: "O deleite alinha seu coração com o coração de Deus. Na cocriação, quando seus desejos se alinham com o propósito divino, eles se manifestam.", decree: "Meus desejos estão alinhados com o propósito de Deus para minha vida.", action: "Medite por 3 minutos sobre o que seu coração verdadeiramente deseja." },
+  { verse: "Onde estiver o vosso tesouro, aí estará o vosso coração.", ref: "Mateus 6:21", reflection: "Sua atenção determina sua realidade. Na cocriação, investir energia no que é verdadeiramente valioso multiplica seus resultados.", decree: "Eu invisto minha energia no que realmente importa e colho abundância.", action: "Revise onde está gastando mais tempo e redirecione para o que gera valor." },
+  { verse: "A minha paz vos dou; não vo-la dou como o mundo a dá.", ref: "João 14:27", reflection: "A paz interior é a base da cocriação. Quando você está em paz, suas decisões são mais sábias e seus resultados mais consistentes.", decree: "A paz de Cristo habita em mim e guia todas as minhas decisões.", action: "Antes de uma decisão importante hoje, busque primeiro a paz interior." },
+  { verse: "As suas misericórdias se renovam cada manhã.", ref: "Lamentações 3:23", reflection: "Cada dia é um novo início na cocriação. O passado não determina seu futuro — a misericórdia de Deus renova suas possibilidades.", decree: "Hoje é um novo começo e eu abraço todas as possibilidades deste dia.", action: "Solte algo do passado que está pesando e comece este dia limpo." },
+  { verse: "Quem habita no abrigo do Altíssimo descansará.", ref: "Salmos 91:1", reflection: "Proteção e cocriação caminham juntas. Quando você se abriga em Deus, cria a partir de um lugar seguro.", decree: "Eu habito no abrigo do Altíssimo e de lá cocrío minha realidade.", action: "Declare proteção sobre seu trabalho, seus clientes e sua família." },
+  { verse: "Eu sou a videira; vocês são os ramos.", ref: "João 15:5", reflection: "Permanecer conectado à fonte é o segredo da cocriação frutífera. Sem conexão, não há fruto sustentável.", decree: "Eu permaneço conectado a Deus e minha vida produz frutos abundantes.", action: "Encontre um momento hoje para orar e renovar sua conexão." },
+  { verse: "Lança o teu pão sobre as águas.", ref: "Eclesiastes 11:1", reflection: "Semear sem garantia é fé em ação. Na cocriação, cada semente lançada com fé retorna multiplicada no tempo certo.", decree: "Eu semeio com fé e colho com alegria no tempo determinado.", action: "Invista em algo hoje sem esperar retorno imediato — pode ser tempo, conhecimento ou recurso." },
+  { verse: "O coração do homem traça o seu caminho, mas o Senhor lhe dirige os passos.", ref: "Provérbios 16:9", reflection: "Planeje com sabedoria, mas permita que Deus ajuste a rota. A cocriação perfeita une seu planejamento com a direção divina.", decree: "Eu planejo com sabedoria e permito que Deus direcione meus passos.", action: "Revise seus planos do mês e pergunte: isso está alinhado com meu propósito?" },
+  { verse: "Ensina-nos a contar os nossos dias.", ref: "Salmos 90:12", reflection: "Cada dia é precioso na cocriação. Quando você valoriza o tempo, transforma momentos comuns em extraordinários.", decree: "Eu valorizo cada dia e faço dele uma obra-prima de cocriação.", action: "Ao final do dia, registre uma vitória — por menor que seja." },
+  { verse: "Transformem-se pela renovação da sua mente.", ref: "Romanos 12:2", reflection: "A mente renovada é a mente cocriadora. Quando você muda seus pensamentos, muda sua realidade.", decree: "Minha mente se renova diariamente e eu cocrío uma realidade extraordinária.", action: "Substitua um pensamento limitante por uma verdade bíblica hoje." },
+  { verse: "O fruto do Espírito é amor, alegria, paz, paciência, amabilidade, bondade, fidelidade, mansidão e domínio próprio.", ref: "Gálatas 5:22-23", reflection: "Os frutos do Espírito são os sinais de uma cocriação saudável. Quando você cultiva esses frutos, tudo ao seu redor floresce.", decree: "Os frutos do Espírito se manifestam em mim e através de mim.", action: "Escolha um fruto do Espírito para cultivar intencionalmente hoje." },
+  { verse: "Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.", ref: "Salmos 46:1", reflection: "Nos momentos difíceis, a cocriação não para — ela se fortalece. Deus é seu refúgio e de lá você cocriar com mais força.", decree: "Em toda angústia, Deus é meu refúgio e minha força se renova.", action: "Se estiver passando por um momento difícil, pare e busque refúgio na oração." },
 ];
 
-function getDailyVerse() {
+function getDailyDevotion(): DailyDevotion {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   const dayOfYear = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-  return DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
+  return DAILY_DEVOTIONS[dayOfYear % DAILY_DEVOTIONS.length];
 }
 
 function getApptProgress(startTime: string, now: Date) {
@@ -422,6 +430,9 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
                               />
                             </div>
                             <span className={`${styles.appointmentCountdown} ${isUrgent ? styles.countdownUrgent : isSoon ? styles.countdownSoon : ""}`}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <path d="M6 2h12" /><path d="M6 22h12" /><path d="M7 2v4l5 6-5 6v4" /><path d="M17 2v4l-5 6 5 6v4" />
+                              </svg>
                               {countdown}
                             </span>
                           </div>
@@ -546,9 +557,9 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
             </div>
           )}
 
-          {/* Palavra do Dia */}
+          {/* Milagre da Cocriação */}
           {(() => {
-            const verse = getDailyVerse();
+            const devotion = getDailyDevotion();
             return (
               <div className={styles.verseCard}>
                 <div className={styles.verseHeader}>
@@ -556,15 +567,33 @@ export function Dashboard({ userName, events, clients, onNavigate }: DashboardPr
                     <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
                   </svg>
-                  <h3 className={styles.cardTitle}>Palavra do Dia</h3>
+                  <h3 className={styles.cardTitle}>Milagre da Cocriação</h3>
                 </div>
                 <blockquote className={styles.verseText}>
-                  &ldquo;{verse.text}&rdquo;
+                  &ldquo;{devotion.verse}&rdquo;
                 </blockquote>
-                <cite className={styles.verseRef}>{verse.ref}</cite>
-                <p className={styles.verseCta}>
-                  Leve esta palavra no coração durante seus atendimentos de hoje.
-                </p>
+                <cite className={styles.verseRef}>{devotion.ref}</cite>
+                <div className={styles.devotionSection}>
+                  <h4 className={styles.devotionLabel}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>
+                    Reflexão
+                  </h4>
+                  <p className={styles.devotionText}>{devotion.reflection}</p>
+                </div>
+                <div className={styles.devotionSection}>
+                  <h4 className={styles.devotionLabel}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Decreto
+                  </h4>
+                  <p className={styles.devotionDecree}>{devotion.decree}</p>
+                </div>
+                <div className={styles.devotionSection}>
+                  <h4 className={styles.devotionLabel}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                    Ação do Dia
+                  </h4>
+                  <p className={styles.devotionText}>{devotion.action}</p>
+                </div>
               </div>
             );
           })()}
