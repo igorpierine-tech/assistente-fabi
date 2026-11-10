@@ -148,12 +148,25 @@ export function composeSnapshot(input: ComposeInput): ContractSnapshot {
 
   const resumoPagamento = `${formatBRL(sale.amount_cents)} via ${formatMethod(sale.payment_method, sale.installments)}`;
 
+  let clientEndereco: string | null = client?.address || null;
+  if (!clientEndereco && client) {
+    const parts = [
+      client.endereco_logradouro,
+      client.endereco_numero ? `nº ${client.endereco_numero}` : null,
+      client.endereco_complemento,
+      client.endereco_bairro,
+      [client.endereco_cidade, client.endereco_uf].filter(Boolean).join("/"),
+      client.endereco_cep ? `CEP ${client.endereco_cep}` : null,
+    ].filter(Boolean);
+    if (parts.length > 0) clientEndereco = parts.join(", ");
+  }
+
   const contratante = {
     nome: client?.name || sale.client_name,
     documento: client?.document || sale.client_document || null,
     email: client?.email || sale.client_email || null,
     telefone: client?.phone || sale.client_phone || null,
-    endereco: client?.address || null,
+    endereco: clientEndereco,
     tipo_pessoa: client?.tipo_pessoa || "PF",
     inscricao_estadual: client?.inscricao_estadual || null,
   };

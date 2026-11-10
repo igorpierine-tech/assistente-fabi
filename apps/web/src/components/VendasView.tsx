@@ -47,6 +47,7 @@ interface ClientRow {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  document: string | null;
 }
 
 interface CatalogItem {
@@ -300,6 +301,7 @@ export function VendasView() {
         ...f,
         clientId,
         clientName: found.name,
+        clientDocument: found.document || "",
         clientEmail: found.email || "",
         clientPhone: found.phone || "",
       }));

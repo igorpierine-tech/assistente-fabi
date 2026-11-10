@@ -172,6 +172,7 @@ router.post("/", async (req, res) => {
     document: snapshot.contratante.documento || undefined,
     email: snapshot.contratante.email || undefined,
     phone: snapshot.contratante.telefone || undefined,
+    address: snapshot.contratante.endereco || undefined,
   });
 
   saveParty(revision.id, {
