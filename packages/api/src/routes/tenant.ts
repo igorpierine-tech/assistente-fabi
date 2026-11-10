@@ -6,6 +6,24 @@ import { requiredString, ValidationError } from "../services/validation";
 import type { TenantConfig } from "@assistente-fabi/shared";
 import "../session-types";
 
+const MAGIC_BYTES: Record<string, (buf: Buffer) => boolean> = {
+  "image/png": (b) => b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
+  "image/jpeg": (b) => b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  "image/webp": (b) => b.length >= 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP",
+  "image/svg+xml": (b) => {
+    const head = b.toString("utf-8", 0, Math.min(256, b.length)).trimStart();
+    return head.startsWith("<") || head.startsWith("<?xml");
+  },
+  "image/x-icon": (b) => b.length >= 4 && b[0] === 0x00 && b[1] === 0x00 && (b[2] === 0x01 || b[2] === 0x02) && b[3] === 0x00,
+  "image/vnd.microsoft.icon": (b) => b.length >= 4 && b[0] === 0x00 && b[1] === 0x00 && (b[2] === 0x01 || b[2] === 0x02) && b[3] === 0x00,
+};
+
+function verifyMagicBytes(buffer: Buffer, claimedMime: string): boolean {
+  const checker = MAGIC_BYTES[claimedMime];
+  if (!checker) return false;
+  return checker(buffer);
+}
+
 function sanitizeSvg(buffer: Buffer): Buffer {
   let svg = buffer.toString("utf-8");
   // Remove script tags, event handlers, and javascript: URIs
@@ -160,6 +178,10 @@ router.post("/branding/logo", logoUpload.single("logo"), (req, res) => {
     res.status(400).json({ error: "Nenhum arquivo enviado ou formato inválido. Use PNG, JPG, WebP ou SVG (máx 2MB)." });
     return;
   }
+  if (!verifyMagicBytes(req.file.buffer, req.file.mimetype)) {
+    res.status(400).json({ error: "Conteúdo do arquivo não corresponde ao tipo declarado" });
+    return;
+  }
   const ownerId = sharedOwnerId(req);
   const fileBuffer = req.file.mimetype === "image/svg+xml" ? sanitizeSvg(req.file.buffer) : req.file.buffer;
   getDb().prepare(
@@ -192,6 +214,10 @@ router.get("/branding/favicon", (req, res) => {
 router.post("/branding/favicon", logoUpload.single("favicon"), (req, res) => {
   if (!req.file) {
     res.status(400).json({ error: "Nenhum arquivo enviado ou formato inválido. Use PNG, ICO ou SVG (máx 2MB)." });
+    return;
+  }
+  if (!verifyMagicBytes(req.file.buffer, req.file.mimetype)) {
+    res.status(400).json({ error: "Conteúdo do arquivo não corresponde ao tipo declarado" });
     return;
   }
   const ownerId = sharedOwnerId(req);

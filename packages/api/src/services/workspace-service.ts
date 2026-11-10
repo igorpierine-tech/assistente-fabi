@@ -70,32 +70,45 @@ function normalizeStatus(v: unknown): ReceivableStatus | undefined {
     : undefined;
 }
 
-export function buildWorkspaceService(userId: string): WorkspaceService {
+export interface WorkspacePermissions {
+  allowedModules?: string[];
+  role?: string;
+}
+
+function assertModule(perms: WorkspacePermissions | undefined, module: string): void {
+  if (!perms?.allowedModules) return;
+  if (!perms.allowedModules.includes(module)) {
+    throw new Error(`Acesso negado: módulo "${module}" não habilitado para este usuário`);
+  }
+}
+
+export function buildWorkspaceService(userId: string, perms?: WorkspacePermissions): WorkspaceService {
   return {
     // ------ Clients ------
-    listClients: (search) => listClients(userId, search),
-    createClient: (data) =>
-      createClient(userId, {
+    listClients: (search) => { assertModule(perms, "clientes"); return listClients(userId, search); },
+    createClient: (data) => { assertModule(perms, "clientes"); return createClient(userId, {
         name: data.name,
         phone: data.phone,
         email: data.email,
         notes: data.notes,
-      }),
-    updateClient: (id, data) => updateClient(userId, id, data),
-    deleteClient: (id) => deleteClient(userId, id),
+      }); },
+    updateClient: (id, data) => { assertModule(perms, "clientes"); return updateClient(userId, id, data); },
+    deleteClient: (id) => { assertModule(perms, "clientes"); return deleteClient(userId, id); },
 
     // ------ Catalog ------
-    listCatalogItems: () => listCatalogItems(userId),
-    createCatalogItem: (data) =>
-      createCatalogItem(userId, {
+    listCatalogItems: () => { assertModule(perms, "vendas"); return listCatalogItems(userId); },
+    createCatalogItem: (data) => {
+      assertModule(perms, "vendas");
+      return createCatalogItem(userId, {
         name: data.name,
         description: data.description ?? null,
         kind: (data.kind as CatalogKind) || "servico",
         price_cents: parseAmount(data.price),
         duration_minutes: data.durationMinutes ?? null,
         active: data.active === false ? 0 : 1,
-      }),
-    updateCatalogItem: (id, data) => {
+      });
+    },
+    updateCatalogItem: (id, data) => { assertModule(perms, "vendas");
       const patch: Parameters<typeof updateCatalogItem>[2] = {};
       if (data.name !== undefined) patch.name = data.name;
       if (data.description !== undefined) patch.description = data.description;
@@ -107,16 +120,17 @@ export function buildWorkspaceService(userId: string): WorkspaceService {
       if (data.active !== undefined) patch.active = data.active ? 1 : 0;
       return updateCatalogItem(userId, id, patch);
     },
-    deleteCatalogItem: (id) => deleteCatalogItem(userId, id),
+    deleteCatalogItem: (id) => { assertModule(perms, "vendas"); return deleteCatalogItem(userId, id); },
 
     // ------ Receivables ------
-    listReceivables: (status) => {
+    listReceivables: (status) => { assertModule(perms, "financeiro");
       const s = normalizeStatus(status);
       return listReceivables(userId, s ? { status: s } : undefined);
     },
-    getReceivablesSummary: () => getReceivablesSummary(userId),
-    createReceivable: (data) =>
-      createReceivable(userId, {
+    getReceivablesSummary: () => { assertModule(perms, "financeiro"); return getReceivablesSummary(userId); },
+    createReceivable: (data) => {
+      assertModule(perms, "financeiro");
+      return createReceivable(userId, {
         client_name: data.clientName,
         item_name: data.itemName,
         amount_cents: parseAmount(data.amount),
@@ -124,8 +138,9 @@ export function buildWorkspaceService(userId: string): WorkspaceService {
         due_date: data.dueDate || data.serviceDate,
         payment_method: normalizeMethod(data.paymentMethod),
         notes: data.notes ?? null,
-      }),
-    markReceivablePaid: (id, data) => {
+      });
+    },
+    markReceivablePaid: (id, data) => { assertModule(perms, "financeiro");
       const method = normalizeMethod(data.paymentMethod);
       if (!method) {
         throw new Error("Forma de pagamento inválida");
@@ -138,11 +153,11 @@ export function buildWorkspaceService(userId: string): WorkspaceService {
       if (data.amount !== undefined) patch.amount_cents = parseAmount(data.amount);
       return updateReceivable(userId, id, patch);
     },
-    deleteReceivable: (id) => deleteReceivable(userId, id),
+    deleteReceivable: (id) => { assertModule(perms, "financeiro"); return deleteReceivable(userId, id); },
 
     // ------ Sales ------
-    listSales: () => listSales(userId),
-    createSale: (data) => {
+    listSales: () => { assertModule(perms, "vendas"); return listSales(userId); },
+    createSale: (data) => { assertModule(perms, "vendas");
       let clientId: string | null = data.clientId ?? null;
       if (data.createClient && !clientId) {
         const created = createClient(userId, {

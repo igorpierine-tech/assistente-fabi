@@ -85,4 +85,26 @@ export class EncryptedSessionStore extends session.Store {
     });
     void this.queue.then(() => callback?.()).catch((error) => callback?.(error));
   }
+
+  async destroyUserSessions(userId: string, keepSid?: string): Promise<number> {
+    let destroyed = 0;
+    await new Promise<void>((resolve, reject) => {
+      this.queue = this.queue.then(async () => {
+        const database = await this.readDatabase();
+        for (const [sid, entry] of Object.entries(database)) {
+          if (sid === keepSid) continue;
+          try {
+            const data = this.decrypt(entry.encrypted);
+            if ((data as any).appUser?.id === userId) {
+              delete database[sid];
+              destroyed++;
+            }
+          } catch { /* skip corrupted sessions */ }
+        }
+        await this.writeDatabase(database);
+      });
+      void this.queue.then(resolve).catch(reject);
+    });
+    return destroyed;
+  }
 }

@@ -114,7 +114,7 @@ router.post("/certificate", (req, res) => {
   }
 
   upsertTenantConfig(uid, {
-    nfse_certificado_base64: certificateBase64,
+    nfse_certificado_base64: encrypt(certificateBase64),
     nfse_certificado_senha: encrypt(password),
   });
   res.json({ success: true, message: "Certificado salvo com sucesso" });
@@ -315,6 +315,35 @@ router.get("/sale/:saleId", (req, res) => {
   const uid = ownerId(req);
   const invoice = getNfseInvoiceBySaleId(uid, req.params.saleId);
   res.json(invoice || null);
+});
+
+router.post("/reconcile", async (req, res) => {
+  const uid = ownerId(req);
+  const invoices = listNfseInvoices(uid).filter(
+    (i) => i.status === "processando" && i.chave_acesso
+  );
+  let updated = 0;
+  const errors: string[] = [];
+  const config = getTenantConfig(uid);
+  if (!config) {
+    res.status(400).json({ error: "Configuração não encontrada" });
+    return;
+  }
+  for (const inv of invoices) {
+    try {
+      const result = await consultarNfse(config, inv.chave_acesso!);
+      if (result.success && result.status && result.status !== inv.status) {
+        updateNfseInvoice(uid, inv.id, {
+          status: result.status,
+          nfse_xml: result.nfseXml || null,
+        });
+        updated++;
+      }
+    } catch (err) {
+      errors.push(`${inv.id}: ${(err as Error).message}`);
+    }
+  }
+  res.json({ checked: invoices.length, updated, errors });
 });
 
 export { router as nfseRouter };

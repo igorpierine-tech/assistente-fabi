@@ -1,4 +1,5 @@
 import { getMasterDb } from "./master-db";
+import { encrypt, decrypt, isEncrypted } from "./crypto";
 import type { Credentials } from "google-auth-library";
 
 export interface GoogleTokenRow {
@@ -10,6 +11,19 @@ export interface GoogleTokenRow {
   google_email: string | null;
   connected_at: string;
   updated_at: string;
+}
+
+function encryptToken(token: string | null | undefined): string {
+  if (!token) return "";
+  return encrypt(token);
+}
+
+function decryptToken(stored: string): string {
+  if (!stored) return "";
+  if (isEncrypted(stored)) {
+    try { return decrypt(stored); } catch { return stored; }
+  }
+  return stored;
 }
 
 export function saveGoogleTokens(
@@ -30,8 +44,8 @@ export function saveGoogleTokens(
       updated_at = datetime('now')
   `).run(
     userId,
-    tokens.access_token || "",
-    tokens.refresh_token || "",
+    encryptToken(tokens.access_token),
+    encryptToken(tokens.refresh_token),
     tokens.expiry_date ?? null,
     tokens.scope ?? null,
     googleEmail ?? null
@@ -43,8 +57,8 @@ export function getGoogleTokens(userId: string): Credentials | null {
   const row = db.prepare("SELECT * FROM google_tokens WHERE user_id = ?").get(userId) as GoogleTokenRow | undefined;
   if (!row) return null;
   return {
-    access_token: row.access_token,
-    refresh_token: row.refresh_token,
+    access_token: decryptToken(row.access_token),
+    refresh_token: decryptToken(row.refresh_token),
     expiry_date: row.expiry_date,
   };
 }
@@ -58,8 +72,8 @@ export function updateGoogleTokens(userId: string, tokens: Credentials): void {
   const db = getMasterDb();
   const sets: string[] = ["updated_at = datetime('now')"];
   const values: unknown[] = [];
-  if (tokens.access_token) { sets.push("access_token = ?"); values.push(tokens.access_token); }
-  if (tokens.refresh_token) { sets.push("refresh_token = ?"); values.push(tokens.refresh_token); }
+  if (tokens.access_token) { sets.push("access_token = ?"); values.push(encryptToken(tokens.access_token)); }
+  if (tokens.refresh_token) { sets.push("refresh_token = ?"); values.push(encryptToken(tokens.refresh_token)); }
   if (tokens.expiry_date) { sets.push("expiry_date = ?"); values.push(tokens.expiry_date); }
   values.push(userId);
   db.prepare(`UPDATE google_tokens SET ${sets.join(", ")} WHERE user_id = ?`).run(...values);

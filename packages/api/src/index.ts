@@ -80,7 +80,7 @@ app.use(express.json({ limit: "1mb", strict: true }));
 app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 
 // ZapSign webhook — before CORS/origin checks so external calls go through
-app.use("/webhooks/zapsign", zapSignWebhookRouter);
+app.use("/webhooks/zapsign", rateLimit({ prefix: "webhook", windowMs: 60_000, max: 30 }), zapSignWebhookRouter);
 app.use((req, _res, next) => {
   const authorization = req.get("authorization");
   if (authorization?.startsWith("Bearer ")) {
@@ -98,12 +98,13 @@ app.use((req, _res, next) => {
   }
   next();
 });
+const sessionStore = new EncryptedSessionStore(
+  sessionFilePath(),
+  sessionSecret
+);
 app.use(session({
   name: "fabi.sid",
-  store: new EncryptedSessionStore(
-    sessionFilePath(),
-    sessionSecret
-  ),
+  store: sessionStore,
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
@@ -121,6 +122,15 @@ app.use(auditRequests);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "Assistente de Agenda API" });
+});
+
+app.get("/ready", (_req, res) => {
+  try {
+    getMasterDb().prepare("SELECT 1").get();
+    res.json({ status: "ready", db: "ok" });
+  } catch {
+    res.status(503).json({ status: "not_ready", db: "error" });
+  }
 });
 
 app.use("/auth", authRouter);

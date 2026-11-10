@@ -136,6 +136,11 @@ router.put("/:id/password", async (req, res) => {
 
   try {
     await updatePassword(id, password);
+    const store = req.sessionStore as any;
+    if (typeof store.destroyUserSessions === "function") {
+      const currentSid = req.sessionID;
+      await store.destroyUserSessions(id, currentSid);
+    }
     res.json({ success: true });
   } catch (err) {
     console.error("Erro ao atualizar senha:", err);

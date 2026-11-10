@@ -536,4 +536,26 @@ router.delete("/:id", (req, res) => {
   res.json({ success: true });
 });
 
+router.post("/reconcile", async (_req, res) => {
+  const pending = listContractsWithDetails(null, { status: "awaiting_signature" });
+  let updated = 0;
+  const errors: string[] = [];
+  for (const c of pending) {
+    if (!c.zapsign_doc_token) continue;
+    try {
+      const doc = await getDocumentStatus(c.zapsign_doc_token);
+      const newStatus = doc.status === "signed" ? "signed" : doc.status === "cancelled" ? "cancelled" : "pending";
+      if (newStatus !== c.zapsign_status) {
+        updateContractZapSign(c.user_id, c.id, c.zapsign_doc_token, newStatus, c.zapsign_sign_url);
+        if (newStatus === "signed") updateContractStatus(c.user_id, c.id, "completed");
+        if (newStatus === "cancelled") updateContractStatus(c.user_id, c.id, "voided");
+        updated++;
+      }
+    } catch (err) {
+      errors.push(`${c.id}: ${(err as Error).message}`);
+    }
+  }
+  res.json({ checked: pending.length, updated, errors });
+});
+
 export { router as contractsRouter };

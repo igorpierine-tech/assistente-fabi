@@ -30,6 +30,12 @@ function getCertPassword(config: TenantConfigRow): string {
   return isEncrypted(raw) ? decrypt(raw) : raw;
 }
 
+function getCertBase64(config: TenantConfigRow): string {
+  const raw = config.nfse_certificado_base64;
+  if (!raw) return "";
+  return isEncrypted(raw) ? decrypt(raw) : raw;
+}
+
 export interface EmissaoResult {
   success: boolean;
   chaveAcesso?: string;
@@ -178,7 +184,7 @@ export async function emitirNfse(
   }
 
   try {
-    const pfxBuffer = Buffer.from(config.nfse_certificado_base64, "base64");
+    const pfxBuffer = Buffer.from(getCertBase64(config), "base64");
 
     const xmlCompressed = Buffer.from(dpsXml, "utf-8");
     const xmlBase64 = xmlCompressed.toString("base64");
@@ -246,7 +252,7 @@ export async function consultarNfse(
   const baseUrl = SEFIN_URLS[ambiente] || SEFIN_URLS.homologacao;
 
   try {
-    const pfxBuffer = Buffer.from(config.nfse_certificado_base64, "base64");
+    const pfxBuffer = Buffer.from(getCertBase64(config), "base64");
     const { Agent } = await import("node:https");
     const agent = new Agent({
       pfx: pfxBuffer,
@@ -305,7 +311,7 @@ export async function cancelarNfse(
 </pedRegEvento>`;
 
   try {
-    const pfxBuffer = Buffer.from(config.nfse_certificado_base64, "base64");
+    const pfxBuffer = Buffer.from(getCertBase64(config), "base64");
     const { Agent } = await import("node:https");
     const agent = new Agent({
       pfx: pfxBuffer,

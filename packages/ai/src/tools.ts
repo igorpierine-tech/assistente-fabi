@@ -77,13 +77,14 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "delete_event",
       description:
-        "Remove um evento do Google Calendar. Use SOMENTE após confirmação do profissional.",
+        "Remove um evento do Google Calendar. Use SOMENTE após confirmação do profissional. Envie confirmed=true somente após receber confirmação explícita.",
       parameters: {
         type: "object",
         properties: {
           eventId: { type: "string", description: "ID do evento a remover" },
+          confirmed: { type: "boolean", description: "Deve ser true — confirma que o usuário autorizou a exclusão" },
         },
-        required: ["eventId"],
+        required: ["eventId", "confirmed"],
       },
     },
   },
@@ -142,13 +143,14 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "delete_client",
-      description: "Remove um cliente. Peça confirmação antes.",
+      description: "Remove um cliente. Peça confirmação antes. Envie confirmed=true somente após receber confirmação explícita.",
       parameters: {
         type: "object",
         properties: {
           clientId: { type: "string", description: "ID do cliente" },
+          confirmed: { type: "boolean", description: "Deve ser true — confirma que o usuário autorizou a exclusão" },
         },
-        required: ["clientId"],
+        required: ["clientId", "confirmed"],
       },
     },
   },
@@ -209,13 +211,14 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "delete_catalog_item",
-      description: "Remove um item do catálogo. Peça confirmação antes.",
+      description: "Remove um item do catálogo. Peça confirmação antes. Envie confirmed=true somente após receber confirmação explícita.",
       parameters: {
         type: "object",
         properties: {
           itemId: { type: "string", description: "ID do item" },
+          confirmed: { type: "boolean", description: "Deve ser true — confirma que o usuário autorizou a exclusão" },
         },
-        required: ["itemId"],
+        required: ["itemId", "confirmed"],
       },
     },
   },
@@ -291,11 +294,14 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "delete_receivable",
-      description: "Remove um lançamento financeiro. Peça confirmação.",
+      description: "Remove um lançamento financeiro. Peça confirmação. Envie confirmed=true somente após receber confirmação explícita.",
       parameters: {
         type: "object",
-        properties: { receivableId: { type: "string" } },
-        required: ["receivableId"],
+        properties: {
+          receivableId: { type: "string" },
+          confirmed: { type: "boolean", description: "Deve ser true — confirma que o usuário autorizou a exclusão" },
+        },
+        required: ["receivableId", "confirmed"],
       },
     },
   },

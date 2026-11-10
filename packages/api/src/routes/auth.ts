@@ -12,6 +12,7 @@ import "../session-types";
 
 const router: ExpressRouter = Router();
 const authLimiter = rateLimit({ prefix: "auth", windowMs: 10 * 60_000, max: 20 });
+const loginLimiter = rateLimit({ prefix: "login", windowMs: 15 * 60_000, max: 5 });
 
 function getOAuth2Client(redirectUri?: string) {
   return new google.auth.OAuth2(
@@ -46,7 +47,7 @@ function verifyCalendarState(state: unknown): string | null {
 
 // --- Email/password login ---
 
-router.post("/login", authLimiter, validateBody(loginSchema), async (req, res) => {
+router.post("/login", loginLimiter, validateBody(loginSchema), async (req, res) => {
   const { email, password, tenantSlug } = req.body;
 
   const user = getUserByEmail(email);

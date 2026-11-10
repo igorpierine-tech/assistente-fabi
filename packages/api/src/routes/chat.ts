@@ -173,7 +173,10 @@ router.post("/message", requireGoogleCalendar, aiLimiter, async (req, res) => {
       return;
     }
 
-    const workspace = buildWorkspaceService(sharedOwnerId(req));
+    const workspace = buildWorkspaceService(sharedOwnerId(req), {
+      allowedModules: req.session.appUser?.allowedModules,
+      role: req.session.appUser?.role,
+    });
     const agentConfig = getAgentConfig(req);
     const result = await getAgent().chat(message, convId, calendar, user.name, workspace, agentConfig);
 
@@ -230,7 +233,10 @@ router.post("/voice", requireGoogleCalendar, aiLimiter, upload.single("audio"), 
       req.session.appUser!.id,
       sharedOwnerId(req)
     );
-    const workspace = buildWorkspaceService(sharedOwnerId(req));
+    const workspace = buildWorkspaceService(sharedOwnerId(req), {
+      allowedModules: req.session.appUser?.allowedModules,
+      role: req.session.appUser?.role,
+    });
     const agentConfig = getAgentConfig(req);
     const result = await getAgent().chat(text, convId, calendar, user.name, workspace, agentConfig);
 

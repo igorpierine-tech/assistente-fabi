@@ -187,6 +187,11 @@ export class FabiAgent {
     const n = (k: string) => (typeof input[k] === "number" ? (input[k] as number) : undefined);
     const b = (k: string) => (typeof input[k] === "boolean" ? (input[k] as boolean) : undefined);
 
+    const DESTRUCTIVE_TOOLS = new Set(["delete_event", "delete_client", "delete_catalog_item", "delete_receivable"]);
+    if (DESTRUCTIVE_TOOLS.has(name) && input.confirmed !== true) {
+      return { error: "Ação destrutiva requer confirmed=true após confirmação do usuário." };
+    }
+
     switch (name) {
       case "list_events":
         return calendar.listEvents(s("startDate")!, s("endDate")!);

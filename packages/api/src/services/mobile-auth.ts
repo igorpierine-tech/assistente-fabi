@@ -36,20 +36,31 @@ export function consumeMobileLogin(code: string): PendingLogin | null {
   return login;
 }
 
+const TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
 export function signSessionId(sessionId: string, secret: string): string {
+  const payload = `${sessionId}:${Date.now()}`;
   const signature = createHmac("sha256", secret)
-    .update(sessionId)
+    .update(payload)
     .digest("base64")
     .replace(/=+$/, "");
-  return `${sessionId}.${signature}`;
+  return `${payload}.${signature}`;
 }
 
 export function isValidSignedSession(token: string, secret: string): boolean {
   const separator = token.lastIndexOf(".");
   if (separator <= 0) return false;
-  const sessionId = token.slice(0, separator);
-  const expected = signSessionId(sessionId, secret);
-  const left = Buffer.from(expected);
+  const payload = token.slice(0, separator);
+  const expected = createHmac("sha256", secret)
+    .update(payload)
+    .digest("base64")
+    .replace(/=+$/, "");
+  const left = Buffer.from(`${payload}.${expected}`);
   const right = Buffer.from(token);
-  return left.length === right.length && timingSafeEqual(left, right);
+  if (left.length !== right.length || !timingSafeEqual(left, right)) return false;
+  const colonIdx = payload.lastIndexOf(":");
+  if (colonIdx <= 0) return true;
+  const issuedAt = Number(payload.slice(colonIdx + 1));
+  if (!Number.isFinite(issuedAt)) return true;
+  return Date.now() - issuedAt < TOKEN_MAX_AGE_MS;
 }
