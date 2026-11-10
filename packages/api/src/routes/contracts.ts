@@ -147,6 +147,7 @@ router.post("/", async (req, res) => {
       zapsign_doc_token: null,
       zapsign_status: null,
       zapsign_sign_url: null,
+      descricao_permuta: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

@@ -19,7 +19,7 @@ import { authenticatedFetch, hasSession } from "../../services/auth";
 import { API_URL } from "../../config/env";
 import { RR } from "../../config/theme";
 
-type PaymentMethod = "pix" | "dinheiro" | "cartao_credito" | "cartao_debito" | "transferencia" | "boleto" | "outro";
+type PaymentMethod = "pix" | "dinheiro" | "cartao_credito" | "cartao_debito" | "transferencia" | "boleto" | "permuta" | "outro";
 
 interface Sale {
   id: string;
@@ -39,7 +39,7 @@ interface ClientOption { id: string; name: string; phone: string | null; email: 
 
 const METHOD_LABELS: Record<PaymentMethod, string> = {
   pix: "PIX", dinheiro: "Dinheiro", cartao_credito: "Cartão crédito", cartao_debito: "Cartão débito",
-  transferencia: "Transferência", boleto: "Boleto", outro: "Outro",
+  transferencia: "Transferência", boleto: "Boleto", permuta: "Permuta", outro: "Outro",
 };
 
 const METHODS = Object.keys(METHOD_LABELS) as PaymentMethod[];

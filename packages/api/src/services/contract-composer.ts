@@ -81,6 +81,7 @@ const METHOD_LABELS: Record<string, string> = {
   cartao_debito: "Cartão de débito",
   transferencia: "Transferência bancária",
   boleto: "Boleto bancário",
+  permuta: "Permuta",
   outro: "Outro",
 };
 
@@ -231,6 +232,27 @@ export function composeSnapshot(input: ComposeInput): ContractSnapshot {
   const isStandalone = serviceCode === "mentoria_adesao" || serviceCode === "consultoria_financeira" || serviceCode === "mentoria_individual_12";
   const clausulasBase = isStandalone ? [] : buildBaseClauses(resolve);
   const moduloEspecifico = buildModuleClauses(serviceCode, resolve, especifico || {});
+
+  const hasPermuta = sale.payment_method?.includes("permuta");
+  if (hasPermuta) {
+    const descPermuta = (especifico?.descricao_permuta as string) || "[descrição da permuta a definir]";
+    const permutaClause: ClausulaResolvida = {
+      id: "clausula_permuta",
+      titulo: "Cláusula — Da Permuta",
+      texto: resolve(
+        `As partes acordam que parte ou a totalidade do pagamento será realizada por meio de permuta, nos seguintes termos: ${descPermuta}. ` +
+        `A permuta será considerada efetivada após a entrega e aceite dos bens ou serviços permutados por ambas as partes. ` +
+        `Os bens ou serviços objeto da permuta serão avaliados de comum acordo entre as partes, e eventuais diferenças de valor serão compensadas na forma estabelecida acima. ` +
+        `A não entrega dos bens ou serviços permutados no prazo acordado configura inadimplemento contratual, sujeitando a parte inadimplente às penalidades previstas neste contrato. ` +
+        `Para todos os efeitos fiscais, cada parte emitirá o documento fiscal correspondente ao valor dos bens ou serviços entregues na permuta.`
+      ),
+    };
+    if (isStandalone) {
+      moduloEspecifico.push(permutaClause);
+    } else {
+      clausulasBase.splice(2, 0, permutaClause);
+    }
+  }
 
   return {
     schema_version: "1.0",

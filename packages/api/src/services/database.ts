@@ -663,6 +663,9 @@ function migrateToWorkspace(db: Database.Database) {
     if (!names.has("zapsign_sign_url")) {
       db.exec(`ALTER TABLE sales ADD COLUMN zapsign_sign_url TEXT`);
     }
+    if (!names.has("descricao_permuta")) {
+      db.exec(`ALTER TABLE sales ADD COLUMN descricao_permuta TEXT`);
+    }
   })();
 
   // ZapSign columns on contracts

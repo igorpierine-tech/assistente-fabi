@@ -84,6 +84,7 @@ type PaymentMethod =
   | "cartao_debito"
   | "transferencia"
   | "boleto"
+  | "permuta"
   | "outro";
 
 /* ── constants ───────────────────────────────────────────── */
@@ -102,6 +103,7 @@ const METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: "cartao_debito", label: "Cartao de debito" },
   { value: "transferencia", label: "Transferencia" },
   { value: "boleto", label: "Boleto" },
+  { value: "permuta", label: "Permuta" },
   { value: "outro", label: "Outro" },
 ];
 

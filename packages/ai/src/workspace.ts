@@ -11,6 +11,7 @@ export type PaymentMethod =
   | "cartao_debito"
   | "transferencia"
   | "boleto"
+  | "permuta"
   | "outro";
 
 export interface WorkspaceService {
@@ -85,5 +86,6 @@ export interface WorkspaceService {
     installments?: number;
     saleDate?: string;
     notes?: string;
+    descricaoPermuta?: string;
   }): Promise<unknown> | unknown;
 }

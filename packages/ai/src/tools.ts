@@ -262,7 +262,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           dueDate: { type: "string", description: "Data de vencimento (opcional)" },
           paymentMethod: {
             type: "string",
-            enum: ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "boleto", "outro"],
+            enum: ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "boleto", "permuta", "outro"],
           },
           notes: { type: "string" },
         },
@@ -281,7 +281,7 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           receivableId: { type: "string", description: "ID do lançamento" },
           paymentMethod: {
             type: "string",
-            enum: ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "boleto", "outro"],
+            enum: ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "boleto", "permuta", "outro"],
           },
           paidAt: { type: "string", description: "Data do pagamento (opcional, default hoje)" },
           amount: { type: "string", description: "Valor pago em reais (opcional se igual ao lançamento)" },
@@ -335,11 +335,12 @@ export const calendarTools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           amount: { type: "string", description: "Valor em reais" },
           paymentMethod: {
             type: "string",
-            enum: ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "boleto", "outro"],
+            enum: ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "boleto", "permuta", "outro"],
           },
           installments: { type: "number", description: "Número de parcelas (default 1)" },
           saleDate: { type: "string", description: "Data da venda (opcional, default hoje)" },
           notes: { type: "string", description: "Observações (aparecem no contrato)" },
+          descricaoPermuta: { type: "string", description: "Descrição da permuta (aparece como cláusula no contrato, obrigatório quando paymentMethod=permuta)" },
         },
         required: ["clientName", "itemName", "amount"],
       },

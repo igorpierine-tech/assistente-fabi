@@ -10,6 +10,7 @@ export type PaymentMethod =
   | "cartao_debito"
   | "transferencia"
   | "boleto"
+  | "permuta"
   | "outro";
 
 export interface Receivable {

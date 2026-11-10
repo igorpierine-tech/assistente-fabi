@@ -55,6 +55,7 @@ const VALID_METHODS: PaymentMethod[] = [
   "cartao_debito",
   "transferencia",
   "boleto",
+  "permuta",
   "outro",
 ];
 
@@ -133,6 +134,7 @@ router.post("/", (req, res) => {
     installments?: number;
     saleDate?: string;
     notes?: string | null;
+    descricaoPermuta?: string | null;
   } | null;
 
   if (!b || !b.clientName?.trim() || !b.itemName?.trim()) {
@@ -154,9 +156,9 @@ router.post("/", (req, res) => {
     if (!existing) clientId = null;
   }
 
-  const paymentMethodValue = b.paymentMethods
+  const paymentMethodValue = (b.paymentMethods
     ? parsePaymentEntries(b.paymentMethods)
-    : parsePaymentMethod(b.paymentMethod);
+    : parsePaymentMethod(b.paymentMethod)) as PaymentMethod | null;
 
   const saleData = {
     client_id: clientId,
@@ -171,6 +173,7 @@ router.post("/", (req, res) => {
     installments: Math.max(1, Math.min(60, Number(b.installments) || 1)),
     sale_date: b.saleDate || new Date().toISOString(),
     notes: b.notes ? String(b.notes).slice(0, 2000) : null,
+    descricao_permuta: b.descricaoPermuta ? String(b.descricaoPermuta).slice(0, 2000) : null,
   };
   const sale = createSale(userId(req), saleData);
 
@@ -221,14 +224,15 @@ router.put("/:id", (req, res) => {
     patch.amount_cents = parseAmount(b.amountCents ?? b.amount);
   }
   if ((b as Record<string, unknown>).paymentMethods !== undefined) {
-    patch.payment_method = parsePaymentEntries((b as Record<string, unknown>).paymentMethods);
+    patch.payment_method = parsePaymentEntries((b as Record<string, unknown>).paymentMethods) as PaymentMethod | null;
   } else if (b.paymentMethod !== undefined) {
-    patch.payment_method = parsePaymentMethod(b.paymentMethod);
+    patch.payment_method = parsePaymentMethod(b.paymentMethod) as PaymentMethod | null;
   }
   if (b.installments !== undefined)
     patch.installments = Math.max(1, Math.min(60, Number(b.installments) || 1));
   if (typeof b.saleDate === "string") patch.sale_date = b.saleDate;
   if (b.notes !== undefined) patch.notes = b.notes ? String(b.notes).slice(0, 2000) : null;
+  if (b.descricaoPermuta !== undefined) patch.descricao_permuta = b.descricaoPermuta ? String(b.descricaoPermuta).slice(0, 2000) : null;
 
   const needsRecalc =
     patch.amount_cents !== undefined ||
@@ -353,6 +357,7 @@ router.get("/:id/contract", async (req, res) => {
       tenant,
       contractNumber: contract.contract_number,
       revision: 1,
+      especifico: sale.descricao_permuta ? { descricao_permuta: sale.descricao_permuta } : undefined,
     });
 
     const revision = createRevision(contract.id, {

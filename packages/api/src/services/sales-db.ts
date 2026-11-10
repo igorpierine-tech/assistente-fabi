@@ -21,6 +21,7 @@ export interface Sale {
   zapsign_doc_token: string | null;
   zapsign_status: string | null;
   zapsign_sign_url: string | null;
+  descricao_permuta: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +61,7 @@ export function createSale(
     installments?: number;
     sale_date?: string;
     notes?: string | null;
+    descricao_permuta?: string | null;
   }
 ): Sale {
   const id = uuidv4();
@@ -68,8 +70,8 @@ export function createSale(
     .prepare(
       `INSERT INTO sales
         (id, user_id, client_id, client_name, client_document, client_email, client_phone,
-         catalog_item_id, item_name, amount_cents, payment_method, installments, sale_date, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         catalog_item_id, item_name, amount_cents, payment_method, installments, sale_date, notes, descricao_permuta)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id,
@@ -85,7 +87,8 @@ export function createSale(
       data.payment_method ?? null,
       Math.max(1, data.installments ?? 1),
       sale_date,
-      data.notes ?? null
+      data.notes ?? null,
+      data.descricao_permuta ?? null
     );
   return getSale(userId, id)!;
 }
@@ -104,6 +107,7 @@ export function updateSale(
          client_id = ?, client_name = ?, client_document = ?, client_email = ?, client_phone = ?,
          catalog_item_id = ?, item_name = ?, amount_cents = ?, payment_method = ?,
          installments = ?, sale_date = ?, notes = ?, contract_generated_at = ?,
+         descricao_permuta = ?,
          updated_at = datetime('now')
        WHERE user_id = ? AND id = ?`
     )
@@ -121,6 +125,7 @@ export function updateSale(
       merged.sale_date,
       merged.notes,
       merged.contract_generated_at,
+      merged.descricao_permuta,
       userId,
       id
     );

@@ -11,6 +11,7 @@ type PaymentMethod =
   | "cartao_debito"
   | "transferencia"
   | "boleto"
+  | "permuta"
   | "outro";
 
 type Status = "pendente" | "pago" | "cancelado";
@@ -55,6 +56,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   cartao_debito: "Cartão de débito",
   transferencia: "Transferência",
   boleto: "Boleto",
+  permuta: "Permuta",
   outro: "Outro",
 };
 
@@ -65,6 +67,7 @@ const METHOD_OPTIONS: PaymentMethod[] = [
   "cartao_debito",
   "transferencia",
   "boleto",
+  "permuta",
   "outro",
 ];
 

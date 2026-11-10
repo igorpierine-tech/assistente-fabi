@@ -11,6 +11,7 @@ type PaymentMethod =
   | "cartao_debito"
   | "transferencia"
   | "boleto"
+  | "permuta"
   | "outro";
 
 interface Sale {
@@ -31,6 +32,7 @@ interface Sale {
   zapsign_doc_token: string | null;
   zapsign_status: string | null;
   zapsign_sign_url: string | null;
+  descricao_permuta: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +66,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   cartao_debito: "Cartão de débito",
   transferencia: "Transferência",
   boleto: "Boleto",
+  permuta: "Permuta",
   outro: "Outro",
 };
 
@@ -74,6 +77,7 @@ const METHOD_OPTIONS: PaymentMethod[] = [
   "cartao_debito",
   "transferencia",
   "boleto",
+  "permuta",
   "outro",
 ];
 
@@ -124,6 +128,7 @@ interface FormState {
   installments: number;
   saleDate: string;
   notes: string;
+  descricaoPermuta: string;
   createClient: boolean;
 }
 
@@ -141,6 +146,7 @@ const emptyForm: FormState = {
   installments: 1,
   saleDate: new Date().toISOString().slice(0, 10),
   notes: "",
+  descricaoPermuta: "",
   createClient: false,
 };
 
@@ -289,6 +295,7 @@ export function VendasView() {
       installments: s.installments,
       saleDate: dateStr,
       notes: s.notes || "",
+      descricaoPermuta: s.descricao_permuta || "",
       createClient: false,
     });
     setEditModal(s);
@@ -347,6 +354,7 @@ export function VendasView() {
       installments: form.installments,
       saleDate: form.saleDate,
       notes: form.notes.trim() || null,
+      descricaoPermuta: form.descricaoPermuta.trim() || null,
     };
     try {
       const path =
@@ -895,6 +903,18 @@ export function VendasView() {
                   </div>
                 )}
               </div>
+
+              {form.paymentEntries.some((e) => e.method === "permuta") && (
+                <div className={styles.field}>
+                  <label>Descrição da Permuta (aparece como cláusula no contrato)</label>
+                  <textarea
+                    value={form.descricaoPermuta}
+                    onChange={(e) => setForm({ ...form, descricaoPermuta: e.target.value })}
+                    placeholder="Descreva os bens ou serviços que serão trocados, prazos de entrega e demais condições da permuta..."
+                    rows={3}
+                  />
+                </div>
+              )}
 
               <div className={styles.field}>
                 <label>Observações (aparecem no contrato)</label>

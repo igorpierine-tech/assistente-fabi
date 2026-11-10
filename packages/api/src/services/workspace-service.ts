@@ -53,6 +53,7 @@ const VALID_METHODS: PaymentMethod[] = [
   "cartao_debito",
   "transferencia",
   "boleto",
+  "permuta",
   "outro",
 ];
 
@@ -183,6 +184,7 @@ export function buildWorkspaceService(userId: string, perms?: WorkspacePermissio
         installments: Math.max(1, Math.min(60, data.installments ?? 1)),
         sale_date: data.saleDate || new Date().toISOString(),
         notes: data.notes ?? null,
+        descricao_permuta: data.descricaoPermuta ?? null,
       });
     },
   };

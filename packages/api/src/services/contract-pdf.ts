@@ -56,6 +56,7 @@ const METHOD_LABELS: Record<string, string> = {
   cartao_debito: "Cartão de débito",
   transferencia: "Transferência bancária",
   boleto: "Boleto bancário",
+  permuta: "Permuta",
   outro: "Outro",
 };
 
@@ -164,6 +165,10 @@ export async function generateContractPdf(sale: Sale): Promise<Buffer> {
       const clauses = [
         { title: "Cláusula 1ª — Do Objeto", text: `O presente instrumento tem por objeto a prestação do serviço denominado "${sale.item_name}", conforme especificações acordadas entre as partes.` },
         { title: "Cláusula 2ª — Do Valor e Forma de Pagamento", text: `Pela prestação dos serviços objeto deste contrato, o CONTRATANTE pagará à CONTRATADA o valor total de ${formatBRL(sale.amount_cents)} (${valueInWords(sale.amount_cents)}), a ser quitado via ${formatMethod(sale.payment_method, sale.installments)}. O não pagamento nas datas acordadas acarretará a incidência de multa de 2% (dois por cento) sobre o valor devido, acrescida de juros de mora de 1% (um por cento) ao mês.` },
+        ...(sale.payment_method?.includes("permuta") ? [{
+          title: "Cláusula — Da Permuta",
+          text: `As partes acordam que parte ou a totalidade do pagamento será realizada por meio de permuta, nos seguintes termos: ${(sale as unknown as Record<string, unknown>).descricao_permuta || "[descrição da permuta a definir]"}. A permuta será considerada efetivada após a entrega e aceite dos bens ou serviços permutados por ambas as partes. Os bens ou serviços objeto da permuta serão avaliados de comum acordo entre as partes, e eventuais diferenças de valor serão compensadas na forma estabelecida acima. A não entrega dos bens ou serviços permutados no prazo acordado configura inadimplemento contratual, sujeitando a parte inadimplente às penalidades previstas neste contrato. Para todos os efeitos fiscais, cada parte emitirá o documento fiscal correspondente ao valor dos bens ou serviços entregues na permuta.`,
+        }] : []),
         { title: "Cláusula 3ª — Das Obrigações do CONTRATANTE", text: "Compete ao CONTRATANTE efetuar os pagamentos na forma e prazos acordados, fornecer as informações necessárias à boa execução dos serviços com veracidade e tempestividade, observar os horários e compromissos da agenda acordada, e manter conduta respeitosa e colaborativa." },
         { title: "Cláusula 4ª — Das Obrigações da CONTRATADA", text: "Compete à CONTRATADA executar os serviços contratados com zelo, ética, diligência e profissionalismo, disponibilizar profissional qualificado e compatível com o escopo contratado, cumprir o cronograma e os prazos acordados, e proteger as informações recebidas do CONTRATANTE." },
         { title: "Cláusula 5ª — Da Vigência e Rescisão", text: "Este contrato entra em vigor na data de sua assinatura e permanece vigente até a conclusão dos serviços contratados. A rescisão poderá ocorrer por mútuo acordo, por inadimplemento mediante notificação prévia de 15 dias, ou por justa causa nos termos da legislação vigente." },
