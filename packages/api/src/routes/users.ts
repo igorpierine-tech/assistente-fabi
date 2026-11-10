@@ -6,6 +6,7 @@ import {
   updateUser,
   updatePassword,
   getUserById,
+  getUserByIdAndTenant,
   getUserByEmail,
   type UserRole,
 } from "../services/users-db";
@@ -22,7 +23,12 @@ router.get("/", (req, res) => {
 });
 
 router.get("/:id", (req, res) => {
-  const user = getUserById(String(req.params.id));
+  const tenantId = req.session.appUser?.tenantId;
+  if (!tenantId) {
+    res.status(400).json({ error: "Tenant não definido na sessão" });
+    return;
+  }
+  const user = getUserByIdAndTenant(String(req.params.id), tenantId);
   if (!user) {
     res.status(404).json({ error: "Usuário não encontrado" });
     return;
@@ -73,7 +79,12 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", (req, res) => {
   const id = String(req.params.id);
-  const user = getUserById(id);
+  const tenantId = req.session.appUser?.tenantId;
+  if (!tenantId) {
+    res.status(400).json({ error: "Tenant não definido na sessão" });
+    return;
+  }
+  const user = getUserByIdAndTenant(id, tenantId);
   if (!user) {
     res.status(404).json({ error: "Usuário não encontrado" });
     return;
@@ -106,7 +117,12 @@ router.put("/:id", (req, res) => {
 
 router.put("/:id/password", async (req, res) => {
   const id = String(req.params.id);
-  const user = getUserById(id);
+  const tenantId = req.session.appUser?.tenantId;
+  if (!tenantId) {
+    res.status(400).json({ error: "Tenant não definido na sessão" });
+    return;
+  }
+  const user = getUserByIdAndTenant(id, tenantId);
   if (!user) {
     res.status(404).json({ error: "Usuário não encontrado" });
     return;

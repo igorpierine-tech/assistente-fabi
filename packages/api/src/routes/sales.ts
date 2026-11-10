@@ -559,7 +559,24 @@ router.get("/:id/signature-status", async (req, res) => {
 export { router as salesRouter };
 
 const webhookRouter: ExpressRouter = Router();
+
+function verifyWebhookAuth(req: import("express").Request): boolean {
+  const secret = process.env.ZAPSIGN_WEBHOOK_SECRET;
+  if (!secret) return false;
+  const provided = req.headers["x-webhook-secret"] || req.query.secret;
+  if (typeof provided !== "string") return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(secret);
+  if (a.length !== b.length) return false;
+  return require("crypto").timingSafeEqual(a, b);
+}
+
 webhookRouter.post("/", (req, res) => {
+  if (!verifyWebhookAuth(req)) {
+    res.status(401).json({ error: "Webhook não autorizado" });
+    return;
+  }
+
   const body = req.body as { doc_token?: string; status?: string } | null;
   if (!body?.doc_token) {
     res.status(400).json({ error: "Token ausente" });

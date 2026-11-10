@@ -39,6 +39,12 @@ export function getUserById(id: string): UserRow | undefined {
     .get(id) as UserRow | undefined;
 }
 
+export function getUserByIdAndTenant(id: string, tenantId: string): UserRow | undefined {
+  return getMasterDb()
+    .prepare("SELECT * FROM users WHERE id = ? AND tenant_id = ?")
+    .get(id, tenantId) as UserRow | undefined;
+}
+
 export function getUserByEmail(email: string): UserRow | undefined {
   return getMasterDb()
     .prepare("SELECT * FROM users WHERE email = ? COLLATE NOCASE")

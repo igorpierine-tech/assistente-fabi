@@ -183,7 +183,7 @@ router.post("/select-tenant", validateBody(selectTenantSchema), (req, res) => {
 
   const modules = getUserModules(appUser.id, match.tenant_id);
   const mu = getMasterUserById(appUser.id);
-  req.session.appUser = {
+  const updatedUser = {
     ...appUser,
     role: match.role,
     platformRole: mu?.platform_role || appUser.platformRole || "user",
@@ -191,23 +191,31 @@ router.post("/select-tenant", validateBody(selectTenantSchema), (req, res) => {
     tenantSlug: match.tenant_slug,
     allowedModules: modules,
   };
-  req.session.save((saveErr) => {
-    if (saveErr) {
-      res.status(500).json({ error: "Erro ao salvar sessão" });
+
+  req.session.regenerate((regenErr) => {
+    if (regenErr) {
+      res.status(500).json({ error: "Erro ao regenerar sessão" });
       return;
     }
-    res.json({
-      user: {
-        id: appUser.id,
-        name: appUser.name,
-        email: appUser.email,
-        role: match.role,
-      },
-      tenant: {
-        id: match.tenant_id,
-        slug: match.tenant_slug,
-        name: match.tenant_name,
-      },
+    req.session.appUser = updatedUser;
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        res.status(500).json({ error: "Erro ao salvar sessão" });
+        return;
+      }
+      res.json({
+        user: {
+          id: appUser.id,
+          name: appUser.name,
+          email: appUser.email,
+          role: match.role,
+        },
+        tenant: {
+          id: match.tenant_id,
+          slug: match.tenant_slug,
+          name: match.tenant_name,
+        },
+      });
     });
   });
 });

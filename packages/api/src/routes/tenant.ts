@@ -6,6 +6,25 @@ import { requiredString, ValidationError } from "../services/validation";
 import type { TenantConfig } from "@assistente-fabi/shared";
 import "../session-types";
 
+function sanitizeSvg(buffer: Buffer): Buffer {
+  let svg = buffer.toString("utf-8");
+  // Remove script tags, event handlers, and javascript: URIs
+  svg = svg.replace(/<script[\s\S]*?<\/script>/gi, "");
+  svg = svg.replace(/<script[\s\S]*?\/>/gi, "");
+  svg = svg.replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, "");
+  svg = svg.replace(/javascript\s*:/gi, "blocked:");
+  svg = svg.replace(/data\s*:\s*text\/html/gi, "blocked:");
+  svg = svg.replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "");
+  svg = svg.replace(/<foreignObject[\s\S]*?\/>/gi, "");
+  svg = svg.replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
+  svg = svg.replace(/<embed[\s\S]*?<\/embed>/gi, "");
+  svg = svg.replace(/<object[\s\S]*?<\/object>/gi, "");
+  svg = svg.replace(/<use[\s\S]*?href\s*=\s*["'](?!#)[^"']*["']/gi, (match) => {
+    return match.replace(/href\s*=\s*["'][^"']*["']/, 'href="#blocked"');
+  });
+  return Buffer.from(svg, "utf-8");
+}
+
 const logoUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 },
@@ -142,9 +161,10 @@ router.post("/branding/logo", logoUpload.single("logo"), (req, res) => {
     return;
   }
   const ownerId = sharedOwnerId(req);
+  const fileBuffer = req.file.mimetype === "image/svg+xml" ? sanitizeSvg(req.file.buffer) : req.file.buffer;
   getDb().prepare(
     `UPDATE tenant_config SET logo_data = ?, logo_mime = ?, updated_at = datetime('now') WHERE user_id = ?`
-  ).run(req.file.buffer, req.file.mimetype, ownerId);
+  ).run(fileBuffer, req.file.mimetype, ownerId);
   upsertTenantConfig(ownerId, { logo_url: `/tenant/branding/logo?t=${Date.now()}` });
   res.json({ ok: true, logoUrl: `/tenant/branding/logo?t=${Date.now()}` });
 });
@@ -175,9 +195,10 @@ router.post("/branding/favicon", logoUpload.single("favicon"), (req, res) => {
     return;
   }
   const ownerId = sharedOwnerId(req);
+  const fileBuffer = req.file.mimetype === "image/svg+xml" ? sanitizeSvg(req.file.buffer) : req.file.buffer;
   getDb().prepare(
     `UPDATE tenant_config SET favicon_data = ?, favicon_mime = ?, updated_at = datetime('now') WHERE user_id = ?`
-  ).run(req.file.buffer, req.file.mimetype, ownerId);
+  ).run(fileBuffer, req.file.mimetype, ownerId);
   res.json({ ok: true });
 });
 

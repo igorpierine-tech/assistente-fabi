@@ -1187,11 +1187,35 @@ export function exportUserData(userId: string) {
   const bookingSettings = database.prepare(`SELECT * FROM booking_settings WHERE user_id = ?`).get(userId) || null;
   const bookingSessionTypes = database.prepare(`SELECT * FROM booking_session_types WHERE user_id = ?`).all(userId);
   const bookingRequests = database.prepare(`SELECT * FROM booking_requests WHERE user_id = ?`).all(userId);
+  const sales = database.prepare(`SELECT * FROM sales WHERE user_id = ?`).all(userId);
+  const receivables = database.prepare(`SELECT * FROM receivables WHERE user_id = ?`).all(userId);
+  const catalogItems = database.prepare(`SELECT * FROM catalog_items WHERE user_id = ?`).all(userId);
+  const contracts = database.prepare(`SELECT * FROM contracts WHERE user_id = ?`).all(userId);
+  const contractRevisions = database.prepare(`
+    SELECT cr.* FROM contract_revisions cr
+    INNER JOIN contracts c ON c.id = cr.contract_id
+    WHERE c.user_id = ?
+  `).all(userId);
+  const contractParties = database.prepare(`
+    SELECT cp.* FROM contract_parties cp
+    INNER JOIN contracts c ON c.id = cp.contract_id
+    WHERE c.user_id = ?
+  `).all(userId);
+  const nfseInvoices = database.prepare(`SELECT * FROM nfse_invoices WHERE user_id = ?`).all(userId);
+  const serviceDefinitions = database.prepare(`SELECT * FROM service_definitions WHERE user_id = ?`).all(userId);
+  const googleTokens = database.prepare(`SELECT user_id, email, token_type, expires_at, scope, created_at, updated_at FROM google_tokens WHERE user_id = ?`).all(userId);
   const audit = database.prepare(`
     SELECT action, resource, status_code, created_at FROM audit_logs
     WHERE user_id = ? ORDER BY created_at DESC LIMIT 1000
   `).all(userId);
-  return { clients, appointments, conversations, messages, bookingSettings, bookingSessionTypes, bookingRequests, consents, audit };
+  return {
+    clients, appointments, conversations, messages,
+    bookingSettings, bookingSessionTypes, bookingRequests,
+    sales, receivables, catalogItems,
+    contracts, contractRevisions, contractParties,
+    nfseInvoices, serviceDefinitions, googleTokens,
+    consents, audit,
+  };
 }
 
 export function deleteUserData(userId: string): void {
@@ -1199,6 +1223,17 @@ export function deleteUserData(userId: string): void {
   database.transaction(() => {
     database.prepare(`DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id = ?)`).run(userId);
     database.prepare(`DELETE FROM conversations WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM contract_audit WHERE contract_id IN (SELECT id FROM contracts WHERE user_id = ?)`).run(userId);
+    database.prepare(`DELETE FROM contract_artifacts WHERE contract_id IN (SELECT id FROM contracts WHERE user_id = ?)`).run(userId);
+    database.prepare(`DELETE FROM contract_parties WHERE contract_id IN (SELECT id FROM contracts WHERE user_id = ?)`).run(userId);
+    database.prepare(`DELETE FROM contract_revisions WHERE contract_id IN (SELECT id FROM contracts WHERE user_id = ?)`).run(userId);
+    database.prepare(`DELETE FROM contracts WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM contract_template_versions WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM nfse_invoices WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM receivables WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM sales WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM catalog_items WHERE user_id = ?`).run(userId);
+    database.prepare(`DELETE FROM service_definitions WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM appointments WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM clients WHERE user_id = ?`).run(userId);
     database.prepare(`DELETE FROM booking_requests WHERE user_id = ?`).run(userId);
