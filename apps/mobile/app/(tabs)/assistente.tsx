@@ -25,33 +25,14 @@ interface DayEvent {
   earlyWins: string[];
 }
 
-const DEMO_EVENTS: DayEvent[] = [
-  { id: "1", title: "Constelação — Maria Valentina", type: "constelacao", startH: 9, startM: 0, durMin: 90, clientName: "Maria Valentina", clientPhone: "(65) 99812-3456", clientEmail: "maria.valentina@email.com", earlyWins: ["2a sessão — padrão de exclusão familiar identificado", "Preparar campo: mãe e avó materna", "Relatou melhora no relacionamento com a mãe"] },
-  { id: "2", title: "Consultoria Financeira — Ana Paula", type: "consultoria", startH: 11, startM: 0, durMin: 60, clientName: "Ana Paula", clientPhone: "(65) 99734-5678", clientEmail: "ana.paula@email.com", earlyWins: ["Revisão do planejamento financeiro trimestral", "Atingiu 80% da meta de reserva de emergência", "Avaliar realocação pós-Selic"] },
-  { id: "3", title: "Planejamento — Masterday Agosto", type: "planejamento", startH: 14, startM: 0, durMin: 60, earlyWins: ["Definir pauta e dinâmicas do Masterday", "12 participantes confirmados (máx. 15)", "Revisar material de apoio e checklist"] },
-  { id: "4", title: "Constelação — Juliana Costa", type: "constelacao", startH: 15, startM: 30, durMin: 90, clientName: "Juliana Costa", clientPhone: "(65) 99623-7890", clientEmail: "juliana.costa@email.com", earlyWins: ["1a sessão — acolhimento e genograma", "Queixa: dificuldade de prosperar financeiramente", "Preparar dinâmica de pertencimento"] },
-  { id: "5", title: "Reunião — Raízes e Riquezas", type: "reuniao", startH: 17, startM: 30, durMin: 30, earlyWins: ["Alinhamento de metas do mês", "Revisar agenda de setembro e Masterdays", "Feedback das consultorias em grupo"] },
-];
+const DEMO_EVENTS: DayEvent[] = [];
 
 const STATUS_COLORS: Record<string, string> = {
   previsto: "#FFA726", confirmado: "#66BB6A", em_andamento: "#42A5F5", concluido: "#78909C", cancelado: "#EF5350",
 };
 
-function getDemoResponse(input: string): string {
-  const lower = input.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  if (lower.includes("agenda") && (lower.includes("hoje") || lower.includes("dia")))
-    return `Hoje, ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}\n\n• 09:00 — Constelação — Maria Valentina\n• 11:00 — Consultoria Financeira — Ana Paula\n• 14:00 — Planejamento — Masterday Agosto\n• 15:30 — Constelação — Juliana Costa\n• 17:30 — Reunião — Raízes e Riquezas\n\nVocê tem 5 compromissos hoje. Dia bem cheio, Fabi!`;
-  if (lower.includes("bom dia") || lower.includes("ola") || lower.includes("oi"))
-    return "Bom dia, Fabi! Hoje você tem 5 compromissos. O primeiro é às 09:00 (Constelação com Maria Valentina) e o último às 17:30 (Reunião Raízes e Riquezas). Quer ver os detalhes?";
-  if (lower.includes("agend") && (lower.includes("constelac") || lower.includes("maria")))
-    return "Vou agendar:\n\nConstelação — Maria\nSexta-feira, 15 de agosto de 2026\n14:00 às 15:30\nLembretes: 24h e 1h antes\n\nConfirmar?";
-  if (lower.includes("sim") || lower.includes("confirm"))
-    return "Agendado com sucesso! O compromisso já aparece na sua agenda.";
-  if (lower.includes("cancel"))
-    return "Qual compromisso você gostaria de cancelar? Me diga o nome do cliente ou o horário.";
-  if (lower.includes("horario") && lower.includes("livre") || lower.includes("disponiv"))
-    return "Na sexta à tarde, horários livres:\n\n• 13:00 às 14:00\n• 16:00 às 18:00\n\nQuer que eu agende algo?";
-  return "No modo demonstração só consigo responder a alguns comandos de exemplo. Tente perguntar sobre a agenda de hoje ou agendar uma Constelação!";
+function getDemoResponse(_input: string): string {
+  return "Para usar a assistente, faça login com sua conta Google. Assim terei acesso à sua agenda e dados reais.";
 }
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
@@ -108,14 +89,47 @@ export default function AssistenteScreen() {
     }
   }
 
+  async function sendVoice(uri: string) {
+    if (!isAuthenticated) {
+      sendMessage("Qual a minha agenda para hoje?");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", { uri, name: "audio.m4a", type: "audio/m4a" } as unknown as Blob);
+      if (conversationId) formData.append("conversationId", conversationId);
+      const response = await authenticatedFetch("/chat/voice", { method: "POST", body: formData });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Erro ao transcrever áudio.");
+      if (data.conversationId) setConversationId(data.conversationId);
+      if (data.transcription) {
+        setMessages((prev) => [...prev, { id: `${Date.now()}-user`, role: "user", content: data.transcription, timestamp: new Date() }]);
+      }
+      setMessages((prev) => [...prev, { id: `${Date.now()}-assistant`, role: "assistant", content: data.message, timestamp: new Date() }]);
+    } catch (e) {
+      setMessages((prev) => [...prev, { id: `${Date.now()}-error`, role: "assistant", content: e instanceof Error ? e.message : "Erro ao processar áudio.", timestamp: new Date() }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function toggleRecording() {
     if (isRecording) {
       setIsRecording(false);
       if (recording) {
-        await recording.stopAndUnloadAsync();
-        setRecording(null);
+        try {
+          await recording.stopAndUnloadAsync();
+          const uri = recording.getURI();
+          setRecording(null);
+          if (uri) {
+            await sendVoice(uri);
+            return;
+          }
+        } catch {
+          setRecording(null);
+        }
       }
-      sendMessage("Qual a minha agenda para hoje?");
       return;
     }
     try {
@@ -125,15 +139,8 @@ export default function AssistenteScreen() {
       const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       setRecording(rec);
       setIsRecording(true);
-      setTimeout(() => {
-        setIsRecording(false);
-        rec.stopAndUnloadAsync();
-        setRecording(null);
-        sendMessage("Qual a minha agenda para hoje?");
-      }, 2500);
     } catch {
       setIsRecording(false);
-      sendMessage("Qual a minha agenda para hoje?");
     }
   }
 
@@ -157,36 +164,44 @@ export default function AssistenteScreen() {
           <Text style={s.dayTitle}>Hoje</Text>
           <Text style={s.dayDate}>{today}</Text>
 
-          {DEMO_EVENTS.map((ev) => (
-            <TouchableOpacity
-              key={ev.id}
-              style={[s.eventCard, { borderLeftColor: TYPE_COLORS[ev.type] || C.secondary }]}
-              onPress={() => { setSelectedEvent(ev); setProntuarioTab("dados"); setEventStatus("previsto"); }}
-              activeOpacity={0.7}
-            >
-              <View style={s.eventRow}>
-                <Text style={s.eventTime}>{fmtTime(ev.startH, ev.startM)}</Text>
-                <View style={s.eventInfo}>
-                  <Text style={s.eventTitle} numberOfLines={1}>{ev.title}</Text>
-                  <Text style={s.eventDur}>{fmtTime(ev.startH, ev.startM)} — {endTime(ev.startH, ev.startM, ev.durMin)}</Text>
-                </View>
-              </View>
-              <View style={s.winsContainer}>
-                {ev.earlyWins.map((w, i) => (
-                  <View key={i} style={s.winRow}>
-                    <View style={s.winDot} />
-                    <Text style={s.winText}>{w}</Text>
+          {!isAuthenticated ? (
+            <View style={{ alignItems: "center", paddingVertical: 48, paddingHorizontal: 24 }}>
+              <Text style={{ fontSize: 16, color: C.textMuted, textAlign: "center", lineHeight: 24 }}>
+                Faça login com sua conta Google para ver seus compromissos do dia.
+              </Text>
+            </View>
+          ) : DEMO_EVENTS.length === 0 ? (
+            <View style={{ alignItems: "center", paddingVertical: 48, paddingHorizontal: 24 }}>
+              <Text style={{ fontSize: 16, color: C.textMuted, textAlign: "center", lineHeight: 24 }}>
+                Nenhum compromisso para hoje. Use o chat para agendar!
+              </Text>
+            </View>
+          ) : (
+            DEMO_EVENTS.map((ev) => (
+              <TouchableOpacity
+                key={ev.id}
+                style={[s.eventCard, { borderLeftColor: TYPE_COLORS[ev.type] || C.secondary }]}
+                onPress={() => { setSelectedEvent(ev); setProntuarioTab("dados"); setEventStatus("previsto"); }}
+                activeOpacity={0.7}
+              >
+                <View style={s.eventRow}>
+                  <Text style={s.eventTime}>{fmtTime(ev.startH, ev.startM)}</Text>
+                  <View style={s.eventInfo}>
+                    <Text style={s.eventTitle} numberOfLines={1}>{ev.title}</Text>
+                    <Text style={s.eventDur}>{fmtTime(ev.startH, ev.startM)} — {endTime(ev.startH, ev.startM, ev.durMin)}</Text>
                   </View>
-                ))}
-              </View>
-            </TouchableOpacity>
-          ))}
-
-          <View style={s.statsRow}>
-            <Text style={s.statValue}>{DEMO_EVENTS.length}</Text>
-            <Text style={s.statLabel}>compromissos</Text>
-            <View style={s.busyTag}><Text style={s.busyText}>Dia cheio</Text></View>
-          </View>
+                </View>
+                <View style={s.winsContainer}>
+                  {ev.earlyWins.map((w, i) => (
+                    <View key={i} style={s.winRow}>
+                      <View style={s.winDot} />
+                      <Text style={s.winText}>{w}</Text>
+                    </View>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </ScrollView>
       ) : (
         <>

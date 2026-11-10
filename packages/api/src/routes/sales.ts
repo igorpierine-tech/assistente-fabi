@@ -16,7 +16,7 @@ import {
   isConfigured as isZapSignConfigured,
 } from "../services/zapsign";
 import { requireUser, sharedOwnerId, readOwnerId } from "../middleware/auth";
-import { createClient, getClient, getTenantConfig } from "../services/database";
+import { createClient, getClient, getTenantConfig, getDb } from "../services/database";
 import {
   createContract,
   getContractBySaleId,
@@ -174,6 +174,7 @@ router.post("/", (req, res) => {
   };
   const sale = createSale(userId(req), saleData);
 
+  let receivableWarning: string | undefined;
   try {
     createReceivablesFromSale(userId(req), {
       id: sale.id,
@@ -185,9 +186,12 @@ router.post("/", (req, res) => {
       installments: sale.installments,
       sale_date: sale.sale_date,
     });
-  } catch (_) { /* receivable generation should not block sale creation */ }
+  } catch (err) {
+    receivableWarning = "Venda criada, mas houve falha ao gerar os recebíveis. Verifique manualmente.";
+    console.error("Falha ao gerar recebíveis:", err);
+  }
 
-  res.status(201).json(sale);
+  res.status(201).json({ ...sale, ...(receivableWarning ? { warning: receivableWarning } : {}) });
 });
 
 router.put("/:id", (req, res) => {
@@ -277,9 +281,13 @@ router.put("/:id", (req, res) => {
 
 router.delete("/:id", (req, res) => {
   const id = String(req.params.id);
-  deleteReceivablesBySaleId(userId(req), id);
-  const ok = deleteSale(userId(req), id);
-  if (!ok) {
+  const uid = userId(req);
+  const db = getDb();
+  const result = db.transaction(() => {
+    deleteReceivablesBySaleId(uid, id);
+    return deleteSale(uid, id);
+  })();
+  if (!result) {
     res.status(404).json({ error: "Venda não encontrada" });
     return;
   }

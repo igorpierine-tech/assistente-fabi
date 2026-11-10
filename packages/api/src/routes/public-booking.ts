@@ -13,6 +13,8 @@ import {
   type BookingSessionType,
   type BookingSettings,
 } from "../services/booking-db";
+import { GoogleCalendarService } from "../services/google-calendar";
+import { getGoogleTokens, updateGoogleTokens } from "../services/google-tokens-db";
 import {
   computeSlots,
   computeAvailableDays,
@@ -258,7 +260,7 @@ router.get("/manage/:token", (req, res) => {
 });
 
 // POST /public/booking/manage/:token/cancel
-router.post("/manage/:token/cancel", (req, res) => {
+router.post("/manage/:token/cancel", async (req, res) => {
   const request = getBookingRequestByToken(String(req.params.token));
   if (!request) {
     res.status(404).json({ error: "Solicitação não encontrada" });
@@ -268,10 +270,23 @@ router.post("/manage/:token/cancel", (req, res) => {
     res.status(400).json({ error: "Solicitação já finalizada" });
     return;
   }
+  const hadGoogleEvent = request.status === "confirmed" && request.google_event_id;
   markBookingRequest(request.id, "canceled", { reason: "Cancelada pelo cliente" });
-  // Note: if it was already confirmed, admin still has the google event; they'll
-  // see the canceled status in the admin panel and can remove the calendar event manually
-  // (or we can add auto-delete of google event on cancel later).
+
+  if (hadGoogleEvent) {
+    try {
+      const tokens = getGoogleTokens(request.user_id);
+      if (tokens) {
+        const gcal = new GoogleCalendarService(tokens, (refreshed) => {
+          updateGoogleTokens(request.user_id, refreshed);
+        });
+        await gcal.deleteEvent(request.google_event_id!);
+      }
+    } catch (err) {
+      console.error("Falha ao remover evento do Google Calendar:", err);
+    }
+  }
+
   res.json({ ok: true });
 });
 
