@@ -37,6 +37,8 @@ import type { PaymentMethod } from "../services/receivables-db";
 import {
   createReceivablesFromSale,
   deleteReceivablesBySaleId,
+  getReceivablesBySaleId,
+  updateReceivable,
 } from "../services/receivables-db";
 
 const router: ExpressRouter = Router();
@@ -234,8 +236,16 @@ router.put("/:id", (req, res) => {
 
   if (needsRecalc && updated) {
     try {
-      deleteReceivablesBySaleId(userId(req), id);
-      createReceivablesFromSale(userId(req), {
+      const uid = userId(req);
+      const oldReceivables = getReceivablesBySaleId(uid, id);
+      const paidMap = new Map(
+        oldReceivables
+          .filter((r) => r.status === "pago")
+          .map((r) => [r.installment_number, { paid_at: r.paid_at, payment_method: r.payment_method }])
+      );
+
+      deleteReceivablesBySaleId(uid, id);
+      createReceivablesFromSale(uid, {
         id: updated.id,
         client_id: updated.client_id,
         client_name: updated.client_name,
@@ -245,6 +255,20 @@ router.put("/:id", (req, res) => {
         installments: updated.installments,
         sale_date: updated.sale_date,
       });
+
+      if (paidMap.size > 0) {
+        const newReceivables = getReceivablesBySaleId(uid, id);
+        for (const nr of newReceivables) {
+          const paid = paidMap.get(nr.installment_number);
+          if (paid) {
+            updateReceivable(uid, nr.id, {
+              status: "pago",
+              paid_at: paid.paid_at,
+              payment_method: paid.payment_method,
+            });
+          }
+        }
+      }
     } catch (_) { /* should not block sale update */ }
   }
 

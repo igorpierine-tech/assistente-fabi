@@ -1203,7 +1203,21 @@ export function exportUserData(userId: string) {
   `).all(userId);
   const nfseInvoices = database.prepare(`SELECT * FROM nfse_invoices WHERE user_id = ?`).all(userId);
   const serviceDefinitions = database.prepare(`SELECT * FROM service_definitions WHERE user_id = ?`).all(userId);
+  const contractArtifacts = database.prepare(`
+    SELECT ca.* FROM contract_artifacts ca
+    INNER JOIN contracts c ON c.id = ca.contract_id
+    WHERE c.user_id = ?
+  `).all(userId);
+  const contractTemplateVersions = database.prepare(`SELECT * FROM contract_template_versions WHERE user_id = ?`).all(userId);
   const googleTokens = database.prepare(`SELECT user_id, email, token_type, expires_at, scope, created_at, updated_at FROM google_tokens WHERE user_id = ?`).all(userId);
+  const tenantConfig = database.prepare(`
+    SELECT user_id, business_name, owner_name, profession, tagline, timezone, locale,
+           razao_social, cnpj, inscricao_estadual, inscricao_municipal,
+           endereco, endereco_logradouro, endereco_numero, endereco_complemento,
+           endereco_bairro, endereco_uf, cep, email_comercial, telefone_comercial,
+           representante_qualificacao, created_at, updated_at
+    FROM tenant_config WHERE user_id = ?
+  `).get(userId) || null;
   const audit = database.prepare(`
     SELECT action, resource, status_code, created_at FROM audit_logs
     WHERE user_id = ? ORDER BY created_at DESC LIMIT 1000
@@ -1212,9 +1226,10 @@ export function exportUserData(userId: string) {
     clients, appointments, conversations, messages,
     bookingSettings, bookingSessionTypes, bookingRequests,
     sales, receivables, catalogItems,
-    contracts, contractRevisions, contractParties,
+    contracts, contractRevisions, contractParties, contractArtifacts,
+    contractTemplateVersions,
     nfseInvoices, serviceDefinitions, googleTokens,
-    consents, audit,
+    tenantConfig, consents, audit,
   };
 }
 
