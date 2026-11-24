@@ -1,25 +1,23 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { LoginScreen } from "@/components/LoginScreen";
 import { useAuth } from "@/lib/auth-context";
 import { TenantSelector } from "@/components/TenantSelector";
 
 export default function LoginPage() {
-  const router = useRouter();
   const { isAuthenticated, user, loading, pendingTenants, login, selectTenant } = useAuth();
   const usedAdminLogin = useRef(false);
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
       if (usedAdminLogin.current && user?.platformRole === "super_admin") {
-        router.replace("/admin");
+        window.location.replace("/admin");
       } else if (!pendingTenants) {
-        router.replace("/app");
+        window.location.replace("/app");
       }
     }
-  }, [loading, isAuthenticated, pendingTenants, user, router]);
+  }, [loading, isAuthenticated, pendingTenants, user]);
 
   if (loading) {
     return (
