@@ -80,10 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           pendingTenants: data.requireTenantSelection ? data.tenants : null,
         });
       } else {
+        clearAuthToken();
         setAuthMarker(false);
         setState(prev => ({ ...prev, isAuthenticated: false, user: null, loading: false }));
       }
     } catch {
+      clearAuthToken();
       setAuthMarker(false);
       setState(prev => ({ ...prev, isAuthenticated: false, user: null, loading: false }));
     }
@@ -95,12 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ email, password }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       const data = await res.json();
       if (!res.ok) return data.error || "Erro ao fazer login";
 
@@ -125,7 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await refreshStatus();
       return null;
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return "Tempo esgotado. Verifique sua conexão e tente novamente.";
+      }
       return "Não foi possível conectar ao servidor";
     }
   }, [refreshStatus]);

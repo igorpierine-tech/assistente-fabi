@@ -8,7 +8,7 @@ COPY . .
 
 RUN pnpm --filter web... install --frozen-lockfile
 
-ARG NEXT_PUBLIC_API_URL=https://raizes-riquezas.up.railway.app
+ARG NEXT_PUBLIC_API_URL=https://api.raizeseriquezas.com.br
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
