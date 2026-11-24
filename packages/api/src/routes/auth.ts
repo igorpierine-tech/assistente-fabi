@@ -12,7 +12,7 @@ import "../session-types";
 
 const router: ExpressRouter = Router();
 const authLimiter = rateLimit({ prefix: "auth", windowMs: 10 * 60_000, max: 20 });
-const loginLimiter = rateLimit({ prefix: "login", windowMs: 15 * 60_000, max: 5 });
+const loginLimiter = rateLimit({ prefix: "login", windowMs: 15 * 60_000, max: 10 });
 
 function getOAuth2Client(redirectUri?: string) {
   return new google.auth.OAuth2(
