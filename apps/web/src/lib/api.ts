@@ -24,15 +24,10 @@ export function clearAuthToken(): void {
 
 export function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const url = `${API_URL}${path}`;
-  const token = getAuthToken();
-  const headers = new Headers(options.headers);
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
   return fetch(url, {
     ...options,
     credentials: "include",
-    headers,
+    headers: options.headers,
   });
 }
 
