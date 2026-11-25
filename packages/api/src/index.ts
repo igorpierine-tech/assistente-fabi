@@ -116,6 +116,12 @@ app.use(session({
   },
 }));
 app.use(resolveTenant);
+
+// Public booking routes — before trusted-origin and global rate-limit
+// because they're accessed by external visitors who have no session.
+// The router has its own rate limiters.
+app.use("/public/booking", publicBookingRouter);
+
 app.use(requireTrustedOrigin(allowedOrigins));
 app.use(rateLimit({ prefix: "api", windowMs: 15 * 60_000, max: 300 }));
 app.use(auditRequests);
@@ -139,7 +145,6 @@ app.use("/clients", requireUser, requireTenantModule("clientes"), clientsRouter)
 app.use("/appointments", requireUser, requireTenantModule("agenda"), appointmentsRouter);
 app.use("/privacy", privacyRouter);
 app.use("/booking", requireUser, requireTenantModule("agendamentos"), bookingRouter);
-app.use("/public/booking", publicBookingRouter);
 app.use("/catalog", requireUser, requireTenantModule("vendas"), catalogRouter);
 app.use("/receivables", requireUser, requireTenantModule("financeiro"), receivablesRouter);
 app.use("/sales", requireUser, requireTenantModule("vendas"), salesRouter);

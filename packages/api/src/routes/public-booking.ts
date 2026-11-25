@@ -77,7 +77,7 @@ router.get("/:slug", (req, res) => {
 
 // GET /public/booking/:slug/availability?type=slug&month=YYYY-MM
 // or  /public/booking/:slug/availability?type=slug&date=YYYY-MM-DD
-router.get("/:slug/availability", (req, res) => {
+router.get("/:slug/availability", async (req, res) => {
   const settings = getSettingsBySlug(String(req.params.slug));
   if (!settings) {
     res.status(404).json({ error: "Página de agendamento não encontrada" });
@@ -94,23 +94,42 @@ router.get("/:slug/availability", (req, res) => {
     return;
   }
 
-  // Busy comes from confirmed + pending booking requests. Google Calendar
-  // conflicts are checked at confirm time by Fabi.
   const now = DateTime.now().setZone(settings.timezone);
+  const windowStart = now.startOf("day").toUTC().toISO()!;
   const maxWindow = now
     .plus({ days: settings.max_advance_days })
     .endOf("day")
     .toUTC()
     .toISO()!;
+
+  // Busy from confirmed + pending booking requests
   const busyRows = listConflictingRequests(
     settings.user_id,
-    now.startOf("day").toUTC().toISO()!,
+    windowStart,
     maxWindow
   );
   const busy: Busy[] = busyRows.map((b) => ({
     start: b.requested_start,
     end: b.requested_end,
   }));
+
+  // Also fetch Google Calendar events so we don't offer slots already blocked
+  const gcalTokens = getGoogleTokens(settings.user_id);
+  if (gcalTokens) {
+    try {
+      const gcal = new GoogleCalendarService(gcalTokens, (refreshed) => {
+        updateGoogleTokens(settings.user_id, refreshed);
+      }, settings.timezone);
+      const events = await gcal.listEvents(windowStart, maxWindow);
+      for (const ev of events) {
+        if (ev.start && ev.end) {
+          busy.push({ start: ev.start, end: ev.end });
+        }
+      }
+    } catch (err) {
+      console.error("Falha ao consultar Google Calendar para disponibilidade:", err);
+    }
+  }
 
   const dateParam = req.query.date ? String(req.query.date) : null;
   const monthParam = req.query.month ? String(req.query.month) : null;
@@ -146,7 +165,7 @@ router.get("/:slug/availability", (req, res) => {
 });
 
 // POST /public/booking/:slug/request
-router.post("/:slug/request", submitLimiter, (req, res) => {
+router.post("/:slug/request", submitLimiter, async (req, res) => {
   const settings = getSettingsBySlug(String(req.params.slug));
   if (!settings) {
     res.status(404).json({ error: "Página de agendamento não encontrada" });
@@ -195,15 +214,32 @@ router.post("/:slug/request", submitLimiter, (req, res) => {
   }
   const endDate = startDate.plus({ minutes: type.duration_minutes });
 
-  const busyRows = listConflictingRequests(
-    settings.user_id,
-    startDate.startOf("day").toUTC().toISO()!,
-    startDate.endOf("day").toUTC().toISO()!
-  );
+  const dayStart = startDate.startOf("day").toUTC().toISO()!;
+  const dayEnd = startDate.endOf("day").toUTC().toISO()!;
+
+  const busyRows = listConflictingRequests(settings.user_id, dayStart, dayEnd);
   const busy: Busy[] = busyRows.map((b) => ({
     start: b.requested_start,
     end: b.requested_end,
   }));
+
+  // Also check Google Calendar events
+  const gcalTokens = getGoogleTokens(settings.user_id);
+  if (gcalTokens) {
+    try {
+      const gcal = new GoogleCalendarService(gcalTokens, (refreshed) => {
+        updateGoogleTokens(settings.user_id, refreshed);
+      }, settings.timezone);
+      const events = await gcal.listEvents(dayStart, dayEnd);
+      for (const ev of events) {
+        if (ev.start && ev.end) {
+          busy.push({ start: ev.start, end: ev.end });
+        }
+      }
+    } catch (err) {
+      console.error("Falha ao consultar Google Calendar na submissão:", err);
+    }
+  }
 
   const check = validateSlotChoice({
     startISO,
