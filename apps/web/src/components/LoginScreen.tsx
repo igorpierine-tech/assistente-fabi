@@ -22,8 +22,10 @@ export function LoginScreen({ onPasswordLogin, onAdminLogin }: LoginScreenProps)
     setLoading(true);
     setError("");
     const handler = adminMode && onAdminLogin ? onAdminLogin : onPasswordLogin;
+    const fallback = setTimeout(() => setLoading(false), 20_000);
     try {
       const err = await handler(email, password);
+      clearTimeout(fallback);
       if (err) {
         setError(err);
         setLoading(false);
@@ -31,6 +33,7 @@ export function LoginScreen({ onPasswordLogin, onAdminLogin }: LoginScreenProps)
         setTimeout(() => setLoading(false), 8000);
       }
     } catch {
+      clearTimeout(fallback);
       setError("Erro inesperado. Tente novamente.");
       setLoading(false);
     }

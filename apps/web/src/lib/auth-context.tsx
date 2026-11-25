@@ -59,8 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const refreshStatus = useCallback(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await apiFetch("/auth/status");
+      const res = await apiFetch("/auth/status", { signal: controller.signal });
+      clearTimeout(timeout);
       const data = await res.json();
       if (data.authenticated && data.user?.id) {
         setAuthMarker(true);
@@ -85,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState(prev => ({ ...prev, isAuthenticated: false, user: null, loading: false }));
       }
     } catch {
+      clearTimeout(timeout);
       clearAuthToken();
       setAuthMarker(false);
       setState(prev => ({ ...prev, isAuthenticated: false, user: null, loading: false }));
