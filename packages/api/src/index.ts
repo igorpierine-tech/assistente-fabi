@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import "dotenv/config";
 import express from "express";
 import session from "express-session";
@@ -86,7 +87,14 @@ app.use((req, _res, next) => {
   if (authorization?.startsWith("Bearer ")) {
     const token = authorization.slice("Bearer ".length).trim();
     if (isValidSignedSession(token, sessionSecret)) {
-      const signedCookie = `fabi.sid=${encodeURIComponent(`s:${token}`)}`;
+      const payload = token.slice(0, token.lastIndexOf("."));
+      const colonIdx = payload.lastIndexOf(":");
+      const sessionId = colonIdx > 0 ? payload.slice(0, colonIdx) : payload;
+      const cookieSig = createHmac("sha256", sessionSecret)
+        .update(sessionId)
+        .digest("base64")
+        .replace(/=+$/, "");
+      const signedCookie = `fabi.sid=${encodeURIComponent(`s:${sessionId}.${cookieSig}`)}`;
       const existing = req.headers.cookie || "";
       const otherCookies = existing
         .split(";")
