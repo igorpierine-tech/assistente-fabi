@@ -4,8 +4,8 @@ export const partial = "api";
 
 export default defineRailway(() => {
   const lms_api = service("lms-api", {
-    preDeploy: "npx prisma migrate deploy",
-    start: "node dist/server.js",
+    preDeploy: "cd packages/lms-api && npx prisma migrate deploy",
+    start: "cd packages/lms-api && node dist/server.js",
     healthcheck: "/health",
     env: {
       EMAIL_FROM: preserve(),
