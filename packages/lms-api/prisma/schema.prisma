@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("LMS_DATABASE_URL")
+}
+
+// ─── RBAC ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MENTOR
+  STUDENT
+}
+
+// ─── USERS & AUTH ────────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String    @unique @db.VarChar(255)
+  passwordHash   String    @map("password_hash") @db.VarChar(255)
+  role           Role      @default(STUDENT)
+  emailVerified  Boolean   @default(false) @map("email_verified")
+  emailVerifyToken String? @map("email_verify_token") @db.VarChar(255)
+  passwordResetToken String? @map("password_reset_token") @db.VarChar(255)
+  passwordResetExpires DateTime? @map("password_reset_expires")
+  failedLoginAttempts Int   @default(0) @map("failed_login_attempts")
+  lockedUntil    DateTime? @map("locked_until")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  profile        Profile?
+  sessions       Session[]
+  auditLogs      AuditLog[]
+  enrollments    Enrollment[]
+  submissions    Submission[]
+  pointLedger    PointLedger[]
+  badges         UserBadge[]
+  lessonProgress LessonProgress[]
+
+  @@index([email])
+  @@index([passwordResetToken])
+  @@map("users")
+}
+
+model Profile {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String  @unique @map("user_id") @db.Uuid
+  firstName String  @map("first_name") @db.VarChar(100)
+  lastName  String  @map("last_name") @db.VarChar(100)
+  avatarUrl String? @map("avatar_url") @db.VarChar(500)
+  phone     String? @db.VarChar(30)
+  company   String? @db.VarChar(200)
+  jobTitle  String? @map("job_title") @db.VarChar(200)
+  bio       String? @db.Text
+  lgpdConsentAt    DateTime? @map("lgpd_consent_at")
+  lgpdConsentVersion String? @map("lgpd_consent_version") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  refreshToken String   @unique @map("refresh_token") @db.VarChar(500)
+  userAgent    String?  @map("user_agent") @db.VarChar(500)
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([refreshToken])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String   @db.VarChar(100)
+  entity    String?  @db.VarChar(100)
+  entityId  String?  @map("entity_id") @db.VarChar(100)
+  metadata  Json?
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── PROGRAMS & CONTENT ──────────────────────────────────────────────────────
+
+model Program {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String   @unique @db.VarChar(100)
+  title       String   @db.VarChar(200)
+  subtitle    String?  @db.VarChar(300)
+  description String?  @db.Text
+  coverUrl    String?  @map("cover_url") @db.VarChar(500)
+  published   Boolean  @default(false)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  modules     Module[]
+  enrollments Enrollment[]
+
+  @@index([slug])
+  @@index([published])
+  @@map("programs")
+}
+
+model Module {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  programId   String   @map("program_id") @db.Uuid
+  slug        String   @db.VarChar(100)
+  title       String   @db.VarChar(200)
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  program Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([programId, slug])
+  @@index([programId, sortOrder])
+  @@map("modules")
+}
+
+enum LessonType {
+  VIDEO
+  LIVE
+  TEXT
+  ASSESSMENT
+}
+
+model Lesson {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleId     String     @map("module_id") @db.Uuid
+  slug         String     @db.VarChar(100)
+  title        String     @db.VarChar(200)
+  description  String?    @db.Text
+  type         LessonType @default(VIDEO)
+  videoUrl     String?    @map("video_url") @db.VarChar(500)
+  videoDuration Int?      @map("video_duration")
+  liveUrl      String?    @map("live_url") @db.VarChar(500)
+  liveStartsAt DateTime?  @map("live_starts_at")
+  content      String?    @db.Text
+  xpReward     Int        @default(10) @map("xp_reward")
+  sortOrder    Int        @default(0) @map("sort_order")
+  published    Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  materials Material[]
+  progress  LessonProgress[]
+  assessments Assessment[]
+
+  @@unique([moduleId, slug])
+  @@index([moduleId, sortOrder])
+  @@map("lessons")
+}
+
+model Material {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lessonId  String   @map("lesson_id") @db.Uuid
+  title     String   @db.VarChar(200)
+  fileUrl   String   @map("file_url") @db.VarChar(500)
+  fileType  String   @map("file_type") @db.VarChar(50)
+  fileSize  Int?     @map("file_size")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("materials")
+}
+
+// ─── ENROLLMENTS & PROGRESS ──────────────────────────────────────────────────
+
+model Enrollment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  programId  String   @map("program_id") @db.Uuid
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+  completedAt DateTime? @map("completed_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@index([programId])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  lessonId    String    @map("lesson_id") @db.Uuid
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+  watchTime   Int       @default(0) @map("watch_time")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("lesson_progress")
+}
+
+// ─── ASSESSMENTS ─────────────────────────────────────────────────────────────
+
+enum AssessmentType {
+  QUIZ
+  DIAGNOSTIC
+  ACTION_PLAN
+  SELF_EVALUATION
+}
+
+model Assessment {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lessonId    String         @map("lesson_id") @db.Uuid
+  title       String         @db.VarChar(200)
+  type        AssessmentType @default(QUIZ)
+  description String?        @db.Text
+  questions   Json?
+  xpReward    Int            @default(20) @map("xp_reward")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([lessonId])
+  @@map("assessments")
+}
+
+model Submission {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  assessmentId String    @map("assessment_id") @db.Uuid
+  answers      Json?
+  fileUrl      String?   @map("file_url") @db.VarChar(500)
+  score        Int?
+  feedback     String?   @db.Text
+  submittedAt  DateTime  @default(now()) @map("submitted_at")
+  reviewedAt   DateTime? @map("reviewed_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([assessmentId])
+  @@map("submissions")
+}
+
+// ─── GAMIFICATION ────────────────────────────────────────────────────────────
+
+model Badge {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String   @unique @db.VarChar(100)
+  title       String   @db.VarChar(200)
+  description String?  @db.Text
+  iconUrl     String?  @map("icon_url") @db.VarChar(500)
+  xpReward    Int      @default(0) @map("xp_reward")
+  criteria    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  badgeId   String   @map("badge_id") @db.Uuid
+  earnedAt  DateTime @default(now()) @map("earned_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@map("user_badges")
+}
+
+model PointLedger {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  points    Int
+  reason    String   @db.VarChar(200)
+  entityType String? @map("entity_type") @db.VarChar(50)
+  entityId  String?  @map("entity_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("point_ledger")
+}
