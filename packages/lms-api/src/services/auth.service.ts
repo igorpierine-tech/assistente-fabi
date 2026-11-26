@@ -5,6 +5,7 @@ import { Role } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { logAudit } from "../middleware/audit";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./email.service";
 import type { SignupInput, LoginInput } from "../schemas/auth";
 
 interface TokenPair {
@@ -119,6 +120,14 @@ export async function signup(
     ipAddress: meta.ip,
     userAgent: meta.userAgent,
   });
+
+  if (env.resendApiKey && result.user.emailVerifyToken) {
+    sendVerificationEmail(
+      result.user.email,
+      result.user.profile!.firstName,
+      result.user.emailVerifyToken
+    ).catch(() => {});
+  }
 
   return {
     tokens,
@@ -288,7 +297,14 @@ export async function forgotPassword(email: string, tenantSlug: string, meta: { 
     ipAddress: meta.ip,
   });
 
-  // TODO: send email with reset link containing the token
+  if (env.resendApiKey) {
+    const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+    sendPasswordResetEmail(
+      user.email,
+      profile?.firstName || "Usuário",
+      token
+    ).catch(() => {});
+  }
 }
 
 export async function resetPassword(token: string, newPassword: string, meta: { ip?: string }) {
@@ -324,6 +340,26 @@ export async function resetPassword(token: string, newPassword: string, meta: { 
     action: "auth.reset_password",
     ipAddress: meta.ip,
   });
+}
+
+export async function verifyEmail(token: string) {
+  const user = await prisma.user.findFirst({
+    where: { emailVerifyToken: token },
+  });
+
+  if (!user) {
+    throw new AppError("Token de verificação inválido ou já utilizado.", 400);
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerifyToken: null,
+    },
+  });
+
+  await logAudit({ userId: user.id, action: "auth.verify_email" });
 }
 
 export async function getProfile(userId: string) {

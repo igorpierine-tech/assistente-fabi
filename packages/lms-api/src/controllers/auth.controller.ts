@@ -68,6 +68,15 @@ export async function resetPasswordHandler(req: Request, res: Response, next: Ne
   }
 }
 
+export async function verifyEmailHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.verifyEmail(req.body.token);
+    res.json({ message: "E-mail verificado com sucesso." });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function profileHandler(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.userId) {

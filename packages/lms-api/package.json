@@ -10,6 +10,7 @@
     "lint": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx src/scripts/seed.ts"
   },
@@ -20,6 +21,7 @@
     "dotenv": "^16.5.0",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
+    "resend": "^6.39.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

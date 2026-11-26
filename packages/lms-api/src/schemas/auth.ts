@@ -41,8 +41,13 @@ export const resetPasswordSchema = z.object({
     .regex(/[0-9]/, "Senha deve conter ao menos um número"),
 });
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1),
+});
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;

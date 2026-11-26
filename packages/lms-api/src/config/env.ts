@@ -19,4 +19,6 @@ export const env = {
   bcryptRounds: 12,
   maxLoginAttempts: 5,
   lockoutDurationMs: 15 * 60 * 1000,
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  emailFrom: process.env.EMAIL_FROM || "Líder Áurea <noreply@lideraurea.com.br>",
 } as const;

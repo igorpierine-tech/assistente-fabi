@@ -8,6 +8,7 @@ import {
   refreshTokenSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from "../schemas/auth";
 import {
   signupHandler,
@@ -16,6 +17,7 @@ import {
   logoutHandler,
   forgotPasswordHandler,
   resetPasswordHandler,
+  verifyEmailHandler,
   profileHandler,
 } from "../controllers/auth.controller";
 
@@ -29,4 +31,5 @@ authRouter.post("/refresh", rateLimit({ windowMs: 60_000, max: 30, prefix: "refr
 authRouter.post("/logout", authenticate, logoutHandler);
 authRouter.post("/forgot-password", authRateLimit, validate(forgotPasswordSchema), forgotPasswordHandler);
 authRouter.post("/reset-password", authRateLimit, validate(resetPasswordSchema), resetPasswordHandler);
+authRouter.post("/verify-email", validate(verifyEmailSchema), verifyEmailHandler);
 authRouter.get("/me", authenticate, profileHandler);
