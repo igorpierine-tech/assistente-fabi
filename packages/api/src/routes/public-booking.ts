@@ -22,7 +22,9 @@ import {
   type Busy,
 } from "../services/booking-availability";
 import { rateLimit } from "../middleware/security";
-import { getTenantConfig } from "../services/database";
+import { getTenantConfig, getTenantDb } from "../services/database";
+import { listTenants } from "../services/master-db";
+import { tenantContext } from "../services/tenant-context";
 
 const router: ExpressRouter = Router();
 
@@ -63,6 +65,35 @@ function isEmail(value: string): boolean {
 }
 
 router.use(publicLimiter);
+
+// Resolve the tenant that owns the booking slug so getDb() hits the right database.
+router.param("slug", (_req, _res, next, slug: string) => {
+  for (const tenant of listTenants()) {
+    try {
+      const db = getTenantDb(tenant.slug);
+      const row = db.prepare("SELECT user_id FROM booking_settings WHERE slug = ?").get(slug);
+      if (row) {
+        tenantContext.run({ tenantId: tenant.id, tenantSlug: tenant.slug }, () => next());
+        return;
+      }
+    } catch { /* skip tenants whose DB isn't ready */ }
+  }
+  next();
+});
+
+router.param("token", (_req, _res, next, token: string) => {
+  for (const tenant of listTenants()) {
+    try {
+      const db = getTenantDb(tenant.slug);
+      const row = db.prepare("SELECT id FROM booking_requests WHERE manage_token = ?").get(token);
+      if (row) {
+        tenantContext.run({ tenantId: tenant.id, tenantSlug: tenant.slug }, () => next());
+        return;
+      }
+    } catch { /* skip tenants whose DB isn't ready */ }
+  }
+  next();
+});
 
 // GET /public/booking/:slug — page metadata + active types
 router.get("/:slug", (req, res) => {
