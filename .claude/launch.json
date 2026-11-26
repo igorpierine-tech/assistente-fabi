@@ -12,6 +12,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["turbo", "dev", "--filter=web"],
       "port": 3000
+    },
+    {
+      "name": "lms",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "lms", "dev"],
+      "port": 3003
     }
   ]
 }
