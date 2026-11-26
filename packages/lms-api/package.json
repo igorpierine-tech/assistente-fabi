@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:@prisma/client --external:prisma --external:bcryptjs --external:cors --external:dotenv --external:express --external:jsonwebtoken --external:stripe --external:resend --external:./types/*",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:@prisma/client --external:prisma --external:bcryptjs --external:cors --external:dotenv --external:express --external:jsonwebtoken --external:stripe --external:resend",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "db:generate": "prisma generate",

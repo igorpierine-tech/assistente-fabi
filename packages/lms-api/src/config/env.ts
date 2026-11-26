@@ -7,7 +7,7 @@ function requireEnv(key: string): string {
 }
 
 export const env = {
-  port: parseInt(process.env.LMS_PORT || "3002", 10),
+  port: parseInt(process.env.PORT || process.env.LMS_PORT || "3002", 10),
   nodeEnv: process.env.NODE_ENV || "development",
   isProduction: process.env.NODE_ENV === "production",
   databaseUrl: requireEnv("LMS_DATABASE_URL"),

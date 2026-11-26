@@ -4,7 +4,17 @@ import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { AppError } from "./auth.service";
 
-const stripe = new Stripe(env.stripeSecretKey);
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!env.stripeSecretKey) {
+      throw new AppError("STRIPE_SECRET_KEY is not configured", 500);
+    }
+    _stripe = new Stripe(env.stripeSecretKey);
+  }
+  return _stripe;
+}
 
 const PLAN_LIMITS: Record<PlanTier, { maxStudents: number; maxPrograms: number; maxStorageMb: number }> = {
   FREE: { maxStudents: 10, maxPrograms: 1, maxStorageMb: 500 },
@@ -29,7 +39,7 @@ async function getOrCreateCustomer(tenantId: string): Promise<string> {
     include: { profile: true },
   });
 
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     name: tenant.name,
     email: owner?.email,
     metadata: { tenantId, tenantSlug: tenant.slug },
@@ -55,7 +65,7 @@ export async function createCheckoutSession(tenantId: string, plan: "STARTER" | 
 
   const customerId = await getOrCreateCustomer(tenantId);
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
@@ -70,7 +80,7 @@ export async function createCheckoutSession(tenantId: string, plan: "STARTER" | 
 export async function createPortalSession(tenantId: string) {
   const customerId = await getOrCreateCustomer(tenantId);
 
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripe().billingPortal.sessions.create({
     customer: customerId,
     return_url: `${env.webUrl}/dashboard/settings/billing`,
   });
@@ -79,7 +89,7 @@ export async function createPortalSession(tenantId: string) {
 }
 
 export async function handleWebhook(payload: Buffer, signature: string) {
-  const event = stripe.webhooks.constructEvent(payload, signature, env.stripeWebhookSecret);
+  const event = getStripe().webhooks.constructEvent(payload, signature, env.stripeWebhookSecret);
 
   switch (event.type) {
     case "checkout.session.completed": {

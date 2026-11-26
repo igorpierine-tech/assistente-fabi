@@ -1,14 +1,24 @@
 import { Resend } from "resend";
 import { env } from "../config/env";
 
-const resend = new Resend(env.resendApiKey);
+let _resend: Resend | null = null;
+
+function getResend(): Resend {
+  if (!_resend) {
+    if (!env.resendApiKey) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+    _resend = new Resend(env.resendApiKey);
+  }
+  return _resend;
+}
 
 const FROM = env.emailFrom;
 
 export async function sendVerificationEmail(to: string, firstName: string, token: string) {
   const link = `${env.webUrl}/auth/verify-email?token=${token}`;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Confirme seu e-mail — Líder Áurea",
@@ -44,7 +54,7 @@ export async function sendVerificationEmail(to: string, firstName: string, token
 export async function sendPasswordResetEmail(to: string, firstName: string, token: string) {
   const link = `${env.webUrl}/auth/reset-password?token=${token}`;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Redefinição de senha — Líder Áurea",

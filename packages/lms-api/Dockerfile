@@ -25,12 +25,15 @@ FROM base AS production
 ENV NODE_ENV=production
 WORKDIR /app
 
-COPY --from=build /app/packages/lms-api/dist ./dist
-COPY --from=prisma /app/packages/lms-api/node_modules ./node_modules
-COPY --from=prisma /app/node_modules/.pnpm ./node_modules/.pnpm
-COPY --from=prisma /app/packages/lms-api/prisma ./prisma
-COPY packages/lms-api/package.json ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/lms-api/package.json ./packages/lms-api/
+RUN pnpm install --frozen-lockfile --filter @assistente-fabi/lms-api...
+
+COPY packages/lms-api/prisma ./packages/lms-api/prisma
+RUN cd packages/lms-api && npx prisma generate
+
+COPY --from=build /app/packages/lms-api/dist ./packages/lms-api/dist
 
 EXPOSE 3002
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+CMD ["sh", "-c", "cd packages/lms-api && npx prisma migrate deploy && node dist/server.js"]

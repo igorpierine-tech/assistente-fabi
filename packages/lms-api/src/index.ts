@@ -12,7 +12,6 @@ import { assessmentRouter } from "./routes/assessment.routes";
 import { gamificationRouter } from "./routes/gamification.routes";
 import { billingRouter } from "./routes/billing.routes";
 import { AppError } from "./services/auth.service";
-import "./types/express";
 
 const app = express();
 
