@@ -28,13 +28,14 @@ export default function AdminProgramsPage() {
   const { tokens } = useAuth();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tokens) return;
     api<Program[]>("/programs", { token: tokens.accessToken })
       .then(setPrograms)
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [tokens]);
 
@@ -78,7 +79,13 @@ export default function AdminProgramsPage() {
         </Link>
       </div>
 
-      {programs.length === 0 ? (
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-10 text-center">
+          <p className="text-sm text-red-800">
+            Erro ao carregar programas. Tente recarregar a página.
+          </p>
+        </div>
+      ) : programs.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-10 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/30" />
           <p className="mt-3 text-sm text-muted-foreground">
