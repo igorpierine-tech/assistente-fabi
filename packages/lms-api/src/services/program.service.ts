@@ -155,6 +155,7 @@ export async function listEnrolledPrograms(userId: string) {
             },
             orderBy: { sortOrder: "asc" },
           },
+          _count: { select: { modules: true, enrollments: true } },
         },
       },
     },
