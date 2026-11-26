@@ -16,7 +16,7 @@ function getResend(): Resend {
 const FROM = env.emailFrom;
 
 export async function sendVerificationEmail(to: string, firstName: string, token: string) {
-  const link = `${env.webUrl}/auth/verify-email?token=${token}`;
+  const link = `${env.webUrl}/verify-email?token=${token}`;
 
   await getResend().emails.send({
     from: FROM,
@@ -52,7 +52,7 @@ export async function sendVerificationEmail(to: string, firstName: string, token
 }
 
 export async function sendPasswordResetEmail(to: string, firstName: string, token: string) {
-  const link = `${env.webUrl}/auth/reset-password?token=${token}`;
+  const link = `${env.webUrl}/reset-password?token=${token}`;
 
   await getResend().emails.send({
     from: FROM,
