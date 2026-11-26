@@ -9,6 +9,8 @@ interface User {
   role: string;
   firstName: string;
   lastName: string;
+  tenantId: string;
+  tenantSlug: string;
 }
 
 interface AuthTokens {
@@ -20,8 +22,8 @@ interface AuthContextValue {
   user: User | null;
   tokens: AuthTokens | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (data: { email: string; password: string; firstName: string; lastName: string; lgpdConsent: boolean }) => Promise<void>;
+  login: (email: string, password: string, tenantSlug: string) => Promise<void>;
+  signup: (data: { email: string; password: string; firstName: string; lastName: string; orgName?: string; lgpdConsent: boolean }) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<string | null>;
 }
@@ -70,15 +72,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_KEY);
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, tenantSlug: string) => {
     const result = await api<{ tokens: AuthTokens; user: User }>("/auth/login", {
       method: "POST",
-      body: { email, password },
+      body: { email, password, tenantSlug },
     });
     persistAuth(result.user, result.tokens);
   }, [persistAuth]);
 
-  const signup = useCallback(async (data: { email: string; password: string; firstName: string; lastName: string; lgpdConsent: boolean }) => {
+  const signup = useCallback(async (data: { email: string; password: string; firstName: string; lastName: string; orgName?: string; lgpdConsent: boolean }) => {
     const result = await api<{ tokens: AuthTokens; user: User }>("/auth/signup", {
       method: "POST",
       body: data,

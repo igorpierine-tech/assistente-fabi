@@ -20,53 +20,90 @@ interface AuthResult {
     role: Role;
     firstName: string;
     lastName: string;
+    tenantId: string;
+    tenantSlug: string;
   };
 }
 
-function generateTokens(userId: string, role: Role): TokenPair {
-  const accessToken = jwt.sign({ userId, role }, env.jwtAccessSecret, {
+function generateTokens(userId: string, role: Role, tenantId: string): TokenPair {
+  const accessToken = jwt.sign({ userId, role, tenantId }, env.jwtAccessSecret, {
     expiresIn: env.jwtAccessExpiresIn,
   });
-  const refreshToken = jwt.sign({ userId, type: "refresh" }, env.jwtRefreshSecret, {
+  const refreshToken = jwt.sign({ userId, tenantId, type: "refresh" }, env.jwtRefreshSecret, {
     expiresIn: env.jwtRefreshExpiresIn,
   });
   return { accessToken, refreshToken };
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export async function signup(
   input: SignupInput,
   meta: { ip?: string; userAgent?: string }
 ): Promise<AuthResult> {
-  const existing = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
-  if (existing) {
-    throw new AppError("E-mail já cadastrado.", 409);
+  const email = input.email.toLowerCase();
+
+  let baseSlug = slugify(input.orgName || `${input.firstName}-${input.lastName}`);
+  let slug = baseSlug;
+  let attempt = 0;
+  while (await prisma.tenant.findUnique({ where: { slug } })) {
+    attempt++;
+    slug = `${baseSlug}-${attempt}`;
   }
 
   const passwordHash = await bcrypt.hash(input.password, env.bcryptRounds);
 
-  const user = await prisma.user.create({
-    data: {
-      email: input.email.toLowerCase(),
-      passwordHash,
-      role: Role.STUDENT,
-      emailVerifyToken: randomBytes(32).toString("hex"),
-      profile: {
-        create: {
-          firstName: input.firstName,
-          lastName: input.lastName,
-          lgpdConsentAt: new Date(),
-          lgpdConsentVersion: "1.0",
+  const result = await prisma.$transaction(async (tx) => {
+    const tenant = await tx.tenant.create({
+      data: {
+        slug,
+        name: input.orgName || `${input.firstName} ${input.lastName}`,
+        plan: "FREE",
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const existing = await tx.user.findUnique({
+      where: { tenantId_email: { tenantId: tenant.id, email } },
+    });
+    if (existing) {
+      throw new AppError("E-mail já cadastrado.", 409);
+    }
+
+    const user = await tx.user.create({
+      data: {
+        tenantId: tenant.id,
+        email,
+        passwordHash,
+        role: Role.OWNER,
+        emailVerifyToken: randomBytes(32).toString("hex"),
+        profile: {
+          create: {
+            firstName: input.firstName,
+            lastName: input.lastName,
+            lgpdConsentAt: new Date(),
+            lgpdConsentVersion: "1.0",
+          },
         },
       },
-    },
-    include: { profile: true },
+      include: { profile: true },
+    });
+
+    return { user, tenant };
   });
 
-  const tokens = generateTokens(user.id, user.role);
+  const tokens = generateTokens(result.user.id, result.user.role, result.tenant.id);
 
   await prisma.session.create({
     data: {
-      userId: user.id,
+      userId: result.user.id,
       refreshToken: tokens.refreshToken,
       userAgent: meta.userAgent?.slice(0, 500),
       ipAddress: meta.ip,
@@ -75,10 +112,10 @@ export async function signup(
   });
 
   await logAudit({
-    userId: user.id,
+    userId: result.user.id,
     action: "auth.signup",
-    entity: "user",
-    entityId: user.id,
+    entity: "tenant",
+    entityId: result.tenant.id,
     ipAddress: meta.ip,
     userAgent: meta.userAgent,
   });
@@ -86,11 +123,13 @@ export async function signup(
   return {
     tokens,
     user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.profile!.firstName,
-      lastName: user.profile!.lastName,
+      id: result.user.id,
+      email: result.user.email,
+      role: result.user.role,
+      firstName: result.user.profile!.firstName,
+      lastName: result.user.profile!.lastName,
+      tenantId: result.tenant.id,
+      tenantSlug: result.tenant.slug,
     },
   };
 }
@@ -99,13 +138,19 @@ export async function login(
   input: LoginInput,
   meta: { ip?: string; userAgent?: string }
 ): Promise<AuthResult> {
-  const user = await prisma.user.findUnique({
-    where: { email: input.email.toLowerCase() },
-    include: { profile: true },
+  const email = input.email.toLowerCase();
+
+  const user = await prisma.user.findFirst({
+    where: { email, tenant: { slug: input.tenantSlug } },
+    include: { profile: true, tenant: { select: { id: true, slug: true, active: true } } },
   });
 
   if (!user) {
     throw new AppError("Credenciais inválidas.", 401);
+  }
+
+  if (!user.tenant.active) {
+    throw new AppError("Organização inativa. Entre em contato com o suporte.", 403);
   }
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
@@ -145,7 +190,7 @@ export async function login(
     data: { failedLoginAttempts: 0, lockedUntil: null },
   });
 
-  const tokens = generateTokens(user.id, user.role);
+  const tokens = generateTokens(user.id, user.role, user.tenantId);
 
   await prisma.session.create({
     data: {
@@ -172,6 +217,8 @@ export async function login(
       role: user.role,
       firstName: user.profile?.firstName || "",
       lastName: user.profile?.lastName || "",
+      tenantId: user.tenantId,
+      tenantSlug: user.tenant.slug,
     },
   };
 }
@@ -180,9 +227,9 @@ export async function refreshAccessToken(
   refreshToken: string,
   meta: { ip?: string; userAgent?: string }
 ): Promise<TokenPair> {
-  let payload: { userId: string };
+  let payload: { userId: string; tenantId: string };
   try {
-    payload = jwt.verify(refreshToken, env.jwtRefreshSecret) as { userId: string };
+    payload = jwt.verify(refreshToken, env.jwtRefreshSecret) as { userId: string; tenantId: string };
   } catch {
     throw new AppError("Refresh token inválido ou expirado.", 401);
   }
@@ -198,7 +245,7 @@ export async function refreshAccessToken(
     throw new AppError("Usuário não encontrado.", 401);
   }
 
-  const newTokens = generateTokens(user.id, user.role);
+  const newTokens = generateTokens(user.id, user.role, user.tenantId);
 
   await prisma.session.update({
     where: { id: session.id },
@@ -220,9 +267,11 @@ export async function logout(refreshToken: string, userId: string) {
   await logAudit({ userId, action: "auth.logout" });
 }
 
-export async function forgotPassword(email: string, meta: { ip?: string }) {
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (!user) return; // silent — don't reveal user existence
+export async function forgotPassword(email: string, tenantSlug: string, meta: { ip?: string }) {
+  const user = await prisma.user.findFirst({
+    where: { email: email.toLowerCase(), tenant: { slug: tenantSlug } },
+  });
+  if (!user) return;
 
   const token = randomBytes(32).toString("hex");
   await prisma.user.update({
@@ -284,8 +333,19 @@ export async function getProfile(userId: string) {
       id: true,
       email: true,
       role: true,
+      tenantId: true,
       emailVerified: true,
       createdAt: true,
+      tenant: {
+        select: {
+          slug: true,
+          name: true,
+          logoUrl: true,
+          primaryColor: true,
+          accentColor: true,
+          plan: true,
+        },
+      },
       profile: {
         select: {
           firstName: true,

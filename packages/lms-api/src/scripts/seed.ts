@@ -7,17 +7,35 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding LMS database...");
 
-  const adminHash = await bcrypt.hash("Admin@2024", 12);
+  // ─── Tenant ─────────────────────────────────────────────────────────────────
+
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: "raizes-e-riquezas" },
+    update: {},
+    create: {
+      slug: "raizes-e-riquezas",
+      name: "Raízes e Riquezas",
+      plan: "PRO",
+      maxStudents: 100,
+      maxPrograms: 10,
+      maxStorageMb: 5000,
+    },
+  });
+
+  // ─── Users ──────────────────────────────────────────────────────────────────
+
+  const ownerHash = await bcrypt.hash("Admin@2024", 12);
   const mentorHash = await bcrypt.hash("Mentor@2024", 12);
   const studentHash = await bcrypt.hash("Aluno@2024", 12);
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@lideraurea.com.br" },
+  const owner = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "admin@lideraurea.com.br" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       email: "admin@lideraurea.com.br",
-      passwordHash: adminHash,
-      role: Role.ADMIN,
+      passwordHash: ownerHash,
+      role: Role.OWNER,
       emailVerified: true,
       profile: {
         create: {
@@ -31,9 +49,10 @@ async function main() {
   });
 
   const mentor = await prisma.user.upsert({
-    where: { email: "fabiana@lideraurea.com.br" },
+    where: { tenantId_email: { tenantId: tenant.id, email: "fabiana@lideraurea.com.br" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       email: "fabiana@lideraurea.com.br",
       passwordHash: mentorHash,
       role: Role.MENTOR,
@@ -52,9 +71,10 @@ async function main() {
   });
 
   const student = await prisma.user.upsert({
-    where: { email: "aluno@exemplo.com.br" },
+    where: { tenantId_email: { tenantId: tenant.id, email: "aluno@exemplo.com.br" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       email: "aluno@exemplo.com.br",
       passwordHash: studentHash,
       role: Role.STUDENT,
@@ -72,10 +92,13 @@ async function main() {
     },
   });
 
+  // ─── Program ────────────────────────────────────────────────────────────────
+
   const program = await prisma.program.upsert({
-    where: { slug: "mentoria-lider-aurea" },
+    where: { tenantId_slug: { tenantId: tenant.id, slug: "mentoria-lider-aurea" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       slug: "mentoria-lider-aurea",
       title: "Mentoria Líder Áurea",
       subtitle: "Programa de Desenvolvimento de Liderança Executiva",
@@ -85,6 +108,8 @@ async function main() {
       sortOrder: 1,
     },
   });
+
+  // ─── Modules & Lessons ──────────────────────────────────────────────────────
 
   const mod1 = await prisma.module.upsert({
     where: { programId_slug: { programId: program.id, slug: "fundamentos-lideranca" } },
@@ -174,10 +199,13 @@ async function main() {
     },
   });
 
+  // ─── Badges ─────────────────────────────────────────────────────────────────
+
   await prisma.badge.upsert({
-    where: { slug: "primeiro-acesso" },
+    where: { tenantId_slug: { tenantId: tenant.id, slug: "primeiro-acesso" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       slug: "primeiro-acesso",
       title: "Primeiro Passo",
       description: "Completou o primeiro acesso à plataforma.",
@@ -186,9 +214,10 @@ async function main() {
   });
 
   await prisma.badge.upsert({
-    where: { slug: "diagnostico-concluido" },
+    where: { tenantId_slug: { tenantId: tenant.id, slug: "diagnostico-concluido" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       slug: "diagnostico-concluido",
       title: "Diagnóstico de Governança Concluído",
       description: "Completou o diagnóstico de maturidade de liderança.",
@@ -197,15 +226,18 @@ async function main() {
   });
 
   await prisma.badge.upsert({
-    where: { slug: "presenca-ativa" },
+    where: { tenantId_slug: { tenantId: tenant.id, slug: "presenca-ativa" } },
     update: {},
     create: {
+      tenantId: tenant.id,
       slug: "presenca-ativa",
       title: "Presença Ativa",
       description: "Participou de 3 encontros ao vivo consecutivos.",
       xpReward: 30,
     },
   });
+
+  // ─── Enrollment ─────────────────────────────────────────────────────────────
 
   await prisma.enrollment.upsert({
     where: { userId_programId: { userId: student.id, programId: program.id } },
@@ -214,7 +246,8 @@ async function main() {
   });
 
   console.log("Seed concluído!");
-  console.log(`  Admin: admin@lideraurea.com.br / Admin@2024`);
+  console.log(`  Tenant: ${tenant.slug} (${tenant.name})`);
+  console.log(`  Owner: admin@lideraurea.com.br / Admin@2024`);
   console.log(`  Mentora: fabiana@lideraurea.com.br / Mentor@2024`);
   console.log(`  Aluna: aluno@exemplo.com.br / Aluno@2024`);
 }

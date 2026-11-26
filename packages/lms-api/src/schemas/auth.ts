@@ -11,12 +11,14 @@ export const signupSchema = z.object({
     .regex(/[0-9]/, "Senha deve conter ao menos um número"),
   firstName: z.string().min(2).max(100),
   lastName: z.string().min(2).max(100),
+  orgName: z.string().min(2).max(200).optional(),
   lgpdConsent: z.literal(true, { message: "Consentimento LGPD é obrigatório" }),
 });
 
 export const loginSchema = z.object({
   email: z.email().max(255),
   password: z.string().min(1).max(128),
+  tenantSlug: z.string().min(1).max(100),
 });
 
 export const refreshTokenSchema = z.object({
@@ -25,6 +27,7 @@ export const refreshTokenSchema = z.object({
 
 export const forgotPasswordSchema = z.object({
   email: z.email().max(255),
+  tenantSlug: z.string().min(1).max(100),
 });
 
 export const resetPasswordSchema = z.object({

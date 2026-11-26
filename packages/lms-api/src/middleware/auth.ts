@@ -6,6 +6,7 @@ import { env } from "../config/env";
 interface AccessTokenPayload {
   userId: string;
   role: Role;
+  tenantId: string;
 }
 
 export const authenticate: RequestHandler = (req, res, next) => {
@@ -20,6 +21,7 @@ export const authenticate: RequestHandler = (req, res, next) => {
     const payload = jwt.verify(token, env.jwtAccessSecret) as AccessTokenPayload;
     req.userId = payload.userId;
     req.userRole = payload.role;
+    req.tenantId = payload.tenantId;
     next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {

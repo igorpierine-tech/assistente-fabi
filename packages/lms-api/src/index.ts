@@ -4,6 +4,7 @@ import cors from "cors";
 import { env } from "./config/env";
 import { securityHeaders, rateLimit } from "./middleware/security";
 import { authRouter } from "./routes/auth.routes";
+import { tenantRouter } from "./routes/tenant.routes";
 import { AppError } from "./services/auth.service";
 import "./types/express";
 
@@ -44,6 +45,7 @@ app.get("/health", (_req, res) => {
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 app.use("/auth", authRouter);
+app.use("/tenant", tenantRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 

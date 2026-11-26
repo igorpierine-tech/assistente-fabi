@@ -13,6 +13,7 @@ import { Loader2 } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const [tenantSlug, setTenantSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, tenantSlug);
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -62,6 +63,20 @@ export default function LoginPage() {
         )}
 
         <div className="space-y-2">
+          <Label htmlFor="tenant">Organização</Label>
+          <Input
+            id="tenant"
+            type="text"
+            placeholder="slug-da-organizacao"
+            value={tenantSlug}
+            onChange={(e) => setTenantSlug(e.target.value)}
+            required
+            autoComplete="organization"
+            autoFocus
+          />
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
@@ -71,7 +86,6 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            autoFocus
           />
         </div>
 
