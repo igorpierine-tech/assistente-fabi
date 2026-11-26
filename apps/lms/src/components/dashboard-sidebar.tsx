@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Users,
   BarChart3,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
@@ -32,6 +33,7 @@ const adminNav = [
   { href: "/dashboard/achievements", label: "Conquistas", icon: Trophy },
   { href: "/dashboard/users", label: "Usuários", icon: Users },
   { href: "/dashboard/analytics", label: "Métricas", icon: BarChart3 },
+  { href: "/dashboard/settings/billing", label: "Plano & Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
