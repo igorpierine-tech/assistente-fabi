@@ -1,7 +1,49 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { BookOpen, Trophy, Clock, TrendingUp } from "lucide-react";
+import { api } from "@/lib/api";
+import {
+  BookOpen,
+  Trophy,
+  Zap,
+  TrendingUp,
+  ChevronRight,
+  Medal,
+  Loader2,
+} from "lucide-react";
+
+interface XpSummary {
+  totalXp: number;
+  badgeCount: number;
+  lessonsCompleted: number;
+}
+
+interface Enrollment {
+  id: string;
+  enrolledAt: string;
+  program: {
+    id: string;
+    slug: string;
+    title: string;
+    subtitle: string | null;
+    _count: { modules: number };
+  };
+}
+
+interface Progress {
+  totalLessons: number;
+  completedLessons: number;
+  percentComplete: number;
+  totalXp: number;
+}
+
+interface UserBadge {
+  id: string;
+  earnedAt: string;
+  badge: { title: string; description: string | null; xpReward: number };
+}
 
 function StatCard({
   icon: Icon,
@@ -34,7 +76,58 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, tokens } = useAuth();
+  const [xp, setXp] = useState<XpSummary | null>(null);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [progresses, setProgresses] = useState<Record<string, Progress>>({});
+  const [recentBadges, setRecentBadges] = useState<UserBadge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!tokens) return;
+
+    async function load() {
+      try {
+        const [xpData, enrolled, badges] = await Promise.all([
+          api<XpSummary>("/gamification/xp", { token: tokens!.accessToken }),
+          api<Enrollment[]>("/programs/my", { token: tokens!.accessToken }),
+          api<UserBadge[]>("/gamification/badges/my", { token: tokens!.accessToken }),
+        ]);
+        setXp(xpData);
+        setEnrollments(enrolled);
+        setRecentBadges(badges.slice(0, 3));
+
+        const progs: Record<string, Progress> = {};
+        await Promise.all(
+          enrolled.map(async (e) => {
+            try {
+              progs[e.program.id] = await api<Progress>(
+                `/lessons/progress/${e.program.id}`,
+                { token: tokens!.accessToken }
+              );
+            } catch {
+              // skip
+            }
+          })
+        );
+        setProgresses(progs);
+      } catch {
+        // handle
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, [tokens]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -53,62 +146,145 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={BookOpen} label="Programas Ativos" value="1" accent />
-        <StatCard icon={Clock} label="Aulas Concluídas" value="0" />
-        <StatCard icon={Trophy} label="Conquistas" value="0" accent />
-        <StatCard icon={TrendingUp} label="XP Total" value="0" />
+        <StatCard
+          icon={BookOpen}
+          label="Programas Ativos"
+          value={String(enrollments.length)}
+          accent
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Aulas Concluídas"
+          value={String(xp?.lessonsCompleted ?? 0)}
+        />
+        <StatCard
+          icon={Trophy}
+          label="Conquistas"
+          value={String(xp?.badgeCount ?? 0)}
+          accent
+        />
+        <StatCard
+          icon={Zap}
+          label="XP Total"
+          value={String(xp?.totalXp ?? 0)}
+        />
       </div>
 
-      {/* Current program */}
-      <section>
-        <h2 className="font-serif text-xl font-semibold text-foreground mb-4">
-          Continuar Aprendendo
-        </h2>
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-gold-dark font-semibold mb-1">
-                  Mentoria Líder Áurea
-                </p>
-                <h3 className="font-serif text-lg font-semibold text-foreground">
-                  Módulo 1 — Fundamentos da Liderança Áurea
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Boas-vindas à Mentoria Líder Áurea
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-dark">
-                Em andamento
-              </span>
-            </div>
-            <div className="mt-5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                <span>Progresso do módulo</span>
-                <span>0 / 3 aulas</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-gold-dark to-gold transition-all"
-                  style={{ width: "0%" }}
-                />
-              </div>
-            </div>
+      {/* Current programs */}
+      {enrollments.length > 0 && (
+        <section>
+          <h2 className="font-serif text-xl font-semibold text-foreground mb-4">
+            Continuar Aprendendo
+          </h2>
+          <div className="space-y-4">
+            {enrollments.map((e) => {
+              const prog = progresses[e.program.id];
+              return (
+                <Link
+                  key={e.id}
+                  href={`/programs/${e.program.slug}`}
+                  className="group block rounded-xl border border-border bg-card overflow-hidden hover:border-gold/30 transition-all"
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-gold-dark font-semibold mb-1">
+                          {e.program.title}
+                        </p>
+                        {e.program.subtitle && (
+                          <h3 className="font-serif text-lg font-semibold text-foreground">
+                            {e.program.subtitle}
+                          </h3>
+                        )}
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {e.program._count.modules} módulos
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {prog && (
+                          <span className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-dark">
+                            {prog.percentComplete}% concluído
+                          </span>
+                        )}
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-gold-dark transition-colors" />
+                      </div>
+                    </div>
+                    {prog && (
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                          <span>Progresso</span>
+                          <span>
+                            {prog.completedLessons} / {prog.totalLessons} aulas · {prog.totalXp} XP
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-gold-dark to-gold transition-all"
+                            style={{ width: `${prog.percentComplete}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
+        </section>
+      )}
+
+      {enrollments.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-10 text-center">
+          <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/30" />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Você ainda não está matriculado em nenhum programa.
+          </p>
         </div>
-      </section>
+      )}
 
       {/* Recent badges */}
       <section>
-        <h2 className="font-serif text-xl font-semibold text-foreground mb-4">
-          Últimas Conquistas
-        </h2>
-        <div className="rounded-xl border border-border bg-card p-10 text-center">
-          <Trophy className="mx-auto h-10 w-10 text-muted-foreground/30" />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Complete aulas e atividades para ganhar conquistas e XP.
-          </p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-serif text-xl font-semibold text-foreground">
+            Últimas Conquistas
+          </h2>
+          <Link
+            href="/dashboard/achievements"
+            className="text-sm text-gold-dark hover:underline"
+          >
+            Ver todas
+          </Link>
         </div>
+        {recentBadges.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {recentBadges.map((ub) => (
+              <div
+                key={ub.id}
+                className="rounded-xl border border-gold/30 bg-gold/5 p-4 flex items-center gap-3"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gold/20">
+                  <Medal className="h-5 w-5 text-gold-dark" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {ub.badge.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(ub.earnedAt).toLocaleDateString("pt-BR")}
+                    {ub.badge.xpReward > 0 && ` · +${ub.badge.xpReward} XP`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card p-10 text-center">
+            <Trophy className="mx-auto h-10 w-10 text-muted-foreground/30" />
+            <p className="mt-3 text-sm text-muted-foreground">
+              Complete aulas e atividades para ganhar conquistas e XP.
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );

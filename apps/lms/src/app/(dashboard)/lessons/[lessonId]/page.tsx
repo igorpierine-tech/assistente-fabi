@@ -47,6 +47,14 @@ interface Lesson {
   };
 }
 
+interface Assessment {
+  id: string;
+  title: string;
+  type: string;
+  description: string | null;
+  xpReward: number;
+}
+
 interface Progress {
   completed: boolean;
   completedAt: string | null;
@@ -60,6 +68,7 @@ export default function LessonPage() {
   const { tokens } = useAuth();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [completing, setCompleting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +90,17 @@ export default function LessonPage() {
         } catch {
           // no progress yet
         }
+
+        if (l.type === "ASSESSMENT") {
+          try {
+            const a = await api<Assessment[]>(`/assessments/lesson/${lessonId}`, {
+              token: tokens!.accessToken,
+            });
+            setAssessments(a);
+          } catch {
+            // no assessments
+          }
+        }
       } catch {
         // handle
       } finally {
@@ -100,6 +120,11 @@ export default function LessonPage() {
         token: tokens.accessToken,
       });
       setProgress(p);
+
+      await api("/gamification/badges/check", {
+        method: "POST",
+        token: tokens.accessToken,
+      }).catch(() => {});
     } catch {
       // handle
     } finally {
@@ -217,7 +242,39 @@ export default function LessonPage() {
           </div>
         )}
 
-        {!lesson.videoUrl && !lesson.liveUrl && !lesson.content && (
+        {lesson.type === "ASSESSMENT" && assessments.length > 0 && (
+          <div className="p-6 space-y-3">
+            <p className="text-sm text-muted-foreground mb-4">
+              Complete a avaliação abaixo para ganhar XP e avançar no programa.
+            </p>
+            {assessments.map((a) => (
+              <Link
+                key={a.id}
+                href={`/assessments/${a.id}`}
+                className="flex items-center gap-4 rounded-lg border border-border p-4 hover:border-gold/30 transition-colors"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gold/15">
+                  <ClipboardCheck className="h-5 w-5 text-gold-dark" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-medium text-foreground">{a.title}</h3>
+                  {a.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{a.description}</p>
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-gold-dark">{a.xpReward} XP</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {lesson.type === "ASSESSMENT" && assessments.length === 0 && !lesson.content && (
+          <div className="p-10 text-center text-sm text-muted-foreground">
+            Avaliação em preparação.
+          </div>
+        )}
+
+        {lesson.type !== "ASSESSMENT" && !lesson.videoUrl && !lesson.liveUrl && !lesson.content && (
           <div className="p-10 text-center text-sm text-muted-foreground">
             Conteúdo em breve.
           </div>

@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "./auth.service";
+import { checkAndAwardBadges } from "./gamification.service";
 
 function slugify(text: string): string {
   return text
@@ -133,7 +134,7 @@ export async function getLessonProgress(userId: string, lessonId: string) {
   });
 }
 
-export async function markLessonComplete(userId: string, lessonId: string) {
+export async function markLessonComplete(userId: string, lessonId: string, tenantId?: string) {
   const progress = await prisma.lessonProgress.upsert({
     where: { userId_lessonId: { userId, lessonId } },
     update: { completed: true, completedAt: new Date() },
@@ -161,6 +162,10 @@ export async function markLessonComplete(userId: string, lessonId: string) {
         },
       });
     }
+  }
+
+  if (tenantId) {
+    checkAndAwardBadges(userId, tenantId).catch(() => {});
   }
 
   return progress;

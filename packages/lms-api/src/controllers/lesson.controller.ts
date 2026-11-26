@@ -46,7 +46,7 @@ export async function deleteLessonHandler(req: Request, res: Response, next: Nex
 export async function markCompleteHandler(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.userId) { res.status(401).json({ error: "Não autenticado." }); return; }
-    const progress = await lessonService.markLessonComplete(req.userId, param(req, "lessonId"));
+    const progress = await lessonService.markLessonComplete(req.userId, param(req, "lessonId"), req.tenantId);
     res.json(progress);
   } catch (err) { next(err); }
 }
