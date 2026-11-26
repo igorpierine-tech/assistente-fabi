@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { BookOpen, Users, ChevronRight, Loader2 } from "lucide-react";
+import { BookOpen, Users, ChevronRight, Loader2, GraduationCap } from "lucide-react";
 
 interface Program {
   id: string;
@@ -31,6 +31,11 @@ export default function ProgramsPage() {
 
   const isAdmin = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "MENTOR";
 
+  const enrolledIds = new Set(enrollments.map((e) => e.program.id));
+  const availablePrograms = allPrograms.filter(
+    (p) => p.published && !enrolledIds.has(p.id)
+  );
+
   useEffect(() => {
     if (!tokens) return;
 
@@ -38,9 +43,7 @@ export default function ProgramsPage() {
       try {
         const [enrolled, all] = await Promise.all([
           api<Enrollment[]>("/programs/my", { token: tokens!.accessToken }),
-          isAdmin
-            ? api<Program[]>("/programs", { token: tokens!.accessToken })
-            : Promise.resolve([]),
+          api<Program[]>("/programs", { token: tokens!.accessToken }),
         ]);
         setEnrollments(enrolled);
         setAllPrograms(all);
@@ -111,13 +114,53 @@ export default function ProgramsPage() {
         </section>
       )}
 
-      {enrollments.length === 0 && (
+      {enrollments.length === 0 && availablePrograms.length === 0 && (
         <div className="rounded-xl border border-border bg-card p-10 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/30" />
           <p className="mt-3 text-sm text-muted-foreground">
-            Você ainda não está matriculado em nenhum programa.
+            Nenhum programa disponível no momento.
           </p>
         </div>
+      )}
+
+      {/* Available programs for enrollment */}
+      {availablePrograms.length > 0 && (
+        <section>
+          <h2 className="font-serif text-xl font-semibold text-foreground mb-4">
+            Programas Disponíveis
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {availablePrograms.map((p) => (
+              <Link
+                key={p.id}
+                href={`/programs/${p.slug}`}
+                className="group rounded-xl border border-border bg-card p-6 transition-all hover:shadow-md hover:border-gold/30"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gold/10 mb-4">
+                  <GraduationCap className="h-5 w-5 text-gold-dark" />
+                </div>
+                <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-gold-dark transition-colors">
+                  {p.title}
+                </h3>
+                {p.subtitle && (
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{p.subtitle}</p>
+                )}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{p._count.modules} módulos</span>
+                    <span>·</span>
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" /> {p._count.enrollments} alunos
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-gold-dark group-hover:underline">
+                    Ver programa →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Admin: all programs */}
