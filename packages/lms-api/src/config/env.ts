@@ -20,7 +20,7 @@ export const env = {
   maxLoginAttempts: 5,
   lockoutDurationMs: 15 * 60 * 1000,
   resendApiKey: process.env.RESEND_API_KEY || "",
-  emailFrom: process.env.EMAIL_FROM || "Líder Áurea <noreply@lideraurea.com.br>",
+  emailFrom: process.env.EMAIL_FROM || "Líder Áurea <noreply@lms.raizeseriquezas.com.br>",
   hotmartToken: process.env.HOTMART_TOKEN || "",
   hotmartProductStarter: process.env.HOTMART_PRODUCT_STARTER || "",
   hotmartProductPro: process.env.HOTMART_PRODUCT_PRO || "",
