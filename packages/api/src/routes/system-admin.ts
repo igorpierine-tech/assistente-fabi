@@ -497,6 +497,91 @@ router.post("/set-password", validateBody(setPasswordSchema), async (req, res) =
   }
 });
 
+// --- Migrate orphaned booking requests from legacy DB to tenant DBs ---
+
+router.post("/migrate-orphaned-bookings", (_req, res) => {
+  const Database = require("better-sqlite3");
+  const { databasePath, tenantDbPath } = require("../config/persistence");
+
+  const legacyPath = databasePath();
+  let legacyDb;
+  try {
+    legacyDb = new Database(legacyPath);
+  } catch {
+    res.json({ ok: true, message: "Banco legado não encontrado. Nada a migrar.", migrated: 0, skipped: 0, duplicates: 0 });
+    return;
+  }
+
+  let orphanedRequests: any[];
+  try {
+    orphanedRequests = legacyDb.prepare("SELECT * FROM booking_requests ORDER BY created_at ASC").all();
+  } catch {
+    legacyDb.close();
+    res.json({ ok: true, message: "Tabela booking_requests não existe no banco legado.", migrated: 0, skipped: 0, duplicates: 0 });
+    return;
+  }
+
+  if (orphanedRequests.length === 0) {
+    legacyDb.close();
+    res.json({ ok: true, message: "Nenhum booking_request no banco legado.", migrated: 0, skipped: 0, duplicates: 0 });
+    return;
+  }
+
+  const allTenants = listTenants();
+  const userToTenant = new Map<string, { slug: string }>();
+
+  for (const tenant of allTenants) {
+    try {
+      const tDb = getTenantDb(tenant.slug);
+      const settings = tDb.prepare("SELECT user_id FROM booking_settings").all() as { user_id: string }[];
+      for (const s of settings) userToTenant.set(s.user_id, { slug: tenant.slug });
+    } catch { /* skip */ }
+  }
+
+  let migrated = 0;
+  let skipped = 0;
+  let duplicates = 0;
+  const details: string[] = [];
+
+  for (const r of orphanedRequests) {
+    let targetSlug = userToTenant.get(r.user_id)?.slug;
+    if (!targetSlug && allTenants.length === 1) targetSlug = allTenants[0].slug;
+    if (!targetSlug) { skipped++; details.push(`SKIP ${r.id} (${r.client_name})`); continue; }
+
+    const tDb = getTenantDb(targetSlug);
+    const existing = tDb.prepare("SELECT id FROM booking_requests WHERE id = ?").get(r.id);
+    if (existing) { duplicates++; details.push(`DUP ${r.id}`); continue; }
+
+    tDb.prepare(
+      `INSERT INTO booking_requests
+       (id, user_id, session_type_id, session_type_name, client_name, client_email,
+        client_phone, client_notes, requested_start, requested_end, status,
+        google_event_id, manage_token, responded_at, responded_reason, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      r.id, r.user_id, r.session_type_id, r.session_type_name,
+      r.client_name, r.client_email, r.client_phone, r.client_notes,
+      r.requested_start, r.requested_end, r.status,
+      r.google_event_id, r.manage_token, r.responded_at, r.responded_reason, r.created_at,
+    );
+    migrated++;
+    details.push(`OK ${r.id} → ${targetSlug} (${r.client_name}, ${r.status})`);
+  }
+
+  if (migrated > 0) {
+    const migratedIds = orphanedRequests
+      .filter((r: any) => userToTenant.has(r.user_id) || allTenants.length === 1)
+      .map((r: any) => r.id);
+    if (migratedIds.length > 0) {
+      const ph = migratedIds.map(() => "?").join(", ");
+      legacyDb.prepare(`DELETE FROM booking_requests WHERE id IN (${ph})`).run(...migratedIds);
+    }
+  }
+  legacyDb.close();
+
+  res.json({ ok: true, total: orphanedRequests.length, migrated, skipped, duplicates, details });
+});
+
 // --- Platform metrics ---
 
 router.get("/metrics", (_req, res) => {
