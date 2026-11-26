@@ -19,7 +19,7 @@ import { useState } from "react";
 
 const studentNav = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
-  { href: "/dashboard/programs", label: "Meus Programas", icon: BookOpen },
+  { href: "/programs", label: "Meus Programas", icon: BookOpen },
   { href: "/dashboard/achievements", label: "Conquistas", icon: Trophy },
   { href: "/dashboard/materials", label: "Materiais", icon: FileText },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
@@ -27,7 +27,8 @@ const studentNav = [
 
 const adminNav = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { href: "/dashboard/programs", label: "Programas", icon: BookOpen },
+  { href: "/programs", label: "Programas", icon: BookOpen },
+  { href: "/admin/programs", label: "Gerenciar Conteúdo", icon: FileText },
   { href: "/dashboard/users", label: "Usuários", icon: Users },
   { href: "/dashboard/analytics", label: "Métricas", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
@@ -37,7 +38,7 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const isAdmin = user?.role === "ADMIN" || user?.role === "MENTOR";
+  const isAdmin = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "MENTOR";
   const nav = isAdmin ? adminNav : studentNav;
 
   return (
@@ -73,7 +74,10 @@ export function DashboardSidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-3">
         {nav.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
