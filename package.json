@@ -13,6 +13,7 @@
     "dev:mobile": "cd apps/mobile && npx expo start"
   },
   "devDependencies": {
+    "railway": "^3.17.0",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"
   },
