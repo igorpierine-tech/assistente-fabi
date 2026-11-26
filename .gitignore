@@ -15,3 +15,5 @@ ios/
 out/
 *.apk
 package-lock.json
+
+.vercel

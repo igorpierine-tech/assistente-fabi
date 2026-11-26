@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
@@ -84,6 +84,14 @@ function UsageBar({ label, icon: Icon, current, max }: { label: string; icon: ty
 }
 
 export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gold" /></div>}>
+      <BillingContent />
+    </Suspense>
+  );
+}
+
+function BillingContent() {
   const { user, tokens } = useAuth();
   const searchParams = useSearchParams();
   const [billing, setBilling] = useState<BillingInfo | null>(null);
