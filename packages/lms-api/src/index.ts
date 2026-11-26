@@ -10,6 +10,7 @@ import { moduleRouter } from "./routes/module.routes";
 import { lessonRouter } from "./routes/lesson.routes";
 import { assessmentRouter } from "./routes/assessment.routes";
 import { gamificationRouter } from "./routes/gamification.routes";
+import { billingRouter } from "./routes/billing.routes";
 import { AppError } from "./services/auth.service";
 import "./types/express";
 
@@ -37,6 +38,7 @@ app.use(
   })
 );
 
+app.use("/billing/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "1mb", strict: true }));
 app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 app.use(rateLimit({ windowMs: 15 * 60_000, max: 300, prefix: "global" }));
@@ -56,6 +58,7 @@ app.use("/programs/:programId/modules", moduleRouter);
 app.use("/lessons", lessonRouter);
 app.use("/assessments", assessmentRouter);
 app.use("/gamification", gamificationRouter);
+app.use("/billing", billingRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 

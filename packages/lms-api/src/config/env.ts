@@ -21,4 +21,9 @@ export const env = {
   lockoutDurationMs: 15 * 60 * 1000,
   resendApiKey: process.env.RESEND_API_KEY || "",
   emailFrom: process.env.EMAIL_FROM || "Líder Áurea <noreply@lideraurea.com.br>",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
+  stripePriceStarter: process.env.STRIPE_PRICE_STARTER || "",
+  stripePricePro: process.env.STRIPE_PRICE_PRO || "",
+  stripePriceEnterprise: process.env.STRIPE_PRICE_ENTERPRISE || "",
 } as const;

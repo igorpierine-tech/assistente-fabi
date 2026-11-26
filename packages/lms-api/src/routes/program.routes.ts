@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate, requireRole } from "../middleware/auth";
+import { checkProgramLimit } from "../middleware/plan-limits";
 import {
   listProgramsHandler,
   getProgramHandler,
@@ -21,6 +22,6 @@ programRouter.get("/by-slug/:slug", getProgramHandler);
 programRouter.post("/:id/enroll", enrollHandler);
 
 programRouter.get("/:id/admin", requireRole("OWNER", "ADMIN", "MENTOR"), getProgramAdminHandler);
-programRouter.post("/", requireRole("OWNER", "ADMIN", "MENTOR"), createProgramHandler);
+programRouter.post("/", requireRole("OWNER", "ADMIN", "MENTOR"), checkProgramLimit, createProgramHandler);
 programRouter.patch("/:id", requireRole("OWNER", "ADMIN", "MENTOR"), updateProgramHandler);
 programRouter.delete("/:id", requireRole("OWNER", "ADMIN"), deleteProgramHandler);
