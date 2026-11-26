@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError, setTokenRefresh } from "./api";
 
 interface User {
   id: string;
@@ -106,6 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
   }, [tokens, clearAuth]);
+
+  useEffect(() => {
+    setTokenRefresh(refreshAuth);
+    return () => setTokenRefresh(null);
+  }, [refreshAuth]);
 
   const logout = useCallback(async () => {
     if (tokens?.refreshToken) {
