@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:@prisma/client --external:prisma --external:bcryptjs --external:cors --external:dotenv --external:express --external:jsonwebtoken --external:stripe --external:resend",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --format=cjs --sourcemap --external:@prisma/client --external:prisma --external:bcryptjs --external:cors --external:dotenv --external:express --external:jsonwebtoken --external:resend",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "db:generate": "prisma generate",
@@ -22,7 +22,6 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "resend": "^6.39.0",
-    "stripe": "^23.2.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

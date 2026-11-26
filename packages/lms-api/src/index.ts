@@ -37,7 +37,6 @@ app.use(
   })
 );
 
-app.use("/billing/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "1mb", strict: true }));
 app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 app.use(rateLimit({ windowMs: 15 * 60_000, max: 300, prefix: "global" }));

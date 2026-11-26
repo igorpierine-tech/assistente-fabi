@@ -1,20 +1,7 @@
-import Stripe from "stripe";
 import { PlanTier } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { AppError } from "./auth.service";
-
-let _stripe: Stripe | null = null;
-
-function getStripe(): Stripe {
-  if (!_stripe) {
-    if (!env.stripeSecretKey) {
-      throw new AppError("STRIPE_SECRET_KEY is not configured", 500);
-    }
-    _stripe = new Stripe(env.stripeSecretKey);
-  }
-  return _stripe;
-}
 
 const PLAN_LIMITS: Record<PlanTier, { maxStudents: number; maxPrograms: number; maxStorageMb: number }> = {
   FREE: { maxStudents: 10, maxPrograms: 1, maxStorageMb: 500 },
@@ -23,136 +10,93 @@ const PLAN_LIMITS: Record<PlanTier, { maxStudents: number; maxPrograms: number; 
   ENTERPRISE: { maxStudents: 10000, maxPrograms: 100, maxStorageMb: 50000 },
 };
 
-const PRICE_TO_PLAN: Record<string, PlanTier> = {};
-if (env.stripePriceStarter) PRICE_TO_PLAN[env.stripePriceStarter] = "STARTER";
-if (env.stripePricePro) PRICE_TO_PLAN[env.stripePricePro] = "PRO";
-if (env.stripePriceEnterprise) PRICE_TO_PLAN[env.stripePriceEnterprise] = "ENTERPRISE";
+const PRODUCT_TO_PLAN: Record<string, PlanTier> = {};
+if (env.hotmartProductStarter) PRODUCT_TO_PLAN[env.hotmartProductStarter] = "STARTER";
+if (env.hotmartProductPro) PRODUCT_TO_PLAN[env.hotmartProductPro] = "PRO";
+if (env.hotmartProductEnterprise) PRODUCT_TO_PLAN[env.hotmartProductEnterprise] = "ENTERPRISE";
 
-async function getOrCreateCustomer(tenantId: string): Promise<string> {
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) throw new AppError("Tenant não encontrado.", 404);
-
-  if (tenant.stripeCustomerId) return tenant.stripeCustomerId;
-
-  const owner = await prisma.user.findFirst({
-    where: { tenantId, role: "OWNER" },
-    include: { profile: true },
-  });
-
-  const customer = await getStripe().customers.create({
-    name: tenant.name,
-    email: owner?.email,
-    metadata: { tenantId, tenantSlug: tenant.slug },
-  });
-
-  await prisma.tenant.update({
-    where: { id: tenantId },
-    data: { stripeCustomerId: customer.id },
-  });
-
-  return customer.id;
-}
-
-export async function createCheckoutSession(tenantId: string, plan: "STARTER" | "PRO" | "ENTERPRISE") {
-  const priceMap: Record<string, string> = {
-    STARTER: env.stripePriceStarter,
-    PRO: env.stripePricePro,
-    ENTERPRISE: env.stripePriceEnterprise,
+interface HotmartWebhookPayload {
+  event: string;
+  data: {
+    product?: { id?: number; name?: string };
+    buyer?: { email?: string; name?: string };
+    purchase?: { transaction?: string; status?: string };
+    subscription?: {
+      subscriber?: { code?: string };
+      status?: string;
+    };
   };
-
-  const priceId = priceMap[plan];
-  if (!priceId) throw new AppError("Plano inválido ou preço não configurado.", 400);
-
-  const customerId = await getOrCreateCustomer(tenantId);
-
-  const session = await getStripe().checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${env.webUrl}/dashboard/settings/billing?success=true`,
-    cancel_url: `${env.webUrl}/dashboard/settings/billing?canceled=true`,
-    metadata: { tenantId },
-  });
-
-  return { url: session.url };
 }
 
-export async function createPortalSession(tenantId: string) {
-  const customerId = await getOrCreateCustomer(tenantId);
-
-  const session = await getStripe().billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${env.webUrl}/dashboard/settings/billing`,
-  });
-
-  return { url: session.url };
+function resolvePlan(productId: string | number | undefined): PlanTier | undefined {
+  if (!productId) return undefined;
+  return PRODUCT_TO_PLAN[String(productId)];
 }
 
-export async function handleWebhook(payload: Buffer, signature: string) {
-  const event = getStripe().webhooks.constructEvent(payload, signature, env.stripeWebhookSecret);
+async function findTenantByBuyerEmail(email: string) {
+  const user = await prisma.user.findFirst({
+    where: { email: email.toLowerCase(), role: { in: ["OWNER", "ADMIN"] } },
+    select: { tenantId: true },
+  });
+  return user?.tenantId ?? null;
+}
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.subscription && session.metadata?.tenantId) {
-        await prisma.tenant.update({
-          where: { id: session.metadata.tenantId },
-          data: { stripeSubscriptionId: session.subscription as string },
-        });
+export async function handleHotmartWebhook(payload: HotmartWebhookPayload, hottok: string) {
+  if (!env.hotmartToken || hottok !== env.hotmartToken) {
+    throw new AppError("Token de webhook inválido.", 401);
+  }
+
+  const { event, data } = payload;
+  const buyerEmail = data.buyer?.email;
+  const productId = data.product?.id;
+  const subscriptionCode = data.subscription?.subscriber?.code || data.purchase?.transaction;
+  const plan = resolvePlan(productId);
+
+  if (!buyerEmail) {
+    console.warn("[Hotmart Webhook] Evento sem email do comprador:", event);
+    return;
+  }
+
+  const tenantId = await findTenantByBuyerEmail(buyerEmail);
+  if (!tenantId) {
+    console.warn("[Hotmart Webhook] Nenhum tenant encontrado para:", buyerEmail);
+    return;
+  }
+
+  switch (event) {
+    case "PURCHASE_COMPLETE":
+    case "PURCHASE_APPROVED": {
+      if (!plan) {
+        console.warn("[Hotmart Webhook] Produto não mapeado:", productId);
+        return;
       }
+      const limits = PLAN_LIMITS[plan];
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { plan, ...limits, hotmartSubscriptionCode: subscriptionCode || null },
+      });
+      console.log(`[Hotmart Webhook] Plano ${plan} ativado para tenant ${tenantId}`);
       break;
     }
 
-    case "customer.subscription.updated":
-    case "customer.subscription.created": {
-      const sub = event.data.object as Stripe.Subscription;
-      const priceId = sub.items.data[0]?.price?.id;
-      const plan = priceId ? PRICE_TO_PLAN[priceId] : undefined;
-
-      if (plan && sub.metadata?.tenantId) {
-        const limits = PLAN_LIMITS[plan];
-        await prisma.tenant.update({
-          where: { id: sub.metadata.tenantId },
-          data: {
-            plan,
-            ...limits,
-            stripeSubscriptionId: sub.id,
-          },
-        });
-      } else if (plan) {
-        const tenant = await prisma.tenant.findUnique({
-          where: { stripeCustomerId: sub.customer as string },
-        });
-        if (tenant) {
-          const limits = PLAN_LIMITS[plan];
-          await prisma.tenant.update({
-            where: { id: tenant.id },
-            data: { plan, ...limits, stripeSubscriptionId: sub.id },
-          });
-        }
-      }
+    case "PURCHASE_REFUNDED":
+    case "PURCHASE_CHARGEBACK":
+    case "SUBSCRIPTION_CANCELLATION": {
+      const freeLimits = PLAN_LIMITS.FREE;
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { plan: "FREE", ...freeLimits, hotmartSubscriptionCode: null },
+      });
+      console.log(`[Hotmart Webhook] Plano revertido para FREE para tenant ${tenantId}`);
       break;
     }
 
-    case "customer.subscription.deleted": {
-      const sub = event.data.object as Stripe.Subscription;
-      const tenant = sub.metadata?.tenantId
-        ? await prisma.tenant.findUnique({ where: { id: sub.metadata.tenantId } })
-        : await prisma.tenant.findUnique({ where: { stripeCustomerId: sub.customer as string } });
-
-      if (tenant) {
-        const limits = PLAN_LIMITS.FREE;
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: {
-            plan: "FREE",
-            ...limits,
-            stripeSubscriptionId: null,
-          },
-        });
-      }
+    case "PURCHASE_DELAYED":
+      console.log(`[Hotmart Webhook] Pagamento pendente (boleto) para tenant ${tenantId}`);
       break;
-    }
+
+    default:
+      console.log(`[Hotmart Webhook] Evento não tratado: ${event}`);
   }
 }
 
@@ -165,7 +109,7 @@ export async function getTenantBilling(tenantId: string) {
       maxPrograms: true,
       maxStorageMb: true,
       trialEndsAt: true,
-      stripeSubscriptionId: true,
+      hotmartSubscriptionCode: true,
       _count: {
         select: {
           users: { where: { role: "STUDENT" } },
@@ -189,7 +133,12 @@ export async function getTenantBilling(tenantId: string) {
       programs: tenant._count.programs,
     },
     trialEndsAt: tenant.trialEndsAt,
-    hasSubscription: !!tenant.stripeSubscriptionId,
+    hasSubscription: !!tenant.hotmartSubscriptionCode,
+    checkoutUrls: {
+      STARTER: env.hotmartCheckoutStarter || null,
+      PRO: env.hotmartCheckoutPro || null,
+      ENTERPRISE: env.hotmartCheckoutEnterprise || null,
+    },
   };
 }
 

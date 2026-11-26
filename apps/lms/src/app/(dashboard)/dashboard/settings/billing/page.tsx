@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import {
-  CreditCard,
   Users,
   BookOpen,
   Zap,
@@ -16,6 +15,7 @@ import {
   Crown,
   Sparkles,
   Building2,
+  ExternalLink,
 } from "lucide-react";
 
 interface BillingInfo {
@@ -24,6 +24,7 @@ interface BillingInfo {
   usage: { students: number; programs: number };
   trialEndsAt: string | null;
   hasSubscription: boolean;
+  checkoutUrls: { STARTER: string | null; PRO: string | null; ENTERPRISE: string | null };
 }
 
 const PLAN_DETAILS: Record<string, { label: string; icon: typeof Crown; color: string; bgColor: string }> = {
@@ -35,20 +36,20 @@ const PLAN_DETAILS: Record<string, { label: string; icon: typeof Crown; color: s
 
 const UPGRADE_PLANS = [
   {
-    plan: "STARTER",
+    plan: "STARTER" as const,
     label: "Starter",
     description: "Para equipes pequenas em crescimento",
     features: ["50 alunos", "5 programas", "2 GB armazenamento"],
   },
   {
-    plan: "PRO",
+    plan: "PRO" as const,
     label: "Pro",
     highlight: true,
     description: "Para organizações em expansão",
     features: ["200 alunos", "20 programas", "10 GB armazenamento"],
   },
   {
-    plan: "ENTERPRISE",
+    plan: "ENTERPRISE" as const,
     label: "Enterprise",
     description: "Para grandes empresas",
     features: ["10.000 alunos", "100 programas", "50 GB armazenamento"],
@@ -92,12 +93,11 @@ export default function BillingPage() {
 }
 
 function BillingContent() {
-  const { user, tokens } = useAuth();
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const { tokens } = useAuth();
 
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
@@ -111,35 +111,6 @@ function BillingContent() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [tokens]);
-
-  async function handleCheckout(plan: string) {
-    if (!tokens) return;
-    setCheckoutLoading(plan);
-    try {
-      const { url } = await api<{ url: string }>("/billing/checkout", {
-        method: "POST",
-        body: { plan },
-        token: tokens.accessToken,
-      });
-      if (url) window.location.href = url;
-    } catch {
-      setCheckoutLoading(null);
-    }
-  }
-
-  async function handlePortal() {
-    if (!tokens) return;
-    setPortalLoading(true);
-    try {
-      const { url } = await api<{ url: string }>("/billing/portal", {
-        method: "POST",
-        token: tokens.accessToken,
-      });
-      if (url) window.location.href = url;
-    } catch {
-      setPortalLoading(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -196,15 +167,11 @@ function BillingContent() {
               <p className={`text-xl font-semibold ${planInfo.color}`}>{planInfo.label}</p>
             </div>
           </div>
-          {billing.hasSubscription && isAdmin && (
-            <button
-              onClick={handlePortal}
-              disabled={portalLoading}
-              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
-            >
-              {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-              Gerenciar Assinatura
-            </button>
+          {billing.hasSubscription && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-medium text-green-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Assinatura ativa
+            </span>
           )}
         </div>
 
@@ -235,48 +202,56 @@ function BillingContent() {
             {UPGRADE_PLANS.filter((p) => {
               const order = ["FREE", "STARTER", "PRO", "ENTERPRISE"];
               return order.indexOf(p.plan) > order.indexOf(billing.plan);
-            }).map((p) => (
-              <div
-                key={p.plan}
-                className={`rounded-xl border p-5 flex flex-col ${
-                  p.highlight ? "border-gold bg-gold/5" : "border-border bg-card"
-                }`}
-              >
-                {p.highlight && (
-                  <span className="inline-block self-start rounded-full bg-gold/20 px-3 py-0.5 text-xs font-semibold text-gold-dark mb-3">
-                    Mais popular
-                  </span>
-                )}
-                <h3 className="font-serif text-lg font-semibold text-foreground">{p.label}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
-                <ul className="mt-4 space-y-2 flex-1">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-foreground">
-                      <CheckCircle2 className="h-4 w-4 text-gold-dark shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={() => handleCheckout(p.plan)}
-                  disabled={checkoutLoading !== null}
-                  className={`mt-5 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
-                    p.highlight
-                      ? "bg-gold-dark text-white hover:bg-gold-dark/90"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+            }).map((p) => {
+              const checkoutUrl = billing.checkoutUrls[p.plan];
+              return (
+                <div
+                  key={p.plan}
+                  className={`rounded-xl border p-5 flex flex-col ${
+                    p.highlight ? "border-gold bg-gold/5" : "border-border bg-card"
                   }`}
                 >
-                  {checkoutLoading === p.plan ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      Assinar {p.label}
-                      <ArrowUpRight className="h-4 w-4" />
-                    </>
+                  {p.highlight && (
+                    <span className="inline-block self-start rounded-full bg-gold/20 px-3 py-0.5 text-xs font-semibold text-gold-dark mb-3">
+                      Mais popular
+                    </span>
                   )}
-                </button>
-              </div>
-            ))}
+                  <h3 className="font-serif text-lg font-semibold text-foreground">{p.label}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
+                  <ul className="mt-4 space-y-2 flex-1">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-foreground">
+                        <CheckCircle2 className="h-4 w-4 text-gold-dark shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  {checkoutUrl ? (
+                    <a
+                      href={checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mt-5 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        p.highlight
+                          ? "bg-gold-dark text-white hover:bg-gold-dark/90"
+                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      }`}
+                    >
+                      Assinar {p.label}
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="mt-5 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold bg-muted text-muted-foreground cursor-not-allowed"
+                    >
+                      Em breve
+                      <ArrowUpRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

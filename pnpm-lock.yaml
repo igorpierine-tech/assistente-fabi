@@ -310,9 +310,6 @@ importers:
       resend:
         specifier: ^6.39.0
         version: 6.39.0
-      stripe:
-        specifier: ^23.2.0
-        version: 23.2.0(@types/node@20.17.6)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -5528,15 +5525,6 @@ packages:
   strip-json-comments@2.0.1:
     resolution: {integrity: sha512-4gB8na07fecVVkOI6Rs4e7T6NOTki5EmL7TUduTs6bu3EdnSycntVJ4re8kgZA+wx9IueI2Y11bfbgwtzuE0KQ==}
     engines: {node: '>=0.10.0'}
-
-  stripe@23.2.0:
-    resolution: {integrity: sha512-0W0J4yA9qFO2rnF61v8Y62OiO2SmAR+Cv04VJaFUMpCxiq8lG5bxEYbeSMSpMDR9ofFZGd+Z/iUIgSFbOolmUw==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      '@types/node': '>=20'
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
 
   structured-headers@0.4.1:
     resolution: {integrity: sha512-0MP/Cxx5SzeeZ10p/bZI0S6MpgD+yxAhi1BOQ34jgnMXsCq3j1t6tQnZu+KdlL7dvJTLT3g9xN8tl10TqgFMcg==}
@@ -11968,10 +11956,6 @@ snapshots:
   strip-final-newline@2.0.0: {}
 
   strip-json-comments@2.0.1: {}
-
-  stripe@23.2.0(@types/node@20.17.6):
-    optionalDependencies:
-      '@types/node': 20.17.6
 
   structured-headers@0.4.1: {}
 
