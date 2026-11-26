@@ -8,6 +8,8 @@ import { tenantRouter } from "./routes/tenant.routes";
 import { programRouter } from "./routes/program.routes";
 import { moduleRouter } from "./routes/module.routes";
 import { lessonRouter } from "./routes/lesson.routes";
+import { assessmentRouter } from "./routes/assessment.routes";
+import { gamificationRouter } from "./routes/gamification.routes";
 import { AppError } from "./services/auth.service";
 import "./types/express";
 
@@ -52,6 +54,8 @@ app.use("/tenant", tenantRouter);
 app.use("/programs", programRouter);
 app.use("/programs/:programId/modules", moduleRouter);
 app.use("/lessons", lessonRouter);
+app.use("/assessments", assessmentRouter);
+app.use("/gamification", gamificationRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 

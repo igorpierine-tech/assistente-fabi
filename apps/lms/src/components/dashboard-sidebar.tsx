@@ -29,6 +29,7 @@ const adminNav = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/programs", label: "Programas", icon: BookOpen },
   { href: "/admin/programs", label: "Gerenciar Conteúdo", icon: FileText },
+  { href: "/dashboard/achievements", label: "Conquistas", icon: Trophy },
   { href: "/dashboard/users", label: "Usuários", icon: Users },
   { href: "/dashboard/analytics", label: "Métricas", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
