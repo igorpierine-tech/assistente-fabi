@@ -149,42 +149,57 @@ export async function login(
 ): Promise<AuthResult> {
   const email = input.email.toLowerCase();
 
-  const user = await prisma.user.findFirst({
+  const users = await prisma.user.findMany({
     where: { email },
     include: { profile: true, tenant: { select: { id: true, slug: true, active: true } } },
+    orderBy: { createdAt: "asc" },
   });
 
-  if (!user) {
+  const activeUsers = users.filter((u) => u.tenant.active);
+  if (activeUsers.length === 0) {
     throw new AppError("Credenciais inválidas.", 401);
   }
 
-  if (!user.tenant.active) {
-    throw new AppError("Organização inativa. Entre em contato com o suporte.", 403);
+  const sorted = [...activeUsers].sort((a, b) => {
+    if (a.role === "OWNER" && b.role !== "OWNER") return -1;
+    if (a.role !== "OWNER" && b.role === "OWNER") return 1;
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+
+  let user: (typeof sorted)[0] | null = null;
+  for (const candidate of sorted) {
+    if (candidate.lockedUntil && candidate.lockedUntil > new Date()) continue;
+    const valid = await bcrypt.compare(input.password, candidate.passwordHash);
+    if (valid) {
+      user = candidate;
+      break;
+    }
   }
 
-  if (user.lockedUntil && user.lockedUntil > new Date()) {
-    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-    throw new AppError(
-      `Conta temporariamente bloqueada. Tente novamente em ${minutesLeft} minuto(s).`,
-      423
-    );
-  }
+  if (!user) {
+    const primary = sorted[0];
 
-  const valid = await bcrypt.compare(input.password, user.passwordHash);
-  if (!valid) {
-    const attempts = user.failedLoginAttempts + 1;
+    if (primary.lockedUntil && primary.lockedUntil > new Date()) {
+      const minutesLeft = Math.ceil((primary.lockedUntil.getTime() - Date.now()) / 60000);
+      throw new AppError(
+        `Conta temporariamente bloqueada. Tente novamente em ${minutesLeft} minuto(s).`,
+        423
+      );
+    }
+
+    const attempts = primary.failedLoginAttempts + 1;
     const lockout =
       attempts >= env.maxLoginAttempts
         ? new Date(Date.now() + env.lockoutDurationMs)
         : null;
 
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: primary.id },
       data: { failedLoginAttempts: attempts, lockedUntil: lockout },
     });
 
     await logAudit({
-      userId: user.id,
+      userId: primary.id,
       action: "auth.login_failed",
       metadata: { attempts },
       ipAddress: meta.ip,
@@ -277,14 +292,15 @@ export async function logout(refreshToken: string, userId: string) {
 }
 
 export async function forgotPassword(email: string, meta: { ip?: string }) {
-  const user = await prisma.user.findFirst({
+  const users = await prisma.user.findMany({
     where: { email: email.toLowerCase() },
+    include: { profile: true },
   });
-  if (!user) return;
+  if (users.length === 0) return;
 
   const token = randomBytes(32).toString("hex");
-  await prisma.user.update({
-    where: { id: user.id },
+  await prisma.user.updateMany({
+    where: { email: email.toLowerCase() },
     data: {
       passwordResetToken: token,
       passwordResetExpires: new Date(Date.now() + 60 * 60 * 1000),
@@ -292,18 +308,14 @@ export async function forgotPassword(email: string, meta: { ip?: string }) {
   });
 
   await logAudit({
-    userId: user.id,
+    userId: users[0].id,
     action: "auth.forgot_password",
     ipAddress: meta.ip,
   });
 
   if (env.resendApiKey) {
-    const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-    sendPasswordResetEmail(
-      user.email,
-      profile?.firstName || "Usuário",
-      token
-    ).catch(() => {});
+    const firstName = users[0].profile?.firstName || "Usuário";
+    sendPasswordResetEmail(users[0].email, firstName, token).catch(() => {});
   }
 }
 
@@ -322,8 +334,8 @@ export async function resetPassword(token: string, newPassword: string, meta: { 
   const passwordHash = await bcrypt.hash(newPassword, env.bcryptRounds);
 
   await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
+    prisma.user.updateMany({
+      where: { email: user.email },
       data: {
         passwordHash,
         passwordResetToken: null,
