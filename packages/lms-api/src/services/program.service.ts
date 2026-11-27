@@ -53,6 +53,30 @@ export async function getProgram(tenantId: string, slug: string) {
   return program;
 }
 
+export async function listProgramsTree(tenantId: string) {
+  return prisma.program.findMany({
+    where: { tenantId },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      modules: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          lessons: {
+            select: { id: true, title: true, slug: true },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
 export async function getProgramAdmin(tenantId: string, programId: string) {
   const program = await prisma.program.findFirst({
     where: { id: programId, tenantId },

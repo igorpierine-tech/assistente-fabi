@@ -3,6 +3,7 @@ import { authenticate, requireRole } from "../middleware/auth";
 import { checkProgramLimit } from "../middleware/plan-limits";
 import {
   listProgramsHandler,
+  listProgramsTreeHandler,
   getProgramHandler,
   getProgramAdminHandler,
   createProgramHandler,
@@ -17,6 +18,7 @@ export const programRouter: Router = Router();
 programRouter.use(authenticate);
 
 programRouter.get("/my", myProgramsHandler);
+programRouter.get("/tree", requireRole("OWNER", "ADMIN", "MENTOR"), listProgramsTreeHandler);
 programRouter.get("/", listProgramsHandler);
 programRouter.get("/by-slug/:slug", getProgramHandler);
 programRouter.post("/:id/enroll", enrollHandler);

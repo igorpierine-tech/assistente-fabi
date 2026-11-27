@@ -19,6 +19,14 @@ export async function getProgramHandler(req: Request, res: Response, next: NextF
   } catch (err) { next(err); }
 }
 
+export async function listProgramsTreeHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.tenantId) { res.status(401).json({ error: "Não autenticado." }); return; }
+    const programs = await programService.listProgramsTree(req.tenantId);
+    res.json(programs);
+  } catch (err) { next(err); }
+}
+
 export async function getProgramAdminHandler(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.tenantId) { res.status(401).json({ error: "Não autenticado." }); return; }

@@ -13,6 +13,7 @@ import {
   Users,
   BarChart3,
   CreditCard,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
@@ -30,6 +31,7 @@ const adminNav = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/programs", label: "Programas", icon: BookOpen },
   { href: "/admin/programs", label: "Gerenciar Conteúdo", icon: FileText },
+  { href: "/admin/plans", label: "Gestão de Planos", icon: Crown },
   { href: "/dashboard/achievements", label: "Conquistas", icon: Trophy },
   { href: "/dashboard/users", label: "Usuários", icon: Users },
   { href: "/dashboard/analytics", label: "Métricas", icon: BarChart3 },
