@@ -12,7 +12,14 @@ import {
   Award,
   Loader2,
   Crown,
+  Flame,
 } from "lucide-react";
+
+const TIER_LABELS: Record<string, string> = {
+  GESTORA_AUREA: "Gestora Áurea",
+  LIDER_ESTRATEGICA: "Líder Estratégica",
+  EXECUTIVA_ALTO_IMPACTO: "Executiva de Alto Impacto",
+};
 
 interface Badge {
   id: string;
@@ -28,6 +35,13 @@ interface UserBadge {
   id: string;
   earnedAt: string;
   badge: Badge;
+}
+
+interface GamificationProfile {
+  totalXp: number;
+  currentTier: string;
+  currentStreak: number;
+  longestStreak: number;
 }
 
 interface XpSummary {
@@ -68,6 +82,7 @@ export default function AchievementsPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [xpSummary, setXpSummary] = useState<XpSummary | null>(null);
+  const [profile, setProfile] = useState<GamificationProfile | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -76,15 +91,17 @@ export default function AchievementsPage() {
 
     async function load() {
       try {
-        const [allBadges, myBadges, xp, lb] = await Promise.all([
+        const [allBadges, myBadges, xp, lb, profileData] = await Promise.all([
           api<Badge[]>("/gamification/badges", { token: tokens!.accessToken }),
           api<UserBadge[]>("/gamification/badges/my", { token: tokens!.accessToken }),
           api<XpSummary>("/gamification/xp", { token: tokens!.accessToken }),
           api<LeaderboardEntry[]>("/gamification/leaderboard", { token: tokens!.accessToken }),
+          api<GamificationProfile>("/gamification/profile", { token: tokens!.accessToken }).catch(() => null),
         ]);
         setBadges(allBadges);
         setUserBadges(myBadges);
         setXpSummary(xp);
+        setProfile(profileData);
         setLeaderboard(lb);
       } catch {
         // handle
@@ -117,12 +134,28 @@ export default function AchievementsPage() {
 
       {/* Stats row */}
       {xpSummary && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {profile && (
+            <div className="rounded-xl border border-gold/30 bg-gold/5 p-5 text-center">
+              <Crown className="mx-auto h-6 w-6 text-gold-dark mb-2" />
+              <p className="text-sm font-bold text-foreground">
+                {TIER_LABELS[profile.currentTier] || profile.currentTier}
+              </p>
+              <p className="text-xs text-muted-foreground">Nível Atual</p>
+            </div>
+          )}
           <div className="rounded-xl border border-border bg-card p-5 text-center">
             <Zap className="mx-auto h-6 w-6 text-gold-dark mb-2" />
             <p className="text-2xl font-bold text-foreground">{xpSummary.totalXp}</p>
             <p className="text-xs text-muted-foreground">XP Total</p>
           </div>
+          {profile && (
+            <div className="rounded-xl border border-border bg-card p-5 text-center">
+              <Flame className="mx-auto h-6 w-6 text-orange-500 mb-2" />
+              <p className="text-2xl font-bold text-foreground">{profile.currentStreak}</p>
+              <p className="text-xs text-muted-foreground">Streak (recorde: {profile.longestStreak})</p>
+            </div>
+          )}
           <div className="rounded-xl border border-border bg-card p-5 text-center">
             <Medal className="mx-auto h-6 w-6 text-gold-dark mb-2" />
             <p className="text-2xl font-bold text-foreground">{xpSummary.badgeCount}</p>

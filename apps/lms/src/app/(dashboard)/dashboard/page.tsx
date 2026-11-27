@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Medal,
   Loader2,
+  Flame,
+  Crown,
 } from "lucide-react";
 
 interface XpSummary {
@@ -19,6 +21,26 @@ interface XpSummary {
   badgeCount: number;
   lessonsCompleted: number;
 }
+
+interface GamificationProfile {
+  totalXp: number;
+  currentTier: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityAt: string | null;
+}
+
+const TIER_LABELS: Record<string, string> = {
+  GESTORA_AUREA: "Gestora Áurea",
+  LIDER_ESTRATEGICA: "Líder Estratégica",
+  EXECUTIVA_ALTO_IMPACTO: "Executiva de Alto Impacto",
+};
+
+const TIER_COLORS: Record<string, string> = {
+  GESTORA_AUREA: "from-amber-600 to-amber-400",
+  LIDER_ESTRATEGICA: "from-violet-600 to-violet-400",
+  EXECUTIVA_ALTO_IMPACTO: "from-gold-dark to-gold",
+};
 
 interface Enrollment {
   id: string;
@@ -78,6 +100,7 @@ function StatCard({
 export default function DashboardPage() {
   const { user, tokens } = useAuth();
   const [xp, setXp] = useState<XpSummary | null>(null);
+  const [profile, setProfile] = useState<GamificationProfile | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [progresses, setProgresses] = useState<Record<string, Progress>>({});
   const [recentBadges, setRecentBadges] = useState<UserBadge[]>([]);
@@ -88,12 +111,14 @@ export default function DashboardPage() {
 
     async function load() {
       try {
-        const [xpData, enrolled, badges] = await Promise.all([
+        const [xpData, enrolled, badges, profileData] = await Promise.all([
           api<XpSummary>("/gamification/xp", { token: tokens!.accessToken }),
           api<Enrollment[]>("/programs/my", { token: tokens!.accessToken }),
           api<UserBadge[]>("/gamification/badges/my", { token: tokens!.accessToken }),
+          api<GamificationProfile>("/gamification/profile", { token: tokens!.accessToken }).catch(() => null),
         ]);
         setXp(xpData);
+        setProfile(profileData);
         setEnrollments(enrolled);
         setRecentBadges(badges.slice(0, 3));
 
@@ -143,6 +168,66 @@ export default function DashboardPage() {
           Continue sua jornada de transformação. Sua próxima aula está esperando.
         </p>
       </div>
+
+      {/* Profile Widget */}
+      {profile && (
+        <div className="rounded-xl border border-gold/20 bg-card overflow-hidden">
+          <div className={`bg-gradient-to-r ${TIER_COLORS[profile.currentTier] || "from-amber-600 to-amber-400"} px-6 py-4`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Crown className="h-6 w-6 text-white" />
+                <div>
+                  <p className="text-xs text-white/70 uppercase tracking-wider font-medium">Seu Nível</p>
+                  <p className="text-lg font-serif font-semibold text-white">
+                    {TIER_LABELS[profile.currentTier] || profile.currentTier}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="flex items-center gap-1.5">
+                    <Flame className="h-4 w-4 text-white" />
+                    <span className="text-lg font-bold text-white">{profile.currentStreak}</span>
+                  </div>
+                  <p className="text-xs text-white/70">dias seguidos</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="h-4 w-4 text-white" />
+                    <span className="text-lg font-bold text-white">{profile.totalXp}</span>
+                  </div>
+                  <p className="text-xs text-white/70">XP total</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {profile.currentTier !== "EXECUTIVA_ALTO_IMPACTO" && (
+            <div className="px-6 py-3 bg-card">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                <span>Progresso para próximo nível</span>
+                <span>
+                  {profile.currentTier === "GESTORA_AUREA"
+                    ? `${profile.totalXp} / 2.000 XP`
+                    : `${profile.totalXp} / 5.000 XP`}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${TIER_COLORS[profile.currentTier] || "from-amber-600 to-amber-400"} transition-all`}
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      profile.currentTier === "GESTORA_AUREA"
+                        ? (profile.totalXp / 2000) * 100
+                        : (profile.totalXp / 5000) * 100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

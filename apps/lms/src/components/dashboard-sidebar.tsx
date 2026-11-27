@@ -22,6 +22,7 @@ import { useState } from "react";
 const studentNav = [
   { href: "/dashboard", label: "Início", icon: LayoutDashboard },
   { href: "/programs", label: "Meus Programas", icon: BookOpen },
+  { href: "/dashboard/plans", label: "Planos", icon: Crown },
   { href: "/dashboard/achievements", label: "Conquistas", icon: Trophy },
   { href: "/dashboard/materials", label: "Materiais", icon: FileText },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
