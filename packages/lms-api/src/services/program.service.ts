@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "./auth.service";
+import { processEvent } from "./gamification-engine.service";
 
 function slugify(text: string): string {
   return text
@@ -161,9 +162,19 @@ export async function enrollStudent(tenantId: string, programId: string, userId:
   });
   if (existing) throw new AppError("Aluno já está matriculado neste programa.", 409);
 
-  return prisma.enrollment.create({
+  const enrollment = await prisma.enrollment.create({
     data: { userId, programId },
   });
+
+  processEvent({
+    userId,
+    tenantId,
+    event: "ENROLLMENT_CREATED",
+    referenceId: enrollment.id,
+    referenceType: "enrollment",
+  }).catch(() => {});
+
+  return enrollment;
 }
 
 export async function listEnrolledPrograms(userId: string) {

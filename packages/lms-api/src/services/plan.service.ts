@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "./auth.service";
+import { processEvent } from "./gamification-engine.service";
 import type {
   CreatePlanInput,
   UpdatePlanInput,
@@ -166,6 +167,14 @@ export async function createSubscription(tenantId: string, data: CreateSubscript
       update: {},
     });
   }
+
+  processEvent({
+    userId: data.userId,
+    tenantId,
+    event: "ENROLLMENT_CREATED",
+    referenceId: subscription.id,
+    referenceType: "subscription",
+  }).catch(() => {});
 
   return subscription;
 }

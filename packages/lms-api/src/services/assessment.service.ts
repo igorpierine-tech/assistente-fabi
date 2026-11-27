@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "./auth.service";
+import { processEvent } from "./gamification-engine.service";
 
 export interface QuizQuestion {
   id: string;
@@ -170,6 +171,14 @@ export async function submitAssessment(
       });
     }
   }
+
+  processEvent({
+    userId,
+    tenantId,
+    event: "ASSESSMENT_SUBMITTED",
+    referenceId: assessmentId,
+    referenceType: "assessment",
+  }).catch(() => {});
 
   return { ...submission, score };
 }

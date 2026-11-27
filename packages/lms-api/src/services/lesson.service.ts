@@ -1,6 +1,7 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "./auth.service";
 import { checkAndAwardBadges } from "./gamification.service";
+import { processEvent, checkModuleCompletion, updateStreak } from "./gamification-engine.service";
 
 function slugify(text: string): string {
   return text
@@ -166,6 +167,15 @@ export async function markLessonComplete(userId: string, lessonId: string, tenan
 
   if (tenantId) {
     checkAndAwardBadges(userId, tenantId).catch(() => {});
+    processEvent({
+      userId,
+      tenantId,
+      event: "LESSON_COMPLETED",
+      referenceId: lessonId,
+      referenceType: "lesson",
+    }).catch(() => {});
+    checkModuleCompletion(userId, tenantId, lessonId).catch(() => {});
+    updateStreak(userId, tenantId).catch(() => {});
   }
 
   return progress;
