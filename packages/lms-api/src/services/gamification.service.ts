@@ -78,8 +78,8 @@ export async function checkAndAwardBadges(userId: string, tenantId: string) {
             userId,
             points: badge.xpReward,
             reason: `Badge: ${badge.title}`,
-            entityType: "badge",
-            entityId: badge.id,
+            referenceType: "badge",
+            referenceId: badge.id,
           },
         });
       }

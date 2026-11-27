@@ -148,7 +148,7 @@ export async function markLessonComplete(userId: string, lessonId: string, tenan
 
   if (lesson && lesson.xpReward > 0) {
     const alreadyRewarded = await prisma.pointLedger.findFirst({
-      where: { userId, entityType: "lesson", entityId: lessonId },
+      where: { userId, referenceType: "lesson", referenceId: lessonId },
     });
 
     if (!alreadyRewarded) {
@@ -157,8 +157,8 @@ export async function markLessonComplete(userId: string, lessonId: string, tenan
           userId,
           points: lesson.xpReward,
           reason: "Aula concluída",
-          entityType: "lesson",
-          entityId: lessonId,
+          referenceType: "lesson",
+          referenceId: lessonId,
         },
       });
     }

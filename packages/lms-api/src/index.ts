@@ -11,6 +11,7 @@ import { lessonRouter } from "./routes/lesson.routes";
 import { assessmentRouter } from "./routes/assessment.routes";
 import { gamificationRouter } from "./routes/gamification.routes";
 import { billingRouter } from "./routes/billing.routes";
+import { planRouter } from "./routes/plan.routes";
 import { AppError } from "./services/auth.service";
 
 const app = express();
@@ -57,6 +58,7 @@ app.use("/lessons", lessonRouter);
 app.use("/assessments", assessmentRouter);
 app.use("/gamification", gamificationRouter);
 app.use("/billing", billingRouter);
+app.use("/plans", planRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 

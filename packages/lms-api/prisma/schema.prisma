@@ -43,14 +43,98 @@ model Tenant {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  users     User[]
-  programs  Program[]
-  badges    Badge[]
-  auditLogs AuditLog[]
+  users              User[]
+  programs           Program[]
+  badges             Badge[]
+  auditLogs          AuditLog[]
+  plans              Plan[]
+  gamificationRules  GamificationRule[]
 
   @@index([slug])
   @@index([customDomain])
   @@map("tenants")
+}
+
+// ─── CONTENT PLANS & SUBSCRIPTIONS ──────────────────────────────────────────
+
+enum PlanPeriodicity {
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+  LIFETIME
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  PAST_DUE
+}
+
+model Plan {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  slug         String          @db.VarChar(100)
+  name         String          @db.VarChar(200)
+  description  String?         @db.Text
+  periodicity  PlanPeriodicity @default(ANNUAL)
+  priceInCents Int?            @map("price_in_cents")
+  active       Boolean         @default(true)
+  sortOrder    Int             @default(0) @map("sort_order")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contents      PlanContent[]
+  subscriptions Subscription[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([active])
+  @@map("plans")
+}
+
+model PlanContent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId    String   @map("plan_id") @db.Uuid
+  programId String?  @map("program_id") @db.Uuid
+  moduleId  String?  @map("module_id") @db.Uuid
+  lessonId  String?  @map("lesson_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  plan    Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  program Program? @relation(fields: [programId], references: [id], onDelete: Cascade)
+  module  Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson  Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([programId])
+  @@index([moduleId])
+  @@index([lessonId])
+  @@map("plan_contents")
+}
+
+model Subscription {
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String             @map("user_id") @db.Uuid
+  planId     String             @map("plan_id") @db.Uuid
+  status     SubscriptionStatus @default(ACTIVE)
+  startsAt   DateTime           @default(now()) @map("starts_at")
+  expiresAt  DateTime?          @map("expires_at")
+  canceledAt DateTime?          @map("canceled_at")
+  externalId String?            @map("external_id") @db.VarChar(255)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("subscriptions")
 }
 
 // ─── USERS & AUTH ────────────────────────────────────────────────────────────
@@ -74,11 +158,13 @@ model User {
   profile        Profile?
   sessions       Session[]
   auditLogs      AuditLog[]
-  enrollments    Enrollment[]
-  submissions    Submission[]
-  pointLedger    PointLedger[]
-  badges         UserBadge[]
-  lessonProgress LessonProgress[]
+  enrollments        Enrollment[]
+  subscriptions      Subscription[]
+  submissions        Submission[]
+  pointLedger        PointLedger[]
+  badges             UserBadge[]
+  lessonProgress     LessonProgress[]
+  gamificationProfile GamificationProfile?
 
   @@unique([tenantId, email])
   @@index([email])
@@ -161,9 +247,10 @@ model Program {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  modules     Module[]
-  enrollments Enrollment[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  modules      Module[]
+  enrollments  Enrollment[]
+  planContents PlanContent[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -182,8 +269,9 @@ model Module {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  program Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
-  lessons Lesson[]
+  program      Program       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  lessons      Lesson[]
+  planContents PlanContent[]
 
   @@unique([programId, slug])
   @@index([programId, sortOrder])
@@ -215,10 +303,11 @@ model Lesson {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  materials Material[]
-  progress  LessonProgress[]
-  assessments Assessment[]
+  module       Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  materials    Material[]
+  progress     LessonProgress[]
+  assessments  Assessment[]
+  planContents PlanContent[]
 
   @@unique([moduleId, slug])
   @@index([moduleId, sortOrder])
@@ -326,19 +415,82 @@ model Submission {
 
 // ─── GAMIFICATION ────────────────────────────────────────────────────────────
 
-model Badge {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  slug        String   @db.VarChar(100)
-  title       String   @db.VarChar(200)
-  description String?  @db.Text
-  iconUrl     String?  @map("icon_url") @db.VarChar(500)
-  xpReward    Int      @default(0) @map("xp_reward")
-  criteria    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
+enum GamificationEvent {
+  LESSON_COMPLETED
+  LIVE_SESSION_ATTENDED
+  ASSESSMENT_SUBMITTED
+  STREAK_MILESTONE
+  PROGRAM_COMPLETED
+  MODULE_COMPLETED
+  ENROLLMENT_CREATED
+}
 
-  tenant Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users  UserBadge[]
+enum BadgeCategory {
+  STRATEGY
+  CONSISTENCY
+  GOVERNANCE
+  LEADERSHIP
+  MILESTONE
+}
+
+enum LeadershipTier {
+  GESTORA_AUREA
+  LIDER_ESTRATEGICA
+  EXECUTIVA_ALTO_IMPACTO
+}
+
+model GamificationRule {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String            @map("tenant_id") @db.Uuid
+  event       GamificationEvent
+  name        String            @db.VarChar(200)
+  description String?           @db.Text
+  xpReward    Int               @map("xp_reward")
+  badgeId     String?           @map("badge_id") @db.Uuid
+  conditions  Json?
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  badge         Badge?        @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+  ledgerEntries PointLedger[]
+
+  @@index([tenantId])
+  @@index([event])
+  @@map("gamification_rules")
+}
+
+model GamificationProfile {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String         @unique @map("user_id") @db.Uuid
+  totalXp        Int            @default(0) @map("total_xp")
+  currentTier    LeadershipTier @default(GESTORA_AUREA) @map("current_tier")
+  currentStreak  Int            @default(0) @map("current_streak")
+  longestStreak  Int            @default(0) @map("longest_streak")
+  lastActivityAt DateTime?      @map("last_activity_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("gamification_profiles")
+}
+
+model Badge {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  slug        String        @db.VarChar(100)
+  title       String        @db.VarChar(200)
+  description String?       @db.Text
+  iconUrl     String?       @map("icon_url") @db.VarChar(500)
+  category    BadgeCategory @default(MILESTONE)
+  xpReward    Int           @default(0) @map("xp_reward")
+  criteria    Json?
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users             UserBadge[]
+  gamificationRules GamificationRule[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -346,10 +498,10 @@ model Badge {
 }
 
 model UserBadge {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  badgeId   String   @map("badge_id") @db.Uuid
-  earnedAt  DateTime @default(now()) @map("earned_at")
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  badgeId  String   @map("badge_id") @db.Uuid
+  earnedAt DateTime @default(now()) @map("earned_at")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
@@ -360,16 +512,19 @@ model UserBadge {
 }
 
 model PointLedger {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  points    Int
-  reason    String   @db.VarChar(200)
-  entityType String? @map("entity_type") @db.VarChar(50)
-  entityId  String?  @map("entity_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  ruleId        String?  @map("rule_id") @db.Uuid
+  points        Int
+  reason        String   @db.VarChar(200)
+  referenceType String?  @map("reference_type") @db.VarChar(50)
+  referenceId   String?  @map("reference_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rule GamificationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
 
+  @@unique([userId, ruleId, referenceId])
   @@index([userId])
   @@index([createdAt])
   @@map("point_ledger")

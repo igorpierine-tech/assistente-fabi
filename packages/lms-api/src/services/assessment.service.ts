@@ -155,7 +155,7 @@ export async function submitAssessment(
 
   if (assessment.xpReward > 0) {
     const alreadyRewarded = await prisma.pointLedger.findFirst({
-      where: { userId, entityType: "assessment", entityId: assessmentId },
+      where: { userId, referenceType: "assessment", referenceId: assessmentId },
     });
 
     if (!alreadyRewarded) {
@@ -164,8 +164,8 @@ export async function submitAssessment(
           userId,
           points: assessment.xpReward,
           reason: "Avaliação concluída",
-          entityType: "assessment",
-          entityId: assessmentId,
+          referenceType: "assessment",
+          referenceId: assessmentId,
         },
       });
     }
