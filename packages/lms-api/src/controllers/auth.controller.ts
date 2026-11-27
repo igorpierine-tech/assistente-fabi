@@ -52,7 +52,7 @@ export async function logoutHandler(req: Request, res: Response, next: NextFunct
 
 export async function forgotPasswordHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    await authService.forgotPassword(req.body.email, req.body.tenantSlug, { ip: req.ip });
+    await authService.forgotPassword(req.body.email, { ip: req.ip });
     res.json({ message: "Se o e-mail estiver cadastrado, você receberá as instruções de recuperação." });
   } catch (err) {
     next(err);

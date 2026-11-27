@@ -18,7 +18,6 @@ export const signupSchema = z.object({
 export const loginSchema = z.object({
   email: z.email().max(255),
   password: z.string().min(1).max(128),
-  tenantSlug: z.string().min(1).max(100),
 });
 
 export const refreshTokenSchema = z.object({
@@ -27,7 +26,6 @@ export const refreshTokenSchema = z.object({
 
 export const forgotPasswordSchema = z.object({
   email: z.email().max(255),
-  tenantSlug: z.string().min(1).max(100),
 });
 
 export const resetPasswordSchema = z.object({

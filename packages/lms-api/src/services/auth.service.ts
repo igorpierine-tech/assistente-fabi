@@ -150,7 +150,7 @@ export async function login(
   const email = input.email.toLowerCase();
 
   const user = await prisma.user.findFirst({
-    where: { email, tenant: { slug: input.tenantSlug } },
+    where: { email },
     include: { profile: true, tenant: { select: { id: true, slug: true, active: true } } },
   });
 
@@ -276,9 +276,9 @@ export async function logout(refreshToken: string, userId: string) {
   await logAudit({ userId, action: "auth.logout" });
 }
 
-export async function forgotPassword(email: string, tenantSlug: string, meta: { ip?: string }) {
+export async function forgotPassword(email: string, meta: { ip?: string }) {
   const user = await prisma.user.findFirst({
-    where: { email: email.toLowerCase(), tenant: { slug: tenantSlug } },
+    where: { email: email.toLowerCase() },
   });
   if (!user) return;
 

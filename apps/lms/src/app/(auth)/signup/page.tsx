@@ -16,7 +16,6 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    orgName: "",
     email: "",
     password: "",
     lgpdConsent: false,
@@ -95,16 +94,6 @@ export default function SignupPage() {
               required
             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="orgName">Nome da Organização</Label>
-          <Input
-            id="orgName"
-            placeholder="Minha Empresa (opcional)"
-            value={form.orgName}
-            onChange={(e) => update("orgName", e.target.value)}
-          />
         </div>
 
         <div className="space-y-2">

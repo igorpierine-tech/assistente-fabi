@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
-  const [tenantSlug, setTenantSlug] = useState("");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,7 +19,7 @@ export default function ForgotPasswordPage() {
     try {
       await api("/auth/forgot-password", {
         method: "POST",
-        body: { email, tenantSlug },
+        body: { email },
       });
     } catch {
       // silent — always show success to avoid user enumeration
@@ -65,19 +64,6 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="tenant">Organização</Label>
-          <Input
-            id="tenant"
-            type="text"
-            placeholder="slug-da-organizacao"
-            value={tenantSlug}
-            onChange={(e) => setTenantSlug(e.target.value)}
-            required
-            autoFocus
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
@@ -86,6 +72,7 @@ export default function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoFocus
           />
         </div>
 
